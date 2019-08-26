@@ -54,7 +54,8 @@ def main():
     files = get_files()
     f = open('cscope.files', 'w')
     for fname in files:
-        f.write('"%s"\n' % fname)
+        #f.write('"%s"\n' % fname)
+        f.write('%s\n' % fname)
     f.close()
 
     # tags files
