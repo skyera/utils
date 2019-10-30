@@ -83,7 +83,7 @@ def main():
     out = open('filenametags', 'w')
     out.write('!_TAG_FILE_SORTED\t2\t/2=foldcase/\n')
     out.close()
-    cmd = 'sort -f temp.txt > filenametags'
+    cmd = 'sort -f temp.txt >> filenametags'
     print(cmd)
     os.system(cmd)
     os.remove('temp.txt')
