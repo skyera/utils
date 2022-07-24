@@ -33,6 +33,8 @@ Plugin 'altercation/vim-colors-solarized'
 Plugin 'ashisha/image.vim'
 Plugin 'dracula/vim'
 Plugin 'agude/vim-eldar'
+Plugin 'mileszs/ack.vim'
+Plugin 'mhinz/vim-grepper'
 call vundle#end()
 
 set diffexpr=MyDiff()
