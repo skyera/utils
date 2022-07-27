@@ -28,6 +28,7 @@ Plugin 'dracula/vim'
 Plugin 'agude/vim-eldar'
 Plugin 'mileszs/ack.vim'
 Plugin 'mhinz/vim-grepper'
+Plugin 'jremmen/vim-ripgrep'
 call vundle#end()
 
 set diffexpr=MyDiff()
