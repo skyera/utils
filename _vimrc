@@ -193,6 +193,8 @@ set noswapfile
 set cscopetagorder=1
 "let g:pydoc_cmd = 'python -m pydoc'
 let g:pydoc_cmd = 'c:\app\anaconda3\Scripts\pydoc'
+set nocst
+nmap cp :let @* = expand("%") <cr>
 
 let g:tagbar_type_typescript = {
   \ 'ctagstype': 'typescript',
