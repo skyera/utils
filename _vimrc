@@ -17,7 +17,7 @@ Plugin 'vim-scripts/taglist.vim'
 Plugin 'vim-scripts/Color-Scheme-Explorer'
 Plugin 'yegappan/mru'
 Plugin 'majutsushi/tagbar'
-Plugin 'The-NERD-Commenter' 
+Plugin 'preservim/nerdcommenter'
 Plugin 'reedes/vim-wordy'
 Plugin 'leafgarland/typescript-vim'
 Plugin 'vimwiki'
@@ -27,7 +27,10 @@ Plugin 'dracula/vim'
 Plugin 'agude/vim-eldar'
 Plugin 'mileszs/ack.vim'
 Plugin 'mhinz/vim-grepper'
+Plugin 'rafi/awesome-vim-colorschemes'
+Plugin 'jiangmiao/auto-pairs'
 Plugin 'jremmen/vim-ripgrep'
+Plugin 'tpope/vim-surround'
 Plugin 'tpope/vim-commentary'
 Plugin 'tpope/vim-unimpaired'
 call vundle#end()
@@ -92,7 +95,7 @@ set printoptions=paper:letter,left:5mm,right:8mm,top:5mm,bottom:3mm,syntax:n,num
 set ignorecase
 "set guifont=Terminal:h8:cOEM
 "set guifont=Courier:h8:cANSI
-set guifont=Consolas:h10:cDEFAULT
+"set guifont=Consolas:h10:cDEFAULT
 set cursorline
 set ci
 set shiftround
