@@ -99,6 +99,7 @@ set ignorecase
 set cursorline
 set ci
 set shiftround
+set smartcase
 "set fileencodings=ucs-bom,utf-8,chinese
 "set termencoding=utf-8
 set encoding=utf-8
