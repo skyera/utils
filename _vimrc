@@ -151,7 +151,6 @@ set directory^=$HOME/.vim/tmp//
 noremap <F12> <Esc>:syntax sync fromstart<CR>
 autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
 autocmd FileType html setlocal shiftwidth=2 tabstop=2
-set noswapfile
 set cscopetagorder=1
 "let g:pydoc_cmd = 'python -m pydoc'
 let g:pydoc_cmd = 'c:\app\anaconda3\Scripts\pydoc'
@@ -171,3 +170,5 @@ let g:tagbar_type_typescript = {
     \ 'e:enums',
   \ ]
 \ }
+
+"set grepprg=grep\ -nH
