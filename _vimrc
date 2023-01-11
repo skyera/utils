@@ -5,7 +5,6 @@ set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
 
 Plugin 'VundleVim/Vundle.vim'
-
 Plugin 'flazz/vim-colorschemes'
 Plugin 'kien/ctrlp.vim'
 Plugin 'scrooloose/nerdtree'
@@ -16,15 +15,11 @@ Plugin 'jlanzarotta/bufexplorer'
 Plugin 'vim-scripts/taglist.vim'
 Plugin 'vim-scripts/Color-Scheme-Explorer'
 Plugin 'yegappan/mru'
+Plugin 'a.vim'
 Plugin 'majutsushi/tagbar'
 Plugin 'preservim/nerdcommenter'
-Plugin 'reedes/vim-wordy'
-Plugin 'leafgarland/typescript-vim'
 Plugin 'vimwiki'
 Plugin 'itchyny/lightline.vim'
-Plugin 'altercation/vim-colors-solarized'
-Plugin 'dracula/vim'
-Plugin 'agude/vim-eldar'
 Plugin 'mileszs/ack.vim'
 Plugin 'mhinz/vim-grepper'
 Plugin 'rafi/awesome-vim-colorschemes'
@@ -35,31 +30,6 @@ Plugin 'tpope/vim-commentary'
 Plugin 'tpope/vim-unimpaired'
 call vundle#end()
 
-set diffexpr=MyDiff()
-function MyDiff()
-  let opt = '-a --binary '
-  if &diffopt =~ 'icase' | let opt = opt . '-i ' | endif
-  if &diffopt =~ 'iwhite' | let opt = opt . '-b ' | endif
-  let arg1 = v:fname_in
-  if arg1 =~ ' ' | let arg1 = '"' . arg1 . '"' | endif
-  let arg2 = v:fname_new
-  if arg2 =~ ' ' | let arg2 = '"' . arg2 . '"' | endif
-  let arg3 = v:fname_out
-  if arg3 =~ ' ' | let arg3 = '"' . arg3 . '"' | endif
-  let eq = ''
-  if $VIMRUNTIME =~ ' '
-    if &sh =~ '\<cmd'
-      let cmd = '""' . $VIMRUNTIME . '\diff"'
-      let eq = '"'
-    else
-      let cmd = substitute($VIMRUNTIME, ' ', '" ', '') . '\diff"'
-    endif
-  else
-    let cmd = $VIMRUNTIME . '\diff'
-  endif
-  silent execute '!' . cmd . ' ' . opt . arg1 . ' ' . arg2 . ' > ' . arg3 . eq
-endfunction
-
 set backspace=indent,eol,start
 set history=200
 set ruler
@@ -67,7 +37,6 @@ set showcmd
 set incsearch
 set hlsearch
 set mouse=a
-"set backup
 set swapfile
 set tabstop=4
 set shiftwidth=4
@@ -78,18 +47,11 @@ filetype plugin indent on
 syntax on
 syntax enable
 set nobackup
-"set noswapfile
+set noswapfile
 set showmode
 "set path+=.\**
 set completeopt=menu
 set go=a
-if has('gui_running')
-    "colorscheme blackdust
-    "colorscheme kolor
-    colorscheme solarized
-else
-    colorscheme torte
-endif    
 set cscopequickfix=s-,c-,d-,i-,t-,e-
 set printoptions=paper:letter,left:5mm,right:8mm,top:5mm,bottom:3mm,syntax:n,number:y 
 set ignorecase
@@ -167,7 +129,6 @@ runtime macros/matchit.vim
 "colorscheme blackdust
 "colorscheme vanzan_color
 
-
 let g:ctrlp_max_files = 0
 let g:ctrlp_clear_cache_on_exit=0
 
@@ -184,11 +145,7 @@ let g:ctrlp_by_filename = 1
 "set nowrapscan
 set cindent
 set cinoptions=g-1
-"colorscheme badwolf
-"colorscheme coffee
-"colorscheme kolor
-"colorscheme dracula
-colorscheme eldar
+colorscheme gruvbox
 set background=dark
 set directory^=$HOME/.vim/tmp//
 noremap <F12> <Esc>:syntax sync fromstart<CR>
