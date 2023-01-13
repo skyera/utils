@@ -62,8 +62,6 @@ set cursorline
 set ci
 set shiftround
 set smartcase
-"set fileencodings=ucs-bom,utf-8,chinese
-"set termencoding=utf-8
 set encoding=utf-8
 autocmd BufReadPost *
     \ if line("'\"") > 1 && line("'\"") <= line("$") |
@@ -96,13 +94,9 @@ nmap <F8> :bn<cr>
 nmap <F9> :bp<cr>
 nmap <F10> :tn<cr>
 nmap <C-F10> :tp<cr>
-"let g:DoxygenToolkit_commentType="C++"
 
 set errorformat=\ %#%f(%l\\\,%c):\ %m
 map <F4> :execute "vimgrep /" . expand("<cword>") . "/j **" <Bar> cw<CR>
-"nmap <F11> :!start explorer /select,%:p
-"imap <F11> <Esc><F11>
-"nmap <F11> :silent !start explorer /e,,%:p:h,/select,%:p<CR>
 nmap <F11> :silent !start explorer /select,%:p<CR>
 
 " Convert slashes to backslashes for Windows.
@@ -126,8 +120,6 @@ set scrolljump=5
 set scrolloff=3
 "set patchmode=.patch
 runtime macros/matchit.vim
-"colorscheme blackdust
-"colorscheme vanzan_color
 
 let g:ctrlp_max_files = 0
 let g:ctrlp_clear_cache_on_exit=0
