@@ -28,6 +28,7 @@ Plugin 'jremmen/vim-ripgrep'
 Plugin 'tpope/vim-surround'
 Plugin 'tpope/vim-commentary'
 Plugin 'tpope/vim-unimpaired'
+Plugin 'mhinz/vim-startify'
 call vundle#end()
 
 set backspace=indent,eol,start
