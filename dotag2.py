@@ -166,9 +166,13 @@ def sort_filenametags():
 
 
 def create_tags():
+    start = time.time()
     cmd = 'ctags -L cscope.files'
     print(cmd)
     os.system(cmd)
+    end = time.time()
+    cpu = end - start
+    print('ctags cpu', cpu, 'seconds')
 
 
 def main():
@@ -185,8 +189,8 @@ def main():
     create_tags()
 
     end = time.time()
-    cpu = int(end - start)
-    print('cpu', cpu, 'sec')
+    cpu = end - start
+    print('cpu', cpu, 'seconds')
 
 
 if __name__ == '__main__':
