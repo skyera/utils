@@ -41,7 +41,7 @@ def visit(arg, dirpath, namelist):
 
     for name in namelist:
         path = os.path.join(dirpath, name)
-        if os.path.isfile(path):
+        if os.path.isfile(path) and not os.path.islink(path):
             root, ext = os.path.splitext(name)
             if ext.lower() in file_type_list:
                 if ' ' not in path:
