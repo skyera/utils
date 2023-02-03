@@ -29,6 +29,7 @@ Plugin 'jremmen/vim-ripgrep'
 Plugin 'tpope/vim-surround'
 Plugin 'tpope/vim-commentary'
 Plugin 'tpope/vim-unimpaired'
+Plugin 'tpope/vim-fugitive'
 Plugin 'mhinz/vim-startify'
 call vundle#end()
 
