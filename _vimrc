@@ -70,7 +70,6 @@ autocmd BufReadPost *
 let g:winManagerWindowLayout='FileExplorer|TagList'
 let Tlist_Show_One_File=1
 map <F2> <Esc>:1,$!xmllint --format -<CR>
-
 nmap <silent> <leader>ll :LUBufs<cr>
 
 let g:LookupFile_MinPatLength = 3
@@ -94,29 +93,13 @@ nmap <F9> :bp<cr>
 nmap <F10> :tn<cr>
 nmap <C-F10> :tp<cr>
 
-"set errorformat=\ %#%f(%l\\\,%c):\ %m
 map <F4> :execute "vimgrep /" . expand("<cword>") . "/j **" <Bar> cw<CR>
 nmap <F11> :silent !start explorer /select,%:p<CR>
 
-" Convert slashes to backslashes for Windows.
-if has('win32')
-  nmap ,cs :let @*=substitute(expand("%"), "/", "\\", "g")<CR>
-  nmap ,cl :let @*=substitute(expand("%:p"), "/", "\\", "g")<CR>
-
-  " This will copy the path in 8.3 short format, for DOS and Windows 9x
-  nmap ,c8 :let @*=substitute(expand("%:p:8"), "/", "\\", "g")<CR>
-else
-  nmap ,cs :let @*=expand("%")<CR>
-  nmap ,cl :let @*=expand("%:p")<CR>
-endif
-
-"let g:CCTreeDbFileMaxSize = 400000000
 set browsedir=buffer
 nmap <C-F2> :browse edit<cr>
 set laststatus=2
 set statusline=%t[%{strlen(&fenc)?&fenc:'none'},%{&ff}]%h%m%r%y%=%c,%l/%L\ %P
-set scrolljump=5
-set scrolloff=3
 runtime macros/matchit.vim
 
 let g:ctrlp_max_files = 0
@@ -130,7 +113,7 @@ let g:ctrlp_custom_ignore = {
 let g:ctrlp_regexp = 1
 let g:ctrlp_by_filename = 1
 
-"set nowrapscan
+set nowrapscan
 set cindent
 set cinoptions=g-1
 colorscheme gruvbox
