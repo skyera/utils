@@ -99,7 +99,6 @@ nmap <F11> :silent !start explorer /select,%:p<CR>
 set browsedir=buffer
 nmap <C-F2> :browse edit<cr>
 set laststatus=2
-set statusline=%t[%{strlen(&fenc)?&fenc:'none'},%{&ff}]%h%m%r%y%=%c,%l/%L\ %P
 runtime macros/matchit.vim
 
 let g:ctrlp_max_files = 0
