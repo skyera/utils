@@ -40,7 +40,6 @@ set showcmd
 set incsearch
 set hlsearch
 set mouse=a
-set swapfile
 set tabstop=4
 set shiftwidth=4
 set expandtab
@@ -52,14 +51,11 @@ syntax enable
 set nobackup
 set noswapfile
 set showmode
-"set path+=.\**
 set completeopt=menu
 set go=a
 set cscopequickfix=s-,c-,d-,i-,t-,e-
 set printoptions=paper:letter,left:5mm,right:8mm,top:5mm,bottom:3mm,syntax:n,number:y 
 set ignorecase
-"set guifont=Terminal:h8:cOEM
-"set guifont=Courier:h8:cANSI
 "set guifont=Consolas:h10:cDEFAULT
 set cursorline
 set ci
@@ -98,7 +94,7 @@ nmap <F9> :bp<cr>
 nmap <F10> :tn<cr>
 nmap <C-F10> :tp<cr>
 
-set errorformat=\ %#%f(%l\\\,%c):\ %m
+"set errorformat=\ %#%f(%l\\\,%c):\ %m
 map <F4> :execute "vimgrep /" . expand("<cword>") . "/j **" <Bar> cw<CR>
 nmap <F11> :silent !start explorer /select,%:p<CR>
 
@@ -113,7 +109,7 @@ else
   nmap ,cs :let @*=expand("%")<CR>
   nmap ,cl :let @*=expand("%:p")<CR>
 endif
-"map <C-F12> :!ctags -R --c++-kinds=+p --fields=+iaS --extra=+q .<CR>
+
 "let g:CCTreeDbFileMaxSize = 400000000
 set browsedir=buffer
 nmap <C-F2> :browse edit<cr>
@@ -121,7 +117,6 @@ set laststatus=2
 set statusline=%t[%{strlen(&fenc)?&fenc:'none'},%{&ff}]%h%m%r%y%=%c,%l/%L\ %P
 set scrolljump=5
 set scrolloff=3
-"set patchmode=.patch
 runtime macros/matchit.vim
 
 let g:ctrlp_max_files = 0
@@ -132,8 +127,6 @@ let g:ctrlp_custom_ignore = {
   \ 'file': '\v\.(exe|obj|dll|lib|exp|o|pdb|xml|log|png|bmp|resx|pyc|a|txt)$',
   \ 'link': 'some_bad_symbolic_links',
   \ }
-"let g:ctrlp_user_command = 'dir %s /-n /b /s /a-d'
-"let g:ctrlp_custom_ignore = 'obj'
 let g:ctrlp_regexp = 1
 let g:ctrlp_by_filename = 1
 
@@ -147,8 +140,6 @@ noremap <F12> <Esc>:syntax sync fromstart<CR>
 autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
 autocmd FileType html setlocal shiftwidth=2 tabstop=2
 set cscopetagorder=1
-"let g:pydoc_cmd = 'python -m pydoc'
-let g:pydoc_cmd = 'c:\app\anaconda3\Scripts\pydoc'
 set nocst
 nmap cp :let @* = expand("%") <cr>
 
