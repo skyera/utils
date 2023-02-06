@@ -15,6 +15,7 @@ EXCLUDED_DIRS = ['boost', 'omniorb', 'generated', '_output', '.jazz',
                  'pythonstandardlibrary', '.vscode',
                  'virtualenv', '3rdParty', 'omniwin',
                  'openthreads']
+EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
 CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
 
@@ -37,7 +38,7 @@ def parse():
 def is_excluded(path):
     """Is the directory name excluded?"""
     path_basename = os.path.basename(path).lower()
-    return path_basename in EXCLUDED_DIRS
+    return path_basename in EXCLUDED_DIRS_LOWER_CASES
 
 
 def visit(files, dirpath, file_names):
@@ -93,9 +94,9 @@ class FindCmd:
     def generate_find_cmd(self):
         if self.excluded_dirs_str != "":
             self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} \
-                    -fprint {CSCOPE_FILE_NAME}'
+                    -print | grep -v " " >  {CSCOPE_FILE_NAME}'
         else:
-            self.find_cmd = f'find . {self.file_exts_str} -fprint {CSCOPE_FILE_NAME} '
+            self.find_cmd = f'find . {self.file_exts_str} -print | grep -v " " {CSCOPE_FILE_NAME} '
 
 
 class FdCmd:
