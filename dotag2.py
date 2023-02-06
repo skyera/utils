@@ -9,7 +9,8 @@ import time
 
 
 FILE_EXTS = ('.c', '.cpp', '.cc', '.h', '.hpp', '.inl', '.cs', '.java', '.mc',
-             '.rc', '.idl', '.js', '.ts', '.html', '.py', '.sql', '.sh', '.json')
+             '.rc', '.idl', '.js', '.ts', '.html', '.py', '.sql', '.sh', '.json',
+             '.sdl', '.cu', '.cuh')
 EXCLUDED_DIRS = ['boost', 'omniorb', 'Generated', '_output', '.jazz5', '.jazzShed',
                  'node_modules', 'wabapp',
                  'OmniORB', 'Omni', 'Omni_VS2015', 'omniwin',
