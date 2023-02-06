@@ -34,14 +34,10 @@ def parse():
     return args.find
 
 
-def is_excluded(dir_name):
+def is_excluded(path):
     """Is the directory name excluded?"""
-    dir_name = dir_name.lower()
-    for exclude_dir in EXCLUDED_DIRS:
-        if exclude_dir in dir_name:
-            return True
-
-    return False
+    path_basename = os.path.basename(path).lower()
+    return path_basename in EXCLUDED_DIRS
 
 
 def visit(files, dirpath, file_names):
@@ -126,7 +122,7 @@ class FdCmd:
     def create_excluded_str(self):
         items = []
         for name in self.excluded_dirs:
-            item = f'-E "*{name}*"'
+            item = f'-E {name}'
             items.append(item)
         self.excluded_str = ' '.join(items)
 
