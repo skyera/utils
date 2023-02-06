@@ -15,8 +15,8 @@ EXCLUDED_DIRS = ['boost', 'omniorb', 'Generated', '_output', '.jazz5', '.jazzShe
                  'node_modules', 'wabapp',
                  'OmniORB', 'Omni', 'Omni_VS2015', 'omniwin',
                  'PythonStandardLibrary', '.vscode',
-                 'virtualenv', '3rdParty', 'ThirdParty',
-                 'OpenThreads', 'OpenCV']
+                 'virtualenv', '3rdParty', 'ThirdParty', 'third_party',
+                 'OpenThreads', 'OpenCV', 'Anaconda']
 EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
 CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
