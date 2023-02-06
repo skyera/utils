@@ -10,11 +10,12 @@ import time
 
 FILE_EXTS = ('.c', '.cpp', '.cc', '.h', '.hpp', '.inl', '.cs', '.java', '.mc',
              '.rc', '.idl', '.js', '.ts', '.html', '.py', '.sql', '.sh', '.json')
-EXCLUDED_DIRS = ['boost', 'omniorb', 'generated', '_output', '.jazz',
+EXCLUDED_DIRS = ['boost', 'omniorb', 'Generated', '_output', '.jazz5', '.jazzShed',
                  'node_modules', 'wabapp',
-                 'pythonstandardlibrary', '.vscode',
-                 'virtualenv', '3rdParty', 'omniwin',
-                 'openthreads']
+                 'OmniORB', 'Omni', 'Omni_VS2015', 'omniwin',
+                 'PythonStandardLibrary', '.vscode',
+                 'virtualenv', '3rdParty', 'ThirdParty',
+                 'OpenThreads', 'OpenCV']
 EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
 CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
@@ -37,8 +38,11 @@ def parse():
 
 def is_excluded(path):
     """Is the directory name excluded?"""
-    path_basename = os.path.basename(path).lower()
-    return path_basename in EXCLUDED_DIRS_LOWER_CASES
+    path = path.lower()
+    for excluded_dir in EXCLUDED_DIRS_LOWER_CASES:
+        if excluded_dir in path:
+            return True
+    return False
 
 
 def visit(files, dirpath, file_names):
