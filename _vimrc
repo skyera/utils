@@ -3,6 +3,7 @@ filetype off
 
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
+
 Plugin 'VundleVim/Vundle.vim'
 Plugin 'flazz/vim-colorschemes'
 Plugin 'kien/ctrlp.vim'
@@ -24,6 +25,7 @@ Plugin 'mhinz/vim-grepper'
 Plugin 'rafi/awesome-vim-colorschemes'
 Plugin 'jiangmiao/auto-pairs'
 Plugin 'junegunn/fzf'
+Plugin 'junegunn/fzf.vim'
 Plugin 'jremmen/vim-ripgrep'
 Plugin 'tpope/vim-surround'
 Plugin 'tpope/vim-commentary'
@@ -141,3 +143,6 @@ let g:tagbar_type_typescript = {
 
 "set grepprg=grep\ -nH
 let g:startify_change_to_dir = 0
+command! -bang -nargs=* FRG call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, <bang>0)
+let g:fzf_command_prefix = 'Fzf'
+let $FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS . ' --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
