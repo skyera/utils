@@ -150,3 +150,4 @@ let $FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS . ' --bind "ctrl-a:select-all,ctrl-d:des
 nnoremap <silent> <leader>f :FzfFiles<CR>
 nnoremap <silent> <leader>g :FzfRg<CR>
 nnoremap <silent> <leader>b :FzfBuffers<CR>
+let g:fzf_layout = { 'down': '40%' }
