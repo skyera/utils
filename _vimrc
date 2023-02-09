@@ -146,3 +146,7 @@ let g:startify_change_to_dir = 0
 command! -bang -nargs=* FRG call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, <bang>0)
 let g:fzf_command_prefix = 'Fzf'
 let $FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS . ' --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
+
+nnoremap <silent> <leader>f :FzfFiles<CR>
+nnoremap <silent> <leader>g :FzfRg<CR>
+nnoremap <silent> <leader>b :FzfBuffers<CR>
