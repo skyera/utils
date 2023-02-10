@@ -145,7 +145,7 @@ let g:tagbar_type_typescript = {
 
 "set grepprg=grep\ -nH
 let g:startify_change_to_dir = 0
-command! -bang -nargs=* FRG call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, <bang>0)
+command! -bang -nargs=* FRG call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview(), <bang>0)
 let g:fzf_command_prefix = 'Fzf'
 let $FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS . ' --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
 
