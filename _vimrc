@@ -58,7 +58,9 @@ set go=a
 set cscopequickfix=s-,c-,d-,i-,t-,e-
 set printoptions=paper:letter,left:5mm,right:8mm,top:5mm,bottom:3mm,syntax:n,number:y 
 set ignorecase
-"set guifont=Consolas:h10:cDEFAULT
+if has('win32')
+    set guifont=Consolas:h10:cDEFAULT
+endif
 set cursorline
 set ci
 set shiftround
