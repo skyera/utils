@@ -33,6 +33,7 @@ Plugin 'tpope/vim-unimpaired'
 Plugin 'tpope/vim-fugitive'
 Plugin 'mhinz/vim-startify'
 Plugin 'dbeniamine/cheat.sh-vim'
+Plugin 'unblevable/quick-scope'
 call vundle#end()
 
 set backspace=indent,eol,start
