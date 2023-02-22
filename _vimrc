@@ -116,7 +116,7 @@ let g:ctrlp_custom_ignore = {
 let g:ctrlp_regexp = 1
 let g:ctrlp_by_filename = 1
 
-set nowrapscan
+set wrapscan
 set cindent
 set cinoptions=g-1
 colorscheme gruvbox
