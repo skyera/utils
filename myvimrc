@@ -31,6 +31,8 @@ Plug 'tpope/vim-fugitive'
 Plug 'mhinz/vim-startify'
 Plug 'dbeniamine/cheat.sh-vim'
 Plug 'unblevable/quick-scope'
+Plug 'dyng/ctrlsf.vim'
+Plug 'sheerun/vim-polyglot'
 call plug#end()
 
 set backspace=indent,eol,start
