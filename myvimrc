@@ -56,7 +56,7 @@ set showmode
 set completeopt=menu
 set go=a
 set cscopequickfix=s-,c-,d-,i-,t-,e-
-set printoptions=paper:letter,left:5mm,right:8mm,top:5mm,bottom:3mm,syntax:n,number:y 
+set printoptions=paper:letter,left:5mm,right:8mm,top:5mm,bottom:3mm,syntax:n,number:y
 set ignorecase
 if has('win32')
     set guifont=Consolas:h10:cDEFAULT
@@ -154,7 +154,7 @@ nnoremap <silent> <leader>g :FzfRg<CR>
 nnoremap <silent> <leader>b :FzfBuffers<CR>
 let g:fzf_layout = { 'down': '40%' }
 
-let g:ale_linters = {'python': ['flake8']}
+"let g:ale_linters = {'python': ['flake8']}
 let g:ale_fixers = {
             \ '*': ['remove_trailing_lines', 'trim_whitespace'],
             \ 'python': ['black', 'isort'],
