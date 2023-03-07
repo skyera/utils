@@ -67,6 +67,7 @@ set ci
 set shiftround
 set smartcase
 set encoding=utf-8
+set colorcolumn=80
 autocmd BufReadPost *
     \ if line("'\"") > 1 && line("'\"") <= line("$") |
     \   exe "normal! g`\"" |
