@@ -167,3 +167,6 @@ nmap <silent> <C-j> <Plug>(ale_next_wrap)
 let g:ale_cpp_cpplint_options = '--filter=-whitespace/braces,-legal/copyright,-whitespace/indent'
 let g:ale_c_cpplint_options = '--filter=-whitespace/braces,-legal/copyright'
 let g:ale_echo_msg_format = '[%linter%] %code: %%s [%severity%]'
+let g:ale_lint_on_text_changed = 'never'
+let g:ale_lint_on_insert_leave = 0
+let g:ale_lint_on_enter = 0
