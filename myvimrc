@@ -177,3 +177,6 @@ noremap <silent> <leader>l :ALELint<CR>
 map <leader>nn :NERDTreeToggle<cr>
 map <leader>nb :NERDTreeFromBookmark<Space>
 map <leader>nf :NERDTreeFind<cr>
+
+map <MiddleMouse> <Nop>
+imap <MiddleMouse> <Nop>
