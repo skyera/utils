@@ -155,6 +155,8 @@ nnoremap <silent> <leader>f :FzfFiles<CR>
 nnoremap <silent> <leader>g :FzfRg<CR>
 nnoremap <silent> <leader>b :FzfBuffers<CR>
 nnoremap <silent> <leader>t :FzfTags<CR>
+nnoremap <silent> <leader>fl :FzfLines<CR>
+nnoremap <silent> <leader>fb :FzfBLines<CR>
 let g:fzf_layout = { 'down': '40%' }
 
 "let g:ale_linters = {'python': ['flake8']}
