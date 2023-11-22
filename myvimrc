@@ -155,8 +155,9 @@ nnoremap <silent> <leader>f :FzfFiles<CR>
 nnoremap <silent> <leader>g :FzfRg<CR>
 nnoremap <silent> <leader>b :FzfBuffers<CR>
 nnoremap <silent> <leader>t :FzfTags<CR>
-nnoremap <silent> <leader>fl :FzfLines<CR>
-nnoremap <silent> <leader>fb :FzfBLines<CR>
+nnoremap <silent> <leader>l :FzfLines<CR>
+nnoremap <silent> <leader>bl :FzfBLines<CR>
+nnoremap <silent> <leader>bt :FzfBTags<CR>
 let g:fzf_layout = { 'down': '40%' }
 
 "let g:ale_linters = {'python': ['flake8']}
@@ -175,7 +176,7 @@ let g:ale_fix_on_save = 1
 let g:ale_lint_on_save = 0
 let g:ale_virtualtext_cursor = 'current'
 
-noremap <silent> <leader>l :ALELint<CR>
+noremap <silent> <leader>al :ALELint<CR>
 
 map <leader>nn :NERDTreeToggle<cr>
 map <leader>nb :NERDTreeFromBookmark<Space>
