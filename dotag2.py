@@ -3,6 +3,7 @@
 Create cscope, filename, tag database for source code
 """
 import argparse
+import datetime
 import sys
 import os
 import time
@@ -249,6 +250,7 @@ def log_find_method(find_method):
 
 
 def main():
+    print(datetime.datetime.now())
     find_method = parse()
     log_find_method(find_method)
 
