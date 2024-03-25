@@ -71,7 +71,7 @@ set encoding=utf-8
 set colorcolumn=80
 if has('win32')
     set pythonthreehome=c:\\app\\anaconda3
-    set pythonthreedll=c:\\app\\anaconda3\\oython39.dll
+    set pythonthreedll=c:\\app\\anaconda3\\python39.dll
 endif
 autocmd BufReadPost *
     \ if line("'\"") > 1 && line("'\"") <= line("$") |
