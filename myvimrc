@@ -69,6 +69,10 @@ set shiftround
 set smartcase
 set encoding=utf-8
 set colorcolumn=80
+if has('win32')
+    set pythonthreehome=c:\\app\\anaconda3
+    set pythonthreedll=c:\\app\\anaconda3\\oython39.dll
+endif
 autocmd BufReadPost *
     \ if line("'\"") > 1 && line("'\"") <= line("$") |
     \   exe "normal! g`\"" |
