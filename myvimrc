@@ -202,3 +202,16 @@ function! s:align()
     call search(repeat('[^|]*|',column).'\s\{-\}'.repeat('.',position),'ce',line('.'))
   endif
 endfunction
+
+" Define a key mapping to toggle g:ale_fix_on_save variable
+nnoremap <leader>tf :call ToggleALEFixOnSave()<CR>
+
+" Function to toggle g:ale_fix_on_save variable
+function! ToggleALEFixOnSave()
+    if exists('g:ale_fix_on_save') && g:ale_fix_on_save == 1
+        let g:ale_fix_on_save = 0
+    else
+        let g:ale_fix_on_save = 1
+    endif
+    echo "g:ale_fix_on_save is now set to " . g:ale_fix_on_save
+endfunction
