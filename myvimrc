@@ -7,7 +7,11 @@ Plug 'kien/ctrlp.vim'
 Plug 'scrooloose/nerdtree'
 Plug 'vim-scripts/genutils'
 Plug 'vim-scripts/lookupfile'
-Plug 'vim-scripts/cscope_macros.vim'
+if has('nvim')
+    Plug 'dhananjaylatkar/cscope_maps.nvim'
+else
+    Plug 'vim-scripts/cscope_macros.vim'
+endif
 Plug 'jlanzarotta/bufexplorer'
 Plug 'vim-scripts/taglist.vim'
 Plug 'vim-scripts/Color-Scheme-Explorer'
@@ -57,8 +61,7 @@ set noswapfile
 set showmode
 set completeopt=menu
 set go=a
-set cscopequickfix=s-,c-,d-,i-,t-,e-
-set printoptions=paper:letter,left:5mm,right:8mm,top:5mm,bottom:3mm,syntax:n,number:y
+"set printoptions=paper:letter,left:5mm,right:8mm,top:5mm,bottom:3mm,syntax:n,number:y
 set ignorecase
 if has('win32') && !has('nvim')
     set guifont=Consolas:h10:cDEFAULT
@@ -132,8 +135,13 @@ set directory^=$HOME/.vim/tmp//
 noremap <F12> <Esc>:syntax sync fromstart<CR>
 autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
 autocmd FileType html setlocal shiftwidth=2 tabstop=2
-set cscopetagorder=1
-set nocst
+
+if !has('nvim')
+    set cscopequickfix=s-,c-,d-,i-,t-,e-
+    set cscopetagorder=1
+    set nocst
+endif
+
 nmap cp :let @* = expand("%") <cr>
 
 let g:tagbar_type_typescript = {
@@ -215,3 +223,7 @@ function! ToggleALEFixOnSave()
     endif
     echo "g:ale_fix_on_save is now set to " . g:ale_fix_on_save
 endfunction
+
+if has('nvim')
+    lua require('cscope_maps').setup()
+endif
