@@ -11,6 +11,8 @@ if has('nvim')
     Plug 'dhananjaylatkar/cscope_maps.nvim'
     Plug 'nvim-lua/plenary.nvim'
     Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.8' }
+    Plug 'nvim-tree/nvim-web-devicons' " optional
+    Plug 'nvim-tree/nvim-tree.lua'
 else
     Plug 'vim-scripts/cscope_macros.vim'
 endif
@@ -229,4 +231,8 @@ endfunction
 if has('nvim')
     lua require('cscope_maps').setup()
     lua require('telescope').setup()
+    lua vim.g.loaded_netrw = 1
+    lua vim.g.loaded_netrwPlugin = 1
+    lua vim.opt.termguicolors = true
+    lua require("nvim-tree").setup()
 endif
