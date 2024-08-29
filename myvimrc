@@ -43,6 +43,7 @@ Plug 'unblevable/quick-scope'
 Plug 'sheerun/vim-polyglot'
 Plug 'dense-analysis/ale'
 Plug 'godlygeek/tabular'
+Plug 'tmhedberg/SimpylFold'
 call plug#end()
 
 set backspace=indent,eol,start
