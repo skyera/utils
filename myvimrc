@@ -4,6 +4,8 @@ filetype off
 call plug#begin()
 Plug 'flazz/vim-colorschemes'
 Plug 'kien/ctrlp.vim'
+Plug 'ryanoasis/vim-devicons'
+Plug 'tiagofumo/vim-nerdtree-syntax-highlight'
 Plug 'scrooloose/nerdtree'
 Plug 'vim-scripts/genutils'
 Plug 'vim-scripts/lookupfile'
