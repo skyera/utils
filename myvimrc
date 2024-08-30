@@ -73,6 +73,8 @@ set ignorecase
 if has('win32') && !has('nvim')
     set guifont=Consolas:h10:cDEFAULT
 endif
+"set guifont=Hack\ Nerd\ Font:h12
+"set guifont=Hack\ Nerd\ Font\ Mono:h12
 set cursorline
 set ci
 set shiftround
