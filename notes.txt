@@ -2,3 +2,5 @@ export FZF_DEFAULT_COMMAND='rg --files'
 export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
 export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include/:$HOME/test/stb:$CPLUS_INCLUDE_PATH"
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
+
+curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack/Regular/HackNerdFont-Regular.ttf
