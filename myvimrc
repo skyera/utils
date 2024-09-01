@@ -140,6 +140,7 @@ set cindent
 set cinoptions=g-1
 colorscheme gruvbox
 set background=dark
+set termguicolors
 set directory^=$HOME/.vim/tmp//
 noremap <F12> <Esc>:syntax sync fromstart<CR>
 autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
