@@ -3,8 +3,7 @@ filetype off
 
 call plug#begin()
 Plug 'flazz/vim-colorschemes'
-Plug 'kien/ctrlp.vim'
-Plug 'ryanoasis/vim-devicons'
+Plug 'ctrlpvim/ctrlp.vim'
 Plug 'tiagofumo/vim-nerdtree-syntax-highlight'
 Plug 'scrooloose/nerdtree'
 Plug 'vim-scripts/genutils'
@@ -45,6 +44,7 @@ Plug 'sheerun/vim-polyglot'
 Plug 'dense-analysis/ale'
 Plug 'godlygeek/tabular'
 Plug 'tmhedberg/SimpylFold'
+Plug 'ryanoasis/vim-devicons'
 call plug#end()
 
 set backspace=indent,eol,start
