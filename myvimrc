@@ -80,7 +80,7 @@ elseif has('linux')
         set guifont=Hack\ Nerd\ Font\ 10
     endif
 elseif has("mac")
-    set guifont=HackNF-Regular:h11
+    set guifont=Hack\ Nerd\ Font:h11
 endif
 
 set cursorline
