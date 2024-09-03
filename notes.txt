@@ -4,3 +4,10 @@ export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/i
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
 
 curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack/Regular/HackNerdFont-Regular.ttf
+
+alacritty.toml
+[font]
+normal = {family="Hack Nerd Font Mono", style="Regular"}
+size = 11.0
+bold = {family="Hack Nerd Font Mono", style="Bold"}
+italic = {family="Hack Nerd Font Mono", style="Italic"}
