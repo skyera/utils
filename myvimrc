@@ -260,3 +260,8 @@ if has('nvim')
     nnoremap <leader>e :NvimTreeToggle<cr>
     nnoremap <leader>n :NvimTreeFindFile<cr>
 endif
+
+if exists(':Codeium')
+    au FileType vimwiki silent! iunmap <buffer> <Tab>
+    imap <C-Space> <Plug>VimwikiTableNextCell
+endif
