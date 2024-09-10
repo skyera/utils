@@ -44,6 +44,7 @@ Plug 'sheerun/vim-polyglot'
 Plug 'dense-analysis/ale'
 Plug 'godlygeek/tabular'
 Plug 'tmhedberg/SimpylFold'
+Plug 'Exafunction/codeium.vim', { 'branch': 'main' }
 Plug 'ryanoasis/vim-devicons'
 call plug#end()
 
