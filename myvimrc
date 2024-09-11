@@ -12,7 +12,7 @@ if has('nvim')
     Plug 'dhananjaylatkar/cscope_maps.nvim'
     Plug 'nvim-lua/plenary.nvim'
     Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.8' }
-    Plug 'nvim-tree/nvim-web-devicons' " optional
+    Plug 'nvim-tree/nvim-web-devicons'
     Plug 'nvim-tree/nvim-tree.lua'
 else
     Plug 'vim-scripts/cscope_macros.vim'
@@ -38,7 +38,6 @@ Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-unimpaired'
 Plug 'tpope/vim-fugitive'
 Plug 'mhinz/vim-startify'
-Plug 'dbeniamine/cheat.sh-vim'
 Plug 'unblevable/quick-scope'
 Plug 'sheerun/vim-polyglot'
 Plug 'dense-analysis/ale'
