@@ -4,38 +4,84 @@ Create cscope, filename, tag database for source code
 """
 import argparse
 import datetime
-import sys
 import os
+import sys
 import time
 
-
-FILE_EXTS = ('.c', '.cpp', '.cc', '.h', '.hpp', '.inl', '.cs', '.java', '.mc',
-             '.rc', '.idl', '.js', '.ts', '.html', '.py', '.sql', '.sh', '.json',
-             '.sdl', '.cu', '.cuh')
-EXCLUDED_DIRS = ['boost', 'omniorb', 'Generated', '_output', '.jazz5', '.jazzShed',
-                 'node_modules', 'wabapp',
-                 'OmniORB', 'Omni', 'Omni_VS2015', 'omniwin',
-                 'PythonStandardLibrary', '.vscode',
-                 'virtualenv', '3rdParty', 'ThirdParty', 'third_party',
-                 'OpenThreads', 'OpenCV', 'Anaconda']
+FILE_EXTS = (
+    ".c",
+    ".cpp",
+    ".cc",
+    ".h",
+    ".hpp",
+    ".inl",
+    ".cs",
+    ".java",
+    ".mc",
+    ".rc",
+    ".idl",
+    ".js",
+    ".ts",
+    ".html",
+    ".py",
+    ".sql",
+    ".sh",
+    ".json",
+    ".sdl",
+    ".cu",
+    ".cuh",
+)
+EXCLUDED_DIRS = [
+    "boost",
+    "omniorb",
+    "Generated",
+    "_output",
+    ".jazz5",
+    ".jazzShed",
+    "node_modules",
+    "wabapp",
+    "OmniORB",
+    "Omni",
+    "Omni_VS2015",
+    "omniwin",
+    "PythonStandardLibrary",
+    ".vscode",
+    "virtualenv",
+    "3rdParty",
+    "ThirdParty",
+    "third_party",
+    "OpenThreads",
+    "OpenCV",
+    "Anaconda",
+]
 EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
 CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
 
+abspath = False
+
 
 def parse():
     """Parse command line arguments"""
-    parser = argparse.ArgumentParser(prog='dotag.py',
-                                     description="generate cscope/tags data",
-                                     epilog="fast search")
-    parser.add_argument("-f", '--find', default="py",
-                        help='find files method: py (default), find, fd')
+    parser = argparse.ArgumentParser(
+        prog="dotag.py", description="generate cscope/tags data", epilog="fast search"
+    )
+    parser.add_argument(
+        "-f",
+        "--find",
+        choices=["py", "find", "fd"],
+        default="py",
+        help="find files method(defualt: py)",
+    )
+    parser.add_argument(
+        "-a", "--abspath", action="store_true", help="store absolute path"
+    )
     args = parser.parse_args()
-    if not args.find in ('py', 'find', 'fd'):
+    if not args.find in ("py", "find", "fd"):
         parser.print_help()
         sys.exit()
 
-    return args.find
+    return args.find, args.abspath
 
 
 def is_excluded(path):
@@ -57,20 +103,21 @@ def visit(files, dirpath, file_names):
         if os.path.isfile(path) and not os.path.islink(path):
             _, ext = os.path.splitext(file_name)
             if ext.lower() in FILE_EXTS:
-                if ' ' not in path:
+                if " " not in path:
                     files.append(path)
                 else:
-                    print(path, 'has spaces')
+                    print(path, "has spaces")
 
 
 class FindCmd:
     """Generate find command by using find"""
+
     def __init__(self, excluded_dirs, file_exts):
         self.excluded_dirs = excluded_dirs
         self.file_exts = file_exts
-        self.excluded_dirs_str = ''
-        self.file_exts_str = ''
-        self.find_cmd = ''
+        self.excluded_dirs_str = ""
+        self.file_exts_str = ""
+        self.find_cmd = ""
 
     def create(self):
         """Create the find cmd"""
@@ -86,32 +133,34 @@ class FindCmd:
         paths = []
         for path in self.excluded_dirs:
             paths.append(f'-iname "*{path}*"')
-        self.excluded_dirs_str = ' -or '.join(paths)
-        self.excluded_dirs_str = rf'-type d \( {self.excluded_dirs_str} \) -prune'
+        self.excluded_dirs_str = " -or ".join(paths)
+        self.excluded_dirs_str = rf"-type d \( {self.excluded_dirs_str} \) -prune"
 
     def generate_file_exts_str(self):
         """Create exts string"""
         items = []
         for ext in self.file_exts:
             items.append(f'-iname "*{ext}"')
-        self.file_exts_str = ' -or '.join(items)
-        self.file_exts_str = rf'-type f \( {self.file_exts_str} \)'
+        self.file_exts_str = " -or ".join(items)
+        self.file_exts_str = rf"-type f \( {self.file_exts_str} \)"
 
     def generate_find_cmd(self):
         if self.excluded_dirs_str != "":
             self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} \
                     -print | grep -v " " >  {CSCOPE_FILE_NAME}'
         else:
-            self.find_cmd = f'find . {self.file_exts_str} -print | grep -v " " {CSCOPE_FILE_NAME} '
+            self.find_cmd = (
+                f'find . {self.file_exts_str} -print | grep -v " " {CSCOPE_FILE_NAME} '
+            )
 
 
 class FdCmd:
     def __init__(self, excluded_dirs, file_exts):
         self.excluded_dirs = excluded_dirs
         self.file_exts = file_exts
-        self.ext_str = ''
-        self.excluded_str = ''
-        self.fd_cmd = ''
+        self.ext_str = ""
+        self.excluded_str = ""
+        self.fd_cmd = ""
 
     def create(self):
         self.create_ext_str()
@@ -121,25 +170,28 @@ class FdCmd:
     def create_ext_str(self):
         items = []
         for ext in self.file_exts:
-            ext = ext.lstrip('.')
-            item = f'-e {ext}'
+            ext = ext.lstrip(".")
+            item = f"-e {ext}"
             items.append(item)
-        self.ext_str = ' '.join(items)
+        self.ext_str = " ".join(items)
 
     def create_excluded_str(self):
         items = []
         for name in self.excluded_dirs:
-            item = f'-E {name}'
+            item = f"-E {name}"
             items.append(item)
-        self.excluded_str = ' '.join(items)
+        self.excluded_str = " ".join(items)
 
     def create_fd_cmd(self):
-        self.fd_cmd = f'fd {self.ext_str} {self.excluded_str} > {CSCOPE_FILE_NAME}'
+        self.fd_cmd = f"fd {self.ext_str} {self.excluded_str} > {CSCOPE_FILE_NAME}"
 
 
 def get_files():
     myfiles = []
-    for root, _, file_names in os.walk("."):
+    curr_dir = "."
+    if abspath:
+        curr_dir = os.getcwd()
+    for root, _, file_names in os.walk(curr_dir):
         visit(myfiles, root, file_names)
     return myfiles
 
@@ -160,18 +212,18 @@ def fd_files():
 
 def py_find_files():
     files = get_files()
-    with open(CSCOPE_FILE_NAME, 'w') as cscope_f:
+    with open(CSCOPE_FILE_NAME, "w") as cscope_f:
         for fname in files:
-            cscope_f.write('%s\n' % fname)
+            cscope_f.write("%s\n" % fname)
 
 
 def log_cpu(msg, start):
     cpu = time.time() - start
-    print(msg, 'CPU', cpu, 'seconds')
+    print(msg, "CPU", cpu, "seconds")
 
 
 def collect_files(find_method):
-    print('finding files...')
+    print("finding files...")
     start = time.time()
     if find_method == "py":
         py_find_files()
@@ -181,15 +233,15 @@ def collect_files(find_method):
         fd_files()
 
     num_files = get_number_files()
-    log_cpu(f'find files: number of files {num_files}', start)
+    log_cpu(f"find files: number of files {num_files}", start)
 
 
 def run_cscope():
     start = time.time()
-    cmd = f'cscope -b -q -k -i {CSCOPE_FILE_NAME}'
+    cmd = f"cscope -b -q -k -i {CSCOPE_FILE_NAME}"
     print(cmd)
     os.system(cmd)
-    log_cpu('cscope', start)
+    log_cpu("cscope", start)
 
 
 def get_number_files(filename=CSCOPE_FILE_NAME):
@@ -205,9 +257,10 @@ def create_filenametags():
 
 class FilenametagsCreator:
     """Create filenametag for lookupfile"""
+
     def __init__(self, cscope_filename, tag_filename):
         self.cscope_filename = cscope_filename
-        self.temp_filename = 'temp.txt'
+        self.temp_filename = "temp.txt"
         self.tag_filename = tag_filename
 
     def run(self):
@@ -218,41 +271,42 @@ class FilenametagsCreator:
 
     def create_tempfile(self):
         cscope_f = open(self.cscope_filename)
-        temp_f = open(self.temp_filename, 'w')
+        temp_f = open(self.temp_filename, "w")
         for line in cscope_f:
             path = line.strip('"\n')
             name = os.path.basename(path)
-            line = '%s\t%s\t1' % (name, path)
-            temp_f.write(line + '\n')
+            line = "%s\t%s\t1" % (name, path)
+            temp_f.write(line + "\n")
         cscope_f.close()
         temp_f.close()
 
     def create_tagfile(self):
-        with open(self.tag_filename, 'w') as tag_f:
-            tag_f.write('!_TAG_FILE_SORTED\t2\t/2=foldcase/\n')
+        with open(self.tag_filename, "w") as tag_f:
+            tag_f.write("!_TAG_FILE_SORTED\t2\t/2=foldcase/\n")
 
     def sort_append_file(self):
-        cmd = f'sort -f {self.temp_filename} >> {self.tag_filename}'
+        cmd = f"sort -f {self.temp_filename} >> {self.tag_filename}"
         print(cmd)
         os.system(cmd)
 
 
 def create_tags():
     start = time.time()
-    cmd = f'ctags -L {CSCOPE_FILE_NAME}'
+    cmd = f"ctags -L {CSCOPE_FILE_NAME}"
     print(cmd)
     os.system(cmd)
     log_cpu("ctags", start)
 
 
-def log_find_method(find_method):
-    print('find method:', find_method)
+def log_find_method(find_method, abspath):
+    print("find method:", find_method, "abspath:", abspath)
 
 
 def main():
     print(datetime.datetime.now())
-    find_method = parse()
-    log_find_method(find_method)
+    global abspath
+    find_method, abspath = parse()
+    log_find_method(find_method, abspath)
 
     start = time.time()
     collect_files(find_method)
@@ -260,8 +314,8 @@ def main():
     create_filenametags()
     create_tags()
 
-    log_cpu('Total', start)
+    log_cpu("Total", start)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
