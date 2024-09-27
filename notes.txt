@@ -24,3 +24,8 @@ italic = {family="Hack Nerd Font Mono", style="Italic"}
 
 # link to lua statically
 g++ a.cpp /path/liblua.a -ldl
+
+# vim
+if exists('g:loaded_webdevicons')
+    call webdevicons#refresh() 
+endif
