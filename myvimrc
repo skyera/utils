@@ -262,3 +262,7 @@ endif
 
 au FileType vimwiki silent! iunmap <buffer> <Tab>
 imap <C-Space> <Plug>VimwikiTableNextCell
+
+if exists('g:loaded_webdevicons')
+    call webdevicons#refresh() 
+endif
