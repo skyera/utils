@@ -30,3 +30,10 @@ g++ a.cpp /path/liblua.a -ldl
 if exists('g:loaded_webdevicons')
     call webdevicons#refresh() 
 endif
+
+# sshfs
+sshfs user@ip:/path mymount -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3
+
+# .ssh/config
+Host *
+  ServerAliveInterval 60
