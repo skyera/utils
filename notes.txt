@@ -32,7 +32,7 @@ if exists('g:loaded_webdevicons')
 endif
 
 # sshfs
-sshfs user@ip:/path mymount -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3
+sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 -o cache=yes -o kernel_cache  -o Ciphers=aes128-ctr  pi@192.168.1.13: mypi
 
 # .ssh/config
 Host *
