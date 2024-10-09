@@ -41,4 +41,5 @@ Host *
 # ssh port forward
 # 8888 local port on local machine: no need to be the same as user@localhost
 ssh -L 0.0.0.0:8888:192.168.1.13:22 -o GatewayPorts=yes user@localhost
+ssh pi@192.168.1.13 -o GatewayPorts=yes -L 8888:192.168.1.38:22
 ssh -p 8888 pi@192.168.1.26
