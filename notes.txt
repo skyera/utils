@@ -50,4 +50,7 @@ pivpn -d
 #Iptables FORWARD rule is not set
 # Save the current iptables rules (Debian/Ubuntu)
 sudo iptables-save | sudo tee /etc/iptables/rules.v4
+sudo apt update
+sudo apt install iptables-persistent
+
 
