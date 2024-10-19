@@ -53,4 +53,9 @@ sudo iptables-save | sudo tee /etc/iptables/rules.v4
 sudo apt update
 sudo apt install iptables-persistent
 
+# terminal images
+catimg
+chafa
+* timg
+feh: X11 image viewer
 
