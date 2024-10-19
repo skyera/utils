@@ -59,3 +59,6 @@ chafa
 * timg
 feh: X11 image viewer
 
+# play in terminal
+mpv --no-config --vo=tct <your videofile>
+
