@@ -21,7 +21,8 @@ alacritty.toml
 normal = {family="Hack Nerd Font Mono", style="Regular"}
 size = 11.0
 bold = {family="Hack Nerd Font Mono", style="Bold"}
-italic = {family="Hack Nerd Font Mono", style="Italic"}
+italic = {f
+amily="Hack Nerd Font Mono", style="Italic"}
 
 # link to lua statically
 g++ a.cpp /path/liblua.a -ldl
@@ -62,3 +63,6 @@ feh: X11 image viewer
 # play in terminal
 mpv --no-config --vo=tct <your videofile>
 
+# mac .zprofile
+# lua lib
+export DYLD_LIBRARY_PATH="/opt/homebrew/lib/:$DYLD_LIBRARY_PATH"
