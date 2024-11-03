@@ -66,3 +66,6 @@ mpv --no-config --vo=tct <your videofile>
 # mac .zprofile
 # lua lib
 export DYLD_LIBRARY_PATH="/opt/homebrew/lib/:$DYLD_LIBRARY_PATH"
+
+# Termux for vim
+export TERM=xterm-256color
