@@ -69,3 +69,7 @@ export DYLD_LIBRARY_PATH="/opt/homebrew/lib/:$DYLD_LIBRARY_PATH"
 
 # Termux for vim
 export TERM=xterm-256color
+
+# py on Windows
+Computer\HKEY_CLASSES_ROOT\py_auto_file\shell\open\command
+"C:\app\miniforge3\python.exe" "%1" %*
