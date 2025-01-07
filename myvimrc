@@ -262,8 +262,12 @@ if has('nvim')
 endif
 
 au FileType vimwiki silent! iunmap <buffer> <Tab>
-imap <C-Space> <Plug>VimwikiTableNextCell
+"imap <C-Space> <Plug>VimwikiTableNextCell
 
 if exists('g:loaded_webdevicons')
     call webdevicons#refresh() 
 endif
+
+imap <C-;>   <Cmd>call codeium#CycleCompletions(1)<CR>
+imap <C-,>   <Cmd>call codeium#CycleCompletions(-1)<CR>
+imap <C-x>   <Cmd>call codeium#Clear()<CR>
