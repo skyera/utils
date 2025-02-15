@@ -234,7 +234,7 @@ function! s:align()
 endfunction
 
 " Define a key mapping to toggle g:ale_fix_on_save variable
-nnoremap <leader>tf :call ToggleALEFixOnSave()<CR>
+nnoremap <leader>tfix :call ToggleALEFixOnSave()<CR>
 
 " Function to toggle g:ale_fix_on_save variable
 function! ToggleALEFixOnSave()
