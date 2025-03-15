@@ -164,7 +164,7 @@ endif
 nnoremap <space> za
 vnoremap <space> zf
 
-nmap cp :let @* = expand("%") <cr>
+nmap cp :let @* = expand("%:p") <cr>
 
 let g:tagbar_type_typescript = {
   \ 'ctagstype': 'typescript',
