@@ -20,16 +20,10 @@ choco install nerd-fonts-hack
 [env]
 TERM = "xterm-256color"
 [font]
+normal = {family="Hack Nerd Font Mono", style="Regular"}
+bold = {family="Hack Nerd Font Mono", style="Bold"}
+italic = {family="Hack Nerd Font Mono", style="Italic"}
 size = 11.0
-[font.normal]
-family="Hack Nerd Font Mono"
-style="Regular"
-[font.bold]
-family="Hack Nerd Font Mono"
-style="Bold"
-[font.italic]
-family="Hack Nerd Font Mono"
-style="Italic"
 
 # link to lua statically
 g++ a.cpp /path/liblua.a -ldl
