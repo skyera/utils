@@ -90,3 +90,5 @@ ctrl-x o : change active window
 # run dearpygui on x201
 export LIBGL_ALWAYS_SOFTWARE=1
 
+# alacritty
+set ttymouse=sgr : in .vimrc to enable mouse 
