@@ -16,12 +16,20 @@ cd ~/.local/share/fonts
 curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack/Regular/HackNerdFont-Regular.ttf
 choco install nerd-fonts-hack
 
-alacritty.toml
+# alacritty.toml: AppData\Roaming\alacritty\alacritty.toml
+[env]
+TERM = "xterm-256color"
 [font]
-normal = {family="Hack Nerd Font Mono", style="Regular"}
 size = 11.0
-bold = {family="Hack Nerd Font Mono", style="Bold"}
-italic = {family="Hack Nerd Font Mono", style="Italic"}
+[font.normal]
+family="Hack Nerd Font Mono"
+style="Regular"
+[font.bold]
+family="Hack Nerd Font Mono"
+style="Bold"
+[font.italic]
+family="Hack Nerd Font Mono"
+style="Italic"
 
 # link to lua statically
 g++ a.cpp /path/liblua.a -ldl
