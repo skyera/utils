@@ -92,3 +92,6 @@ export LIBGL_ALWAYS_SOFTWARE=1
 
 # alacritty
 set ttymouse=sgr : in .vimrc to enable mouse 
+
+# raspberry pi onedrive
+systemctl --user stop onedrive
