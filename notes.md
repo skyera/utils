@@ -103,11 +103,10 @@ git config --global core.eol lf
 
 ### gdb TUI
 https://sourceware.org/gdb/current/onlinedocs/gdb.html/TUI-Keys.html
-ctrl-x a : enter /exit TUI mode
-ctrl-x 1 : Use TUI with only one window
-ctrl-x 2 : use TUI with 2 windows
-ctrl-x o : change active window
-
+* ctrl-x a : enter /exit TUI mode
+* ctrl-x 1 : Use TUI with only one window
+* ctrl-x 2 : use TUI with 2 windows
+* ctrl-x o : change active window
 
 ### run dearpygui on x201
 export LIBGL_ALWAYS_SOFTWARE=1
