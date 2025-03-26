@@ -95,3 +95,6 @@ set ttymouse=sgr : in .vimrc to enable mouse
 
 # raspberry pi onedrive
 systemctl --user stop onedrive
+
+# gdb
+set substitute-path /build/project ~/dev/project
