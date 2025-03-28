@@ -119,3 +119,8 @@ systemctl --user stop onedrive
 
 ### gdb
 set substitute-path /build/project ~/dev/project
+
+### launch valgrind inside gdb
+1. set remote exec-file ./ex
+2. set sysroot /
+3. target extended-remote | vgdb --multi --vargs -q
