@@ -120,7 +120,26 @@ systemctl --user stop onedrive
 ### gdb
 set substitute-path /build/project ~/dev/project
 
+
+
+
 ### launch valgrind inside gdb
 1. set remote exec-file ./ex
 2. set sysroot /
 3. target extended-remote | vgdb --multi --vargs -q
+
+### git diff mld
+git config --global diff.tool meld
+
+git config --global difftool.meld.cmd 'meld "$LOCAL" "$REMOTE"'
+
+git config --global difftool.prompt false  # Optional: skips the "Launch meld?" prompt
+
+git difftool <commit1> <commit2> # open file by file
+
+git difftool -d <commit1> <commit2> # compare directory
+
+git difftool -d main feature-branch
+
+git diff <commit1> <commit2> # without meld
+
