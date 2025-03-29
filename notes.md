@@ -128,7 +128,7 @@ set substitute-path /build/project ~/dev/project
 2. set sysroot /
 3. target extended-remote | vgdb --multi --vargs -q
 
-### git diff mld
+### git diff meld
 git config --global diff.tool meld
 
 git config --global difftool.meld.cmd 'meld "$LOCAL" "$REMOTE"'
