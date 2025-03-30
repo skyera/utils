@@ -1,5 +1,7 @@
 ### bash
+```
 ### Fzf & rg
+
 export FZF_DEFAULT_COMMAND='rg --files'
 
 export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
@@ -13,6 +15,10 @@ export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
 export TERM=xterm-256color
 
 export PROMPT_DIRTRIM=2
+
+# autojump: cd first
+[[ -s /usr/share/autojump/autojump.sh ]] && source /usr/share/autojump/autojump.sh
+```
 
 ### Nerd fonts
 mkdir -p ~/.local/share/fonts
