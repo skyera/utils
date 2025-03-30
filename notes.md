@@ -162,5 +162,7 @@ gdb ./exe
 --show-reachable=yes
 ```
 
+### AddressSanitizer
+gcc -fsanitize=address -g 
 
 
