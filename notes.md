@@ -154,5 +154,13 @@ gdb ./exe
 (gdb>monitor leak_check
 ```
 
+### valgrind
+```
+--leak-check=full
+--track-origins=yes # track origin of uninitialized values
+--show-leak-kinds=all
+--show-reachable=yes
+```
+
 
 
