@@ -120,9 +120,6 @@ systemctl --user stop onedrive
 ### gdb
 set substitute-path /build/project ~/dev/project
 
-
-
-
 ### launch valgrind inside gdb
 1. set remote exec-file ./ex
 2. set sysroot /
@@ -147,5 +144,12 @@ git difftool -d commit # compare to working tree
 
 git difftool -d commit
 
+### gdb valgrind
+```
+valgrind -q --vgdb-error=0 ./exe
+gdb ./exe
+(gdb)target remote | vgdb --pid=<XXXX>
+```
+(gdb
 
 
