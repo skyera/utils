@@ -118,8 +118,10 @@ set ttymouse=sgr : in .vimrc to enable mouse
 systemctl --user stop onedrive
 
 ### gdb
+```
 set substitute-path /build/project ~/dev/project
-
+thread apply all bt
+```
 ### launch valgrind inside gdb
 1. set remote exec-file ./ex
 2. set sysroot /
@@ -151,6 +153,6 @@ gdb ./exe
 (gdb)target remote | vgdb --pid=<XXXX>
 (gdb>monitor leak_check
 ```
-(gdb
+
 
 
