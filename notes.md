@@ -135,11 +135,17 @@ git config --global difftool.meld.cmd 'meld "$LOCAL" "$REMOTE"'
 
 git config --global difftool.prompt false  # Optional: skips the "Launch meld?" prompt
 
-git difftool <commit1> <commit2> # open file by file
+git difftool commit1 commit2 # open file by file
 
-git difftool -d <commit1> <commit2> # compare directory
+git difftool -d commit1 commit2 # compare directory
 
 git difftool -d main feature-branch
 
-git diff <commit1> <commit2> # without meld
+git diff commit1 commit2 # without meld
+
+git difftool -d commit # compare to working tree
+
+git difftool -d commit
+
+
 
