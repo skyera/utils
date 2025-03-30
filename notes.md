@@ -149,6 +149,7 @@ git difftool -d commit
 valgrind -q --vgdb-error=0 ./exe
 gdb ./exe
 (gdb)target remote | vgdb --pid=<XXXX>
+(gdb>monitor leak_check
 ```
 (gdb
 
