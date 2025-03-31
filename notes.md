@@ -169,6 +169,11 @@ gdb ./exe
 ```
 
 ### AddressSanitizer
+```
 gcc -fsanitize=address -g 
 
+# append it CXXFLAGS in Makefile
+make CXXFLAGS+="  -fsanitize=address"
+make CXXFLAGS+=" -fsanitize=address -fsanitize=undefined" CFLAGS+=" -fsanitize=address -fsanitize=undefined"
 
+```
