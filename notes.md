@@ -1,19 +1,12 @@
 ### bash
 ```
 ### Fzf & rg
-
 export FZF_DEFAULT_COMMAND='rg --files'
-
 export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
-
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
-
 export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/LuaBridge/Source/LuaBridge:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
-
 export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
-
 export TERM=xterm-256color
-
 export PROMPT_DIRTRIM=2
 
 # autojump: cd first
@@ -21,13 +14,12 @@ export PROMPT_DIRTRIM=2
 ```
 
 ### Nerd fonts
+```
 mkdir -p ~/.local/share/fonts
-
 cd ~/.local/share/fonts
-
 curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack/Regular/HackNerdFont-Regular.ttf
-
 choco install nerd-fonts-hack
+```
 
 ### alacritty.toml: AppData\Roaming\alacritty\alacritty.toml
 ```
@@ -61,13 +53,13 @@ Host *
 ```
 
 ### ssh port forward
+```
 8888 local port on local machine: no need to be the same as user@localhost
 
 ssh -L 0.0.0.0:8888:192.168.1.13:22 -o GatewayPorts=yes user@localhost
-
 ssh pi@192.168.1.13 -o GatewayPorts=yes -L 8888:192.168.1.38:22
-
 ssh -p 8888 pi@192.168.1.26
+```
 
 ### pivpn
 pivpn -d
@@ -103,9 +95,10 @@ Computer\HKEY_CLASSES_ROOT\py_auto_file\shell\open\command
 "C:\app\miniforge3\python.exe" "%1" %*
 
 ### vim git: affect vim
+```
 git config --global core.autocrlf false
-
 git config --global core.eol lf
+```
 
 ### gdb TUI
 https://sourceware.org/gdb/current/onlinedocs/gdb.html/TUI-Keys.html
@@ -134,23 +127,17 @@ thread apply all bt
 3. target extended-remote | vgdb --multi --vargs -q
 
 ### git diff meld
+```
 git config --global diff.tool meld
-
 git config --global difftool.meld.cmd 'meld "$LOCAL" "$REMOTE"'
-
 git config --global difftool.prompt false  # Optional: skips the "Launch meld?" prompt
-
 git difftool commit1 commit2 # open file by file
-
 git difftool -d commit1 commit2 # compare directory
-
 git difftool -d main feature-branch
-
 git diff commit1 commit2 # without meld
-
 git difftool -d commit # compare to working tree
-
 git difftool -d commit
+```
 
 ### gdb valgrind
 ```
