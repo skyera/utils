@@ -118,6 +118,7 @@ layout split : 3 windows, source, assmbly , command
 
 tui enable/disable
 focus cmd
+layout next
 ```
 
 ### run dearpygui on x201
