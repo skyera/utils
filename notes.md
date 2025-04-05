@@ -119,6 +119,15 @@ layout split : 3 windows, source, assmbly , command
 tui enable/disable
 focus cmd
 layout next
+
+# Keybindings
+Ctrl-p prev commandline
+Ctrl-n next commandline
+Ctrl-b move cursor backward
+Ctrl-f move cursor forward
+Alt-b move cursor one word backward
+Alt-f move cursor one word forward
+Ctrl-r search, select prev command
 ```
 
 ### run dearpygui on x201
