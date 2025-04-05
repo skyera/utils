@@ -115,6 +115,9 @@ fs src : focus set to src window
 layout src : src on top, command window on bottom
 layout asm : assembly on top
 layout split : 3 windows, source, assmbly , command
+
+tui enable/disable
+focus cmd
 ```
 
 ### run dearpygui on x201
