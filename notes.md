@@ -218,3 +218,9 @@ LD_DEBUG
 tldr
 
 curl cheat.sh/git
+
+### Linux
+```
+# RDP login
+rm ~/.Xauthority
+```
