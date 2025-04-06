@@ -187,3 +187,12 @@ CXXFLAGS += $(SANITIZER_FLAGS)
 make SANITIZER_FLAGS="-fsanitize=address -fsanitize=undefined"
 
 ```
+
+### C/C++
+```
+# demangle symbols
+nm -C x.o
+nm x.o|c++filt
+
+strace
+```
