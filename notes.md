@@ -119,6 +119,7 @@ https://sourceware.org/gdb/current/onlinedocs/gdb.html/TUI-Keys.html
 * ctrl-x 1 : Use TUI with only one window
 * ctrl-x 2 : use TUI with 2 windows
 * ctrl-x o : change active window
+* ctrl-L : refresh screen
 
 https://beej.us/guide/bggdb/
 info win
