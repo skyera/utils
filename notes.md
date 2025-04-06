@@ -195,4 +195,8 @@ nm -C x.o
 nm x.o|c++filt
 
 strace
+strings -a x.o|egrep "GCC"
+
+LD_DEBUG
+* libs Show how libs are searched, loaded
 ```
