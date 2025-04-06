@@ -213,3 +213,8 @@ strings -a x.o|egrep "GCC"
 LD_DEBUG
 * libs Show how libs are searched, loaded
 ```
+
+### Help
+tldr
+
+curl cheat.sh/git
