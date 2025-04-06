@@ -94,10 +94,22 @@ Computer\HKEY_CLASSES_ROOT\py_auto_file\shell\open\command
 
 "C:\app\miniforge3\python.exe" "%1" %*
 
-### vim git: affect vim
+### git
 ```
+# vim git: affect vim
+
 git config --global core.autocrlf false
 git config --global core.eol lf
+
+# generate a merge commit
+git merge --no-ff branch
+
+# reset staging area to match latest commit
+git reset --hard
+
+# move branch tip to commit, del all commits after it
+git reset --hard <commit>
+
 ```
 
 ### gdb TUI
