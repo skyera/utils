@@ -219,6 +219,8 @@ tldr
 
 curl cheat.sh/git
 
+curl cheat.sh/ssh
+
 ### Linux
 ```
 # RDP login
