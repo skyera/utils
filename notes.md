@@ -11,6 +11,12 @@ export PROMPT_DIRTRIM=2
 
 # autojump: cd first
 [[ -s /usr/share/autojump/autojump.sh ]] && source /usr/share/autojump/autojump.sh
+
+# cheat.sh + fzf: fzfc git merge
+fzfc() {
+    curl -ks cht\.sh/$(
+      curl -ks cht\.sh/:list | \
+      IFS=+ fzf --preview 'curl -ks http://cht.sh{}' -q "$*"); }
 ```
 
 ### Nerd fonts
