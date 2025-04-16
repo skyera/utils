@@ -232,3 +232,11 @@ curl cheat.sh/ssh
 # RDP login
 rm ~/.Xauthority
 ```
+
+### Port forward on Windows
+```
+netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=2201  connectaddress=127.0.0.1 connectport=22
+netsh interface portproxy show all
+netsh interface portproxy delete v4tov4 listenaddress=0.0.0.0 listenport=8080
+netsh advfirewall firewall add rule name="Allow Port 2201" dir=in action=allow protocol=TCP localport=2201
+```
