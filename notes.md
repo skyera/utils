@@ -243,8 +243,9 @@ netsh advfirewall firewall add rule name="Allow Port 2201" dir=in action=allow p
 
 ### Docker
 ```
-CONTAINER_NAME=XXX
-CONTAINER_VER=N.N &&
+IMAGE_NAME=happy_sunshine
+TAG=22.04
+CONTAINER_NAME=${USER}_${IMAGE_NAME}_${TAG} &&
 docker run
 --hostname=$(hostname)
 --init # Docker init system
@@ -252,7 +253,7 @@ docker run
 --ipc=host # share host IPC namespace with container
 --gpus all # access to all GPUs
 --cap-add=SYS_ADMIN
---shm=size=1g # set size of /dev/shm to 1GB
+--shm-size=1g # set size of /dev/shm to 1GB
 --ulimit memlock=1 # unlimited
 -u 0 -e GRANT_SUDO=yes # run as root user
 -e XXX_USER=${USER} # set env vars
@@ -264,10 +265,10 @@ docker run
 --mount type=bind,src=${HOME},dst=${HOME},bind-propagation=rshaed
 -e HOME=${HOME}
 --workdir ${HOME}
---name=${USER}_${CONTAINER_NAME}_${CONTAINER_VER}
-${CONTAINER_NAME}:${CONTAINER_VER} sleep infinity
+--name=${CONTAINER_NAME}
+${IMAGE_NAME}:${TAG} sleep infinity
 
-CONTAINER_NAME=XXX CONTAINER_VER=N.N && docker exec -it -u ${USER} ${USER}_${CONTAINER_NAME}_${CONTAINER_VER} bash 
+docker exec -it -u ${USER} ${CONTAINER_NAME} bash 
 
 
 # one time
