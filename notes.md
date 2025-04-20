@@ -254,7 +254,7 @@ docker run
 --gpus all # access to all GPUs
 --cap-add=SYS_ADMIN
 --shm-size=1g # set size of /dev/shm to 1GB
---ulimit memlock=1 # unlimited
+--ulimit memlock=-1 # unlimited
 -u 0 -e GRANT_SUDO=yes # run as root user
 -e NVIDIA_DRIVER_CAPABILITIES=all # enable all NVIDIA driver capability
 -e CUDA_VISIBLE_DEVICES=0,1
