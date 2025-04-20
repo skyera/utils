@@ -254,7 +254,7 @@ docker run
 --cap-add=SYS_ADMIN
 --shm=size=1g # set size of /dev/shm to 1GB
 --ulimit memlock=1 # unlimited
--u 0 # run as root user
+-u 0 -e GRANT_SUDO=yes # run as root user
 -e XXX_USER=${USER} # set env vars
 -e XXX_UID=$(id -u ${USER})
 -e NVIDIA_DRIVER_CAPABILITIES=all # enable all NVIDIA driver capability
@@ -268,4 +268,8 @@ docker run
 ${CONTAINER_NAME}:${CONTAINER_VER} sleep infinity
 
 CONTAINER_NAME=XXX CONTAINER_VER=N.N && docker exec -it -u ${USER} ${USER}_${CONTAINER_NAME}_${CONTAINER_VER} bash 
+
+
+# one time
+--rm
 ```
