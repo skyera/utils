@@ -256,8 +256,6 @@ docker run
 --shm-size=1g # set size of /dev/shm to 1GB
 --ulimit memlock=1 # unlimited
 -u 0 -e GRANT_SUDO=yes # run as root user
--e XXX_USER=${USER} # set env vars
--e XXX_UID=$(id -u ${USER})
 -e NVIDIA_DRIVER_CAPABILITIES=all # enable all NVIDIA driver capability
 -e CUDA_VISIBLE_DEVICES=0,1
 -e CUDA_ARCH=${CUDA_ARCH:-sm_86}
@@ -269,7 +267,6 @@ docker run
 ${IMAGE_NAME}:${TAG} sleep infinity
 
 docker exec -it -u ${USER} ${CONTAINER_NAME} bash 
-
 
 # one time
 --rm
