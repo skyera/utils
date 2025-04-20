@@ -240,3 +240,32 @@ netsh interface portproxy show all
 netsh interface portproxy delete v4tov4 listenaddress=0.0.0.0 listenport=8080
 netsh advfirewall firewall add rule name="Allow Port 2201" dir=in action=allow protocol=TCP localport=2201
 ```
+
+### Docker
+'''
+CONTAINER_NAME=XXX
+CONTAINER_VER=N.N &&
+docker run
+--hostname=$(hostname)
+--init # Docker init system
+-d # detach mode
+--ipc=host # share host IPC namespace with container
+--gpus all # access to all GPUs
+--cap-add=SYS_ADMIN
+--shm=size=1g # set size of /dev/shm to 1GB
+--ulimit memlock=1 # unlimited
+-u 0 # run as root user
+-e XXX_USER=${USER} # set env vars
+-e XXX_UID=$(id -u ${USER})
+-e NVIDIA_DRIVER_CAPABILITIES=all # enable all NVIDIA driver capability
+-e CUDA_VISIBLE_DEVICES=0,1
+-e CUDA_ARCH=${CUDA_ARCH:-sm_86}
+-v /tmp/nvidia-mps:/tmp/nvidia-mps
+--mount type=bind,src=${HOME},dst=${HOME},bind-propagation=rshaed
+-e HOME=${HOME}
+--workdir ${HOME}
+--name=${USER}_${CONTAINER_NAME}_${CONTAINER_VER}
+${CONTAINER_NAME}:${CONTAINER_VER} sleep infinity
+
+CONTAINER_NAME=XXX CONTAINER_VER=N.N && docker exec -it -u ${USER} ${USER}_${CONTAINER_NAME}_${CONTAINER_VER} bash 
+'''
