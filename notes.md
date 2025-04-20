@@ -243,7 +243,7 @@ netsh advfirewall firewall add rule name="Allow Port 2201" dir=in action=allow p
 
 ### Docker
 ```
-IMAGE_NAME=happy_sunshine
+IMAGE_NAME=ubuntu
 TAG=22.04
 CONTAINER_NAME=${USER}_${IMAGE_NAME}_${TAG} &&
 docker run
