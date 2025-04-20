@@ -242,7 +242,7 @@ netsh advfirewall firewall add rule name="Allow Port 2201" dir=in action=allow p
 ```
 
 ### Docker
-'''
+```
 CONTAINER_NAME=XXX
 CONTAINER_VER=N.N &&
 docker run
@@ -268,4 +268,4 @@ docker run
 ${CONTAINER_NAME}:${CONTAINER_VER} sleep infinity
 
 CONTAINER_NAME=XXX CONTAINER_VER=N.N && docker exec -it -u ${USER} ${USER}_${CONTAINER_NAME}_${CONTAINER_VER} bash 
-'''
+```
