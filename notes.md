@@ -243,31 +243,11 @@ netsh advfirewall firewall add rule name="Allow Port 2201" dir=in action=allow p
 
 ### Docker
 ```
-IMAGE_NAME=ubuntu
-TAG=22.04
-CONTAINER_NAME=${USER}_${IMAGE_NAME}_${TAG} &&
-docker run
---hostname=$(hostname)
---init # Docker init system
--d # detach mode
---ipc=host # share host IPC namespace with container
---gpus all # access to all GPUs
---cap-add=SYS_ADMIN
---shm-size=1g # set size of /dev/shm to 1GB
---ulimit memlock=-1 # unlimited
--u 0 -e GRANT_SUDO=yes # run as root user
--e NVIDIA_DRIVER_CAPABILITIES=all # enable all NVIDIA driver capability
--e CUDA_VISIBLE_DEVICES=0,1
--e CUDA_ARCH=${CUDA_ARCH:-sm_86}
--v /tmp/nvidia-mps:/tmp/nvidia-mps
+
 --mount type=bind,src=${HOME},dst=${HOME},bind-propagation=rshaed
 -e HOME=${HOME}
 --workdir ${HOME}
 --name=${CONTAINER_NAME}
 ${IMAGE_NAME}:${TAG} sleep infinity
 
-docker exec -it -u ${USER} ${CONTAINER_NAME} bash 
-
-# one time
---rm
 ```
