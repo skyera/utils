@@ -251,3 +251,15 @@ netsh advfirewall firewall add rule name="Allow Port 2201" dir=in action=allow p
 ${IMAGE_NAME}:${TAG} sleep infinity
 
 ```
+
+### Ranger
+yp: copy full path to clipboard
+ctrl + n: open a new tab
+ctrl + w: close current tab
+Tab: switch to next tab
+Shift + Tab: Switch to previous tab
+Space: mark file
+V: toggle visual mode selection
+uv: unmark files
+:filter
+:reset
