@@ -253,6 +253,7 @@ ${IMAGE_NAME}:${TAG} sleep infinity
 ```
 
 ### Ranger
+```
 yp: copy full path to clipboard
 ctrl + n: open a new tab
 ctrl + w: close current tab
@@ -263,3 +264,4 @@ V: toggle visual mode selection
 uv: unmark files
 :filter
 :reset
+```
