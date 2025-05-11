@@ -265,3 +265,4 @@ uv: unmark files
 :filter
 :reset
 ```
+fzf : https://github.com/gotbletu/shownotes/blob/master/ranger_file_locate_fzf.md
