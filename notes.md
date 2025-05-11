@@ -264,5 +264,12 @@ V: toggle visual mode selection
 uv: unmark files
 :filter
 :reset
+h: Goto parent directoy (move left)
+l: enter a directory (move right)
+yy: copy files
+dd: cut files
+pp: paste files
+o: open sort menu
+i: preview file
 ```
 fzf : https://github.com/gotbletu/shownotes/blob/master/ranger_file_locate_fzf.md
