@@ -277,10 +277,15 @@ yy
 uy: unselect files
 zd: set sort_directories_first!
 
+
+# scope.sh
 # preview image
-scope.sh
 chafa -c 256 -s "${PV_WIDTH}x${PV_HEIGHT}" "${FILE_PATH}" && exit 4
 exit 1;;
+# show line number
+env COLORTERM=8bit bat --color=always --style="plain,numbers"\
+          -- "${FILE_PATH}" && exit 5
+
 
 ```
 fzf : https://github.com/gotbletu/shownotes/blob/master/ranger_file_locate_fzf.md
