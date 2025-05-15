@@ -276,5 +276,11 @@ ya: select files to copy
 yy
 uy: unselect files
 zd: set sort_directories_first!
+
+# preview image
+scope.sh
+chafa -c 256 -s "${PV_WIDTH}x${PV_HEIGHT}" "${FILE_PATH}" && exit 4
+exit 1;;
+
 ```
 fzf : https://github.com/gotbletu/shownotes/blob/master/ranger_file_locate_fzf.md
