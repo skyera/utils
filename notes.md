@@ -1,6 +1,7 @@
 ### bash
 ```
 ### Fzf & rg
+# /.gitignore affect rg
 export FZF_DEFAULT_COMMAND='rg --files'
 export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
