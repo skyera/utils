@@ -1,0 +1,12 @@
+.git/
+cscope.out
+cscope.in.out
+cscope.po.out
+cscope.files
+tags
+tags.files
+filenametags
+*.bak
+boost*
+*.dep
+*.d
