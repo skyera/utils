@@ -315,6 +315,8 @@ set preview true
 #set previewer bat
 set previewer "c:\\app\\bin\\lf-preview.bat"
 
+cmd fzf_find $C:/app/bin/fzf_find.bat
+map z :fzf_find
 
 ```
 
@@ -327,3 +329,24 @@ REM lf passes the file path as the first argument
 bat --style="plain,numbers" --color=always --paging=never "%1"
 
 ```
+fzf_find.bat
+```
+@echo off
+setlocal
+:: Call fd and fzf
+fd . --type f | fzf --preview "bat --color=always --style=numbers {}" > "%TEMP%\fzf_result.txt"
+
+:: Read result
+set /p selected_file=<"%TEMP%\fzf_result.txt"
+
+:: If selected, tell lf to select the file
+if not "%selected_file%"=="" (
+    lf -remote "send %id% select ""%selected_file%"""
+)
+
+del "%TEMP%\fzf_result.txt"
+endlocal
+
+
+```
+
