@@ -293,3 +293,37 @@ env COLORTERM=8bit bat --color=always --style="plain,numbers"\
 fzf : https://github.com/gotbletu/shownotes/blob/master/ranger_file_locate_fzf.md
 
 https://obaranovskyi.com/environments/better-terminal-file-management-with-ranger
+
+### lf
+C:\Users\xxx\AppData\Local\lf\lfrc
+```
+set shell powershell
+ 
+# change the default open command to work in powerShell
+cmd open &start $Env:f
+# edit with vim
+map e $vim $Env:f
+# page through any file with bat
+# paging=always so that shorter files don't immediately exit back to lf
+map i $bat --paging=always $Env:f
+# use "bat -p" (plain pager) also for viewing lf docs
+cmd doc $lf -doc | bat -p
+
+set incsearch true
+set number true
+set preview true
+#set previewer bat
+set previewer "c:\\app\\bin\\lf-preview.bat"
+
+
+```
+
+lf-preview.bat
+```
+@echo off
+REM Use bat to preview the file with paging and syntax highlighting
+REM lf passes the file path as the first argument
+
+bat --style=plain --color=always --paging=never "%1"
+
+```
