@@ -312,8 +312,13 @@ cmd doc $lf -doc | bat -p
 set incsearch true
 set number true
 set preview true
-#set previewer bat
 set previewer "c:\\app\\bin\\lf-preview.bat"
+
+set promptfmt "\033[32;1m%u@%h\033[0m:\033[34;1m%d 📁 \033[0m\033[1m%f\033[0m"
+ 
+# https://github.com/gokcehan/lf/wiki/Integrations#quicklook
+# winget install QL-Win.QuickLook
+map V $C:\Users\zliu\AppData\Local\Programs\QuickLook\QuickLook.exe $env:f
 
 cmd fzf_find $C:/app/bin/fzf_find.bat
 map z :fzf_find
