@@ -296,6 +296,12 @@ https://obaranovskyi.com/environments/better-terminal-file-management-with-range
 
 ### lf
 C:\Users\xxx\AppData\Local\lf\lfrc
+* delete files:
+   * press d
+   * :delete
+* :set sortby ctime
+* :set dirfirst!
+
 ```
 set shell powershell
  
@@ -358,8 +364,6 @@ if not "!selected_file!"=="" (
 
 del "%TEMP%\fzf_result.txt"
 endlocal
-
-
 
 ```
 
