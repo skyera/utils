@@ -369,6 +369,7 @@ endlocal
 
 ### vifm
 ~/vifm/vimrc
+export TERM=xterm-256color
 ```
 " Enable preview mode on startup
 view!
