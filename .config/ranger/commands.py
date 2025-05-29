@@ -1,3 +1,11 @@
+from __future__ import (absolute_import, division, print_function)
+
+# You can import any python module as needed.
+import os
+
+# You always need to import ranger.api.commands here to get the Command class:
+from ranger.api.commands import Command
+
 # https://github.com/ranger/ranger/wiki/Integrating-File-Search-with-fzf
 # Now, simply bind this function to a key, by adding this to your ~/.config/ranger/rc.conf: map <C-f> fzf_select
 class fzf_select(Command):
