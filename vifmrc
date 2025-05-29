@@ -18,5 +18,13 @@ fileviewer .*/ ls --color=always %c
 " Toggle preview with 'w'
 nnoremap w :view!<cr>
 
+" Linux
 command! FZFfind :set noquickview | let $FZF_PICK = term('fd . --type f | fzf --preview "bat --color=always --style=numbers {}" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
+nnoremap s :FZFfind<cr>
+
+" Windows
+" Define FZFfind command to run the batch script
+command! FZFfind :execute '!C:\app\bin\vifm_fzf_find.bat %u'
+
+" Map to 's' key in normal mode
 nnoremap s :FZFfind<cr>
