@@ -368,7 +368,7 @@ endlocal
 ```
 
 ### vifm
-~/vifm/vimrc
+~/vifm/vifmrc
 
 Windows: C:\Users\xxx\AppData\Roaming\Vifm\vifmrc
 export TERM=xterm-256color
