@@ -7,3 +7,8 @@ set drawbox true
 map <m-1> select
 cmd fzf_find $~/bin/fzf_find.sh
 map zz :fzf_find
+
+# https://github.com/gokcehan/lf/blob/master/etc/icons.example
+set icons true
+set iconfile ~/.config/lf/icons
+
