@@ -1,4 +1,10 @@
 # .config/lf/lfrc
+
+set shell bash
+#map e $vim $f
+map i $bat --paging=always $f
+cmd doc $lf -doc | bat -p
+
 set incsearch true
 set number true
 set preview true
