@@ -42,3 +42,6 @@ map V $C:\Users\zliu\AppData\Local\Programs\QuickLook\QuickLook.exe $env:f
  
 cmd fzf_find $C:/app/bin/fzf_find.bat
 map zz :fzf_find
+
+set icons true
+set iconfile C:\Users\zliu\AppData\Local\lf\icons
