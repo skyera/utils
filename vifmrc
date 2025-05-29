@@ -19,7 +19,7 @@ fileviewer .*/ ls --color=always %c
 nnoremap w :view!<cr>
 
 " Linux
-command! FZFfind :set noquickview | let $FZF_PICK = term('fd . --type f | fzf --preview "bat --color=always --style=numbers {}" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
+command! FZFfind :let $FZF_PICK = term('fd . --type f | fzf --preview "bat --color=always --style=numbers {}" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
 nnoremap s :FZFfind<cr>
 
 " Windows
