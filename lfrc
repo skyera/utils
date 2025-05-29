@@ -1,3 +1,4 @@
+# .config/lf/lfrc
 set incsearch true
 set number true
 set preview true
