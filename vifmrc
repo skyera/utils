@@ -28,3 +28,5 @@ command! FZFfind :execute '!C:\app\bin\vifm_fzf_find.bat %u'
 
 " Map to 's' key in normal mode
 nnoremap s :FZFfind<cr>
+
+nnoremap q :q<cr>
