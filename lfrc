@@ -10,5 +10,5 @@ map zz :fzf_find
 
 # https://github.com/gokcehan/lf/blob/master/etc/icons.example
 set icons true
-set iconfile ~/.config/lf/icons
+# set iconfile ~/.config/lf/icons
 
