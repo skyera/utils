@@ -1,0 +1,44 @@
+#C:\Users\xxx\AppData\Local\lf\lfrc
+# this goes in $env:USERPROFILE\AppData\Local\lf\lfrc
+# personally, I symlink it from my synced config files like this:
+# cmd /c mklink lfrc $env:OneDriveConsumer\configs\dot-config-lf\lfrc.windows
+ 
+# winget install gokcehan.lf sharkdp.bat zoxide fzf vim.vim
+# If you want to use the GUI quicklook tool to preview images / docs with `V`:
+# winget install QL-Win.QuickLook
+ 
+# interpreter for shell commands
+set shell powershell
+ 
+# change the default open command to work in powerShell
+#cmd open &start $Env:f
+# edit with vim
+map e $vim $Env:f
+# page through any file with bat
+# paging=always so that shorter files don't immediately exit back to lf
+map i $bat --paging=always $Env:f
+# use "bat -p" (plain pager) also for viewing lf docs
+cmd doc $lf -doc | bat -p
+ 
+# on my powershell 7.4.6 this breaks, commenting out
+#set shellflag "-cwa"
+ 
+# refine selected file as I type
+set incsearch true
+set number true
+set preview true
+set previewer "c:\\app\\bin\\lf-preview.bat"
+set drawbox true
+map <m-1> select
+ 
+# default, but with some separation before final %f, and after cwd
+# otherwise I kept on interpreting cwd+file as cwd
+# 💾 📁
+set promptfmt "\033[32;1m%u@%h\033[0m:\033[34;1m%d 📁 \033[0m\033[1m%f\033[0m"
+ 
+# https://github.com/gokcehan/lf/wiki/Integrations#quicklook
+# winget install QL-Win.QuickLook
+map V $C:\Users\zliu\AppData\Local\Programs\QuickLook\QuickLook.exe $env:f
+ 
+cmd fzf_find $C:/app/bin/fzf_find.bat
+map z :fzf_find
