@@ -6,4 +6,4 @@ set previewer ~/bin/lf-preview.sh
 set drawbox true
 map <m-1> select
 cmd fzf_find $~/bin/fzf_find.sh
-map z :fzf_find
+map zz :fzf_find
