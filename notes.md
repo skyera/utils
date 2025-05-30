@@ -3,7 +3,7 @@
 ### Fzf & rg
 # /.gitignore affect rg
 export FZF_DEFAULT_COMMAND='rg --files'
-export FZF_DEFAULT_COMMAND="fd --type file --follow --hidden"
+export FZF_DEFAULT_COMMAND="fd --type file --follow --hidden --ignore-file ~/.fdignore"
 export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
 export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/LuaBridge/Source/LuaBridge:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
