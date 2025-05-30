@@ -1,5 +1,5 @@
 " Enable preview mode on startup
-"~/vifm/vifmrc
+"~/.vifm/vifmrc
 "Windows: C:\Users\xxx\AppData\Roaming\Vifm\vifmrc
 "export TERM=xterm-256color
 view!
