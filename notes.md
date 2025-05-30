@@ -391,3 +391,6 @@ fileviewer .*/ ls --color=always %c
 nnoremap w :view!<cr>
 
 ```
+
+### yazi
+install on Windows:  cargo build --profile release-windows --locked
