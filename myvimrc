@@ -18,7 +18,7 @@ if has('nvim')
 else
     Plug 'vim-scripts/cscope_macros.vim'
 endif
-if !has('win32')
+if !has('win32') && !has('gui_running')
     Plug 'francoiscabrol/ranger.vim'
 endif
 
@@ -50,9 +50,11 @@ Plug 'godlygeek/tabular'
 Plug 'tmhedberg/SimpylFold'
 Plug 'Exafunction/codeium.vim', { 'branch': 'main' }
 Plug 'ryanoasis/vim-devicons'
-Plug 'ptzz/lf.vim'
-Plug 'voldikss/vim-floaterm'
-Plug 'vifm/vifm.vim'
+if !has('gui_running')
+    Plug 'ptzz/lf.vim'
+    Plug 'voldikss/vim-floaterm'
+    Plug 'vifm/vifm.vim'
+endif
 call plug#end()
 
 set backspace=indent,eol,start
@@ -281,10 +283,13 @@ imap <C-;>   <Cmd>call codeium#CycleCompletions(1)<CR>
 imap <C-,>   <Cmd>call codeium#CycleCompletions(-1)<CR>
 imap <C-x>   <Cmd>call codeium#Clear()<CR>
 
-if !has('win32')
+if !has('win32') && !has('gui_running')
     let g:ranger_map_keys = 0
-    map <leader>r :Ranger<CR>
+    nnoremap <leader>r :Ranger<CR>
 endif
 
-let g:lf_map_keys = 0
-map <leader>lf :Lf<CR>
+if !has('gui_running')
+    let g:lf_map_keys = 0
+    nnoremap <leader>lf :Lf<CR>
+endif
+
