@@ -47,6 +47,8 @@ Plug 'godlygeek/tabular'
 Plug 'tmhedberg/SimpylFold'
 Plug 'Exafunction/codeium.vim', { 'branch': 'main' }
 Plug 'ryanoasis/vim-devicons'
+Plug 'ptzz/lf.vim'
+Plug 'voldikss/vim-floaterm'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -276,3 +278,7 @@ imap <C-,>   <Cmd>call codeium#CycleCompletions(-1)<CR>
 imap <C-x>   <Cmd>call codeium#Clear()<CR>
 let g:ranger_map_keys = 0
 map <leader>r :Ranger<CR>
+
+let g:lf_map_keys = 0
+map <leader>Lf :Lf<CR>
+
