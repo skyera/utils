@@ -18,7 +18,10 @@ if has('nvim')
 else
     Plug 'vim-scripts/cscope_macros.vim'
 endif
-Plug 'francoiscabrol/ranger.vim'
+if !has('win32')
+    Plug 'francoiscabrol/ranger.vim'
+endif
+
 Plug 'jlanzarotta/bufexplorer'
 Plug 'vim-scripts/taglist.vim'
 Plug 'vim-scripts/Color-Scheme-Explorer'
@@ -49,6 +52,7 @@ Plug 'Exafunction/codeium.vim', { 'branch': 'main' }
 Plug 'ryanoasis/vim-devicons'
 Plug 'ptzz/lf.vim'
 Plug 'voldikss/vim-floaterm'
+Plug 'vifm/vifm.vim'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -276,9 +280,11 @@ endif
 imap <C-;>   <Cmd>call codeium#CycleCompletions(1)<CR>
 imap <C-,>   <Cmd>call codeium#CycleCompletions(-1)<CR>
 imap <C-x>   <Cmd>call codeium#Clear()<CR>
-let g:ranger_map_keys = 0
-map <leader>r :Ranger<CR>
+
+if !has('win32')
+    let g:ranger_map_keys = 0
+    map <leader>r :Ranger<CR>
+endif
 
 let g:lf_map_keys = 0
-map <leader>Lf :Lf<CR>
-
+map <leader>lf :Lf<CR>
