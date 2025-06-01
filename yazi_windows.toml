@@ -1,0 +1,11 @@
+# C:\Users\zliu\AppData\Roaming\yazi\config\yazi.toml
+[plugin]
+append_preloaders = [
+    { mime = "text/*", run = "bat" },
+    { mime = "application/json", run = "bat" },
+    # Add other MIME types as needed, e.g., "application/x-yaml"
+]
+[opener]
+edit = [
+    { run = 'vim "%*"', block = true, for = "windows" }
+]
