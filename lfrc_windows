@@ -14,6 +14,7 @@ set shell powershell
 #cmd open &start $Env:f
 # edit with vim
 map e $vim $Env:f
+map <enter> $vim $Env:f
 # page through any file with bat
 # paging=always so that shorter files don't immediately exit back to lf
 map i $bat --paging=always $Env:f
