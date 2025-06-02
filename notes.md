@@ -296,6 +296,9 @@ https://obaranovskyi.com/environments/better-terminal-file-management-with-range
 
 ### lf
 C:\Users\xxx\AppData\Local\lf\lfrc
+
+Use winget to install the latest one, not choco
+
 * delete files:
    * press d
    * :delete
