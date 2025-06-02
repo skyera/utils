@@ -291,5 +291,7 @@ endif
 if !has('gui_running')
     let g:lf_map_keys = 0
     nnoremap <leader>lf :Lf<CR>
+    let g:lf_width = 1.0
+    let g:lf_height = 1.0
 endif
 
