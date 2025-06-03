@@ -1,0 +1,5 @@
+# AppData\Roaming\yazi\config\theme.toml
+[filetype]
+rules = [
+    { name = "*/", fg = "#87ceeb" }
+]
