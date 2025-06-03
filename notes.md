@@ -336,3 +336,6 @@ https://github.com/gokcehan/lf/blob/master/doc.md
 install on Windows:
 * cargo build --profile release-windows --locked
 * winget
+
+### exa
+exa --tree
