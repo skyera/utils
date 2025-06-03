@@ -303,6 +303,7 @@ https://obaranovskyi.com/environments/better-terminal-file-management-with-range
 * :set sortby ctime
 * :set dirfirst!
 * press z, s keys
+* mA, 'A
 
 ```
 map zh set hidden!
