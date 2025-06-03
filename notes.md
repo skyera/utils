@@ -305,69 +305,24 @@ https://obaranovskyi.com/environments/better-terminal-file-management-with-range
 * press z, s keys
 
 ```
-set shell powershell
- 
-# change the default open command to work in powerShell
-cmd open &start $Env:f
-# edit with vim
-map e $vim $Env:f
-# page through any file with bat
-# paging=always so that shorter files don't immediately exit back to lf
-map i $bat --paging=always $Env:f
-# use "bat -p" (plain pager) also for viewing lf docs
-cmd doc $lf -doc | bat -p
-
-set incsearch true
-set number true
-set preview true
-set previewer "c:\\app\\bin\\lf-preview.bat"
-set drawbox true
-map <m-1> select
-
-
-set promptfmt "\033[32;1m%u@%h\033[0m:\033[34;1m%d 📁 \033[0m\033[1m%f\033[0m"
- 
-# https://github.com/gokcehan/lf/wiki/Integrations#quicklook
-# winget install QL-Win.QuickLook
-map V $C:\Users\zliu\AppData\Local\Programs\QuickLook\QuickLook.exe $env:f
-
-cmd fzf_find $C:/app/bin/fzf_find.bat
-map zz :fzf_find
+map zh set hidden!
+map zr set reverse!
+map zn set info
+map zs set info size
+map zt set info time
+map za set info size:time
+map sn :set sortby natural; set info
+map ss :set sortby size; set info size
+map st :set sortby time; set info time
+map sa :set sortby atime; set info atime
+map sc :set sortby ctime; set info ctime
+map se :set sortby ext; set info
+map gh cd ~
+map <space> :toggle; down
 
 ```
+https://github.com/gokcehan/lf/blob/master/doc.md
 
-lf-preview.bat
-```
-@echo off
-REM Use bat to preview the file with paging and syntax highlighting
-REM lf passes the file path as the first argument
-
-bat --style="plain,numbers" --color=always --paging=never "%1"
-
-```
-fzf_find.bat
-```
-@echo off
-setlocal enabledelayedexpansion
-
-:: Call fd and fzf
-fd . --type f | fzf --preview "bat --color=always --style=numbers {}" > "%TEMP%\fzf_result.txt"
-
-:: Read result
-set /p selected_file=<"%TEMP%\fzf_result.txt"
-
-:: Replace backslashes with forward slashes (lf prefers Unix-style paths)
-set "selected_file=!selected_file:\=/!"
-
-:: If selected, send to lf
-if not "!selected_file!"=="" (
-    lf -remote "send %id% select '!selected_file!'"
-)
-
-del "%TEMP%\fzf_result.txt"
-endlocal
-
-```
 
 ### vifm
 ~/vifm/vifmrc
