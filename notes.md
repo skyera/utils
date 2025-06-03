@@ -295,15 +295,14 @@ fzf : https://github.com/gotbletu/shownotes/blob/master/ranger_file_locate_fzf.m
 https://obaranovskyi.com/environments/better-terminal-file-management-with-ranger
 
 ### lf
-C:\Users\xxx\AppData\Local\lf\lfrc
-
-Use winget to install the latest one, not choco
-
+* C:\Users\xxx\AppData\Local\lf\lfrc
+* Use winget to install the latest one, not choco
 * delete files:
    * press d
    * :delete
 * :set sortby ctime
 * :set dirfirst!
+* press z, s keys
 
 ```
 set shell powershell
