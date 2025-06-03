@@ -305,6 +305,7 @@ https://obaranovskyi.com/environments/better-terminal-file-management-with-range
 * press z, s keys
 * mA, 'A
 * https://github.com/gokcehan/lf/wiki/Integrations
+* copy files: y, p
 
 ```
 map zh set hidden!
