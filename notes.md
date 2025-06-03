@@ -325,29 +325,11 @@ https://github.com/gokcehan/lf/blob/master/doc.md
 
 
 ### vifm
-~/vifm/vifmrc
-
-Windows: C:\Users\xxx\AppData\Roaming\Vifm\vifmrc
-export TERM=xterm-256color
-```
-" Enable preview mode on startup
-view!
-set vifminfo+=tui
-
-" Preview text and code files with bat
-fileviewer *.txt,*.md,*.c,*.h,*.py,*.sh,*.js,*.json,*.cpp,*.java,*.go,*.lua bat --color=always --style=numbers %c
-
-" Fallback for other files (non-directories)
-fileviewer *.[!d]/ bat --color=always --style=plain %c
-
-" Preview directories with ls
-fileviewer */ ls --color=always %c
-fileviewer .*/ ls --color=always %c
-
-" Toggle preview with 'w'
-nnoremap w :view!<cr>
-
-```
+* ~/.vifm/vifmrc
+* Windows: C:\Users\xxx\AppData\Roaming\Vifm\vifmrc
+* export TERM=xterm-256color
 
 ### yazi
-install on Windows:  cargo build --profile release-windows --locked
+install on Windows:
+* cargo build --profile release-windows --locked
+* winget
