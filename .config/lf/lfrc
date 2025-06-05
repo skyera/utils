@@ -16,7 +16,7 @@ map <m-1> select
 cmd fzf_find $~/bin/fzf_find.sh
 map zz :fzf_find
 
-# https://github.com/gokcehan/lf/blob/master/etc/icons.example
+# https://github.com/gokcehan/lf/blob/master/etc/icons.example->~/.config/lf/icons
 set icons true
-# set iconfile ~/.config/lf/icons
+map <c-c> $echo -n %f | xclip -selection clipboard
 
