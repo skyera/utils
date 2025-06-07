@@ -255,6 +255,8 @@ ${IMAGE_NAME}:${TAG} sleep infinity
 ```
 
 ### Ranger
+git clone https://github.com/alexanderjeurissen/ranger_devicons ~/.config/ranger/plugins/ranger_devicons
+
 ```
 yp: copy full path to clipboard
 ctrl + n: open a new tab
