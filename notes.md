@@ -280,6 +280,7 @@ ya: select files to copy
 yy
 uy: unselect files
 zd: set sort_directories_first!
+E edit file
 
 
 # scope.sh
