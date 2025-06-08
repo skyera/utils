@@ -263,7 +263,7 @@ ctrl + n: open a new tab
 ctrl + w: close current tab
 Tab: switch to next tab
 Shift + Tab: Switch to previous tab
-Space: mark file
+Space: mark [file](file)
 V: toggle visual mode selection
 uv: unmark files
 :filter
@@ -341,3 +341,9 @@ install on Windows:
 
 ### exa
 exa --tree
+
+### Test
+* Test invalid inputs, edge cases: throw exception, return error code
+* Assert invariants
+* Use mock/stubs to simulate errors
+* Test boundary values
