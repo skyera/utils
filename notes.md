@@ -349,3 +349,5 @@ exa --tree
 * Assert invariants
 * Use mock/stubs to simulate errors
 * Test boundary values
+* Performance, stress test
+* Check memory errors: valgrind AddressSanitizer
