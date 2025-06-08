@@ -289,7 +289,8 @@ exit 1;;
 # show line number
 env COLORTERM=8bit bat --color=always --style="plain,numbers"\
           -- "${FILE_PATH}" && exit 5
-
+# .config/ranger/rifle.conf, may need
+label open, has xdg-open = xdg-open "$@"
 
 ```
 fzf : https://github.com/gotbletu/shownotes/blob/master/ranger_file_locate_fzf.md
