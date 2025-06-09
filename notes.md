@@ -310,6 +310,8 @@ https://obaranovskyi.com/environments/better-terminal-file-management-with-range
 * mA, 'A
 * https://github.com/gokcehan/lf/wiki/Integrations
 * copy files: y, p
+* :filter .c
+* :setfilter clean filter
 
 ```
 map zh set hidden!
