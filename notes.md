@@ -266,7 +266,8 @@ Shift + Tab: Switch to previous tab
 Space: mark [file](file)
 V: toggle visual mode selection
 uv: unmark files
-:filter
+:filter <pat>
+:filter \.c
 :reset
 h: Goto parent directoy (move left)
 l: enter a directory (move right)
