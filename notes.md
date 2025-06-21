@@ -357,8 +357,8 @@ exa --tree
 * Performance, stress test
 * Check memory errors: valgrind AddressSanitizer
 
-  ### tmux
-  ```
+### tmux
+```
   :capture-pane -b temp-buffer -S - -E -
   :save-buffer /path/to/your/file.txt
 ```
