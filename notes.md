@@ -361,4 +361,9 @@ exa --tree
 ```
   :capture-pane -b temp-buffer -S - -E -
   :save-buffer /path/to/your/file.txt
+
+-S - to capture from the start of the scrollback history.
+-E - to capture to the end of the history.
+
+
 ```
