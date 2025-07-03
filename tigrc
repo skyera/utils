@@ -1,2 +1,3 @@
 color date             cyan   black      # Commit dates
 set diff-options = --diff-merges=m
+set ignore-case = yes
