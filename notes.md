@@ -199,6 +199,9 @@ gdb ./exe
 --track-origins=yes # track origin of uninitialized values
 --show-leak-kinds=all
 --show-reachable=yes
+--log-file=<filename>
+--gen-suppressions=all
+--suppressions=<filename>
 
 export VALGRIND_OPTS="--leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=1"
 
