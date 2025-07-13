@@ -205,6 +205,12 @@ gdb ./exe
 
 export VALGRIND_OPTS="--leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=1"
 
+valgrind --tool=callgrind
+kcachegrind callgrind.out.<pid>
+
+valgrind --tool=massif ./my_program
+ms_print massif.out.<pid>
+
 ```
 
 ### AddressSanitizer
