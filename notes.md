@@ -51,6 +51,8 @@ if exists('g:loaded_webdevicons')
     call webdevicons#refresh() 
 endif
 
+:Rg --no-ignore <pattern>
+
 ```
 
 ### sshfs
