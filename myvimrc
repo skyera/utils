@@ -55,6 +55,7 @@ if !has('gui_running')
     Plug 'voldikss/vim-floaterm'
     Plug 'vifm/vifm.vim'
 endif
+Plug 'psf/black'
 call plug#end()
 
 set backspace=indent,eol,start
