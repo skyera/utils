@@ -268,7 +268,19 @@ if has('nvim')
     lua vim.g.loaded_netrw = 1
     lua vim.g.loaded_netrwPlugin = 1
     lua vim.opt.termguicolors = true
-    lua require("nvim-tree").setup()
+lua << EOF
+    require("nvim-tree").setup({
+        view = {
+            width=30,
+            preserve_window_proportions=true,
+        },
+        actions = {
+            open_file = {
+                resize_window=false,
+            },
+        },
+    })
+EOF
     nnoremap <leader>e :NvimTreeToggle<cr>
     nnoremap <leader>n :NvimTreeFindFile<cr>
 endif
