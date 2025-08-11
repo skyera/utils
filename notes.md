@@ -380,5 +380,10 @@ exa --tree
 -S - to capture from the start of the scrollback history.
 -E - to capture to the end of the history.
 
+```
+### vim wiki
+```
+<leader>ww  goto home
+<leader>w<leader>w goto today
 
 ```
