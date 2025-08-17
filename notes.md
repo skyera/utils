@@ -329,6 +329,11 @@ https://obaranovskyi.com/environments/better-terminal-file-management-with-range
 * copy files: y, p
 * :filter .c
 * :setfilter clean filter
+* man lf
+* copy: y
+* cut: d
+* paste: p
+* rename: r
 
 ```
 map zh set hidden!
