@@ -259,7 +259,10 @@ function! ToggleALEFixOnSave()
 endfunction
 
 if has('nvim')
-    lua require('cscope_maps').setup({ prefix="<C-\\>" })
+    lua require('cscope_maps').setup({
+        \ prefix="<C-\\>",
+        \ skip_input_prompt=true,
+        \ })
     lua require('telescope').setup()
     nnoremap <leader>xf <cmd>Telescope find_files<cr>
     nnoremap <leader>xg <cmd>Telescope live_grep<cr>
