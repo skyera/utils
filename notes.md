@@ -195,6 +195,13 @@ gdb ./exe
 (gdb>monitor leak_check
 ```
 
+### gdb reverse debugging
+```
+record full
+reverse-next
+reverse-continue
+```
+
 ### valgrind
 ```
 --leak-check=full
