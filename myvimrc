@@ -48,7 +48,7 @@ Plug 'sheerun/vim-polyglot'
 Plug 'dense-analysis/ale'
 Plug 'godlygeek/tabular'
 Plug 'tmhedberg/SimpylFold'
-Plug 'Exafunction/codeium.vim', { 'branch': 'main' }
+Plug 'Exafunction/windsurf.vim'
 Plug 'ryanoasis/vim-devicons'
 if !has('gui_running')
     Plug 'ptzz/lf.vim'
