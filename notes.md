@@ -168,6 +168,7 @@ systemctl --user stop onedrive
 ```
 set substitute-path /build/project ~/dev/project
 thread apply all bt
+info line *xxxx
 ```
 ### launch valgrind inside gdb
 1. set remote exec-file ./ex
