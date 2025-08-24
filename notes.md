@@ -403,3 +403,9 @@ exa --tree
 
 ### py
 * pip install termcolor
+
+### Linux
+```
+fortune|cowsay
+lsof
+```
