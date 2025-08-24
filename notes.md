@@ -400,3 +400,6 @@ exa --tree
 <leader>w<leader>w goto today
 
 ```
+
+### py
+* pip install termcolor
