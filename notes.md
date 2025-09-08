@@ -12,6 +12,7 @@ export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/i
 export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
 export TERM=xterm-256color
 export PROMPT_DIRTRIM=2
+export NEOVIM_BIN="/home/user/app/nvim-linux-x86_64/bin/nvim"
 
 # autojump: cd first
 [[ -s /usr/share/autojump/autojump.sh ]] && source /usr/share/autojump/autojump.sh
