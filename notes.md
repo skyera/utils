@@ -73,6 +73,18 @@ ssh -L 0.0.0.0:8888:192.168.1.13:22 -o GatewayPorts=yes user@localhost
 ssh pi@192.168.1.13 -o GatewayPorts=yes -L 8888:192.168.1.38:22
 ssh -p 8888 pi@192.168.1.26
 ```
+### ssh
+```
+/etc/ssh/sshd_config
+X11Forwarding yes
+X11DisplayOffset 10
+X11UseLocalhost yes
+ClientAliveInterval 60
+ClientAliveCountMax 3
+
+sudo systemctl restart sshd
+
+```
 
 ### pivpn
 pivpn -d
