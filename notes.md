@@ -422,3 +422,13 @@ exa --tree
 fortune|cowsay
 lsof
 ```
+
+Core dump
+- sudo sysctl -w kernel.core_pattern=core
+- ulimit -c unlimited
+- /etc/sysctl.conf:
+    - kernel.core_pattern = core
+    - sudo sysctl -p
+
+
+
