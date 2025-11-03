@@ -20,10 +20,11 @@ config.enable_tab_bar = true
 config.hide_tab_bar_if_only_one_tab = true
 config.keys = {
     -- Split horizontally (top/bottom)
-    {key="%", mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
+    {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
     -- Split vertically (left/right)
-    {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
+    {key="%", mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
 }
 
 return config
+
 
