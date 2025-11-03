@@ -11,4 +11,19 @@ config.default_prog = { "cmd"}
 config.color_scheme = "Tokyo Night"
 config.font_size = 11.0
 
+-- Hide the title bar (cleaner look on macOS/Linux)
+config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
+
+-- Enable the tab bar
+config.enable_tab_bar = true
+-- Hide the tab bar if there's only one tab
+config.hide_tab_bar_if_only_one_tab = true
+config.keys = {
+    -- Split horizontally (top/bottom)
+    {key="%", mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
+    -- Split vertically (left/right)
+    {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
+}
+
 return config
+
