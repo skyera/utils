@@ -12,10 +12,7 @@ config.launch_menu = {
 config.default_prog = { "cmd"}
 config.color_scheme = "Tokyo Night"
 -- config.color_scheme = "Dracula"
-config.font = wezterm.font_with_fallback({
-    'JetBrains Mono',
-    'Hack Nerd Font',
-})
+
 config.font = wezterm.font_with_fallback({
     'Hack Nerd Font',
     'JetBrains Mono',
@@ -38,6 +35,7 @@ config.keys = {
 }
 
 return config
+
 
 
 
