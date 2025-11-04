@@ -16,6 +16,11 @@ config.font = wezterm.font_with_fallback({
     'JetBrains Mono',
     'Hack Nerd Font',
 })
+config.font = wezterm.font_with_fallback({
+    'Hack Nerd Font',
+    'JetBrains Mono',
+})
+
 config.font_size = 10.0
 
 -- Hide the title bar (cleaner look on macOS/Linux)
@@ -33,5 +38,6 @@ config.keys = {
 }
 
 return config
+
 
 
