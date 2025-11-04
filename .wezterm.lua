@@ -32,38 +32,6 @@ config.keys = {
     {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
 }
 
-function tab_title(tab_info)
-  local title = tab_info.tab_title
-  -- if the tab title is explicitly set, take that
-  if title and #title > 0 then
-    return title
-  end
-  -- Otherwise, use the title from the active pane
-  -- in that tab
-  return tab_info.active_pane.title
-end
-
-wezterm.on(
-  'format-tab-title',
-  function(tab, tabs, panes, config, hover, max_width)
-    local title = tab_title(tab)
-    if tab.is_active then
-      return {
-        { Background = { Color = 'blue' } },
-        { Text = ' ' .. title .. ' ' },
-      }
-    end
-    if tab.is_last_active then
-      -- Green color and append '*' to previously active tab.
-      return {
-        { Background = { Color = 'green' } },
-        { Text = ' ' .. title .. '*' },
-      }
-    end
-    return title
-  end
-)
-
-
 return config
+
 
