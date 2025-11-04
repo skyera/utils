@@ -6,10 +6,17 @@ config.launch_menu = {
     { label = "Command Prompt", args = { "cmd.exe" } },
     { label = "Git Bash", args = { "C:\\Program Files\\Git\\bin\\bash.exe", "-l" } },
     { label = "WSL", args = { "wsl.exe" } },
+    { label = "centre", args = {"ssh", "zliu@192.168.1.44"} },
+    { label = "pi4" , args = {"ssh", "pi@192.168.1.10"} }
 }
 config.default_prog = { "cmd"}
 config.color_scheme = "Tokyo Night"
-config.font_size = 11.0
+-- config.color_scheme = "Dracula"
+config.font = wezterm.font_with_fallback({
+    'JetBrains Mono',
+    'Hack Nerd Font',
+})
+config.font_size = 10.0
 
 -- Hide the title bar (cleaner look on macOS/Linux)
 config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
@@ -20,11 +27,20 @@ config.enable_tab_bar = true
 config.hide_tab_bar_if_only_one_tab = true
 config.keys = {
     -- Split horizontally (top/bottom)
-    {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
+    {key="%", mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
     -- Split vertically (left/right)
-    {key="%", mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
+    {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
 }
 
+wezterm.on("format-tab-title", function(tab, tabs, panes, config, hover, max_width)
+  local title = tab.active_pane.title
+  local host = tab.active_pane.user_vars.hostname or ""
+  if host ~= "" then
+    title = host .. " : " .. title
+  end
+  return {
+    { Text = " " .. title .. " " },
+  }
+end)
+
 return config
-
-
