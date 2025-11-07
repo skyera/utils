@@ -13,6 +13,7 @@ config.default_prog = { "cmd"}
 config.color_scheme = "Tokyo Night"
 -- config.color_scheme = "Dracula"
 config.window_background_opacity = 0.9
+config.window_close_confirmation = "AlwaysPrompt"
 
 config.font = wezterm.font_with_fallback({
     'Hack Nerd Font',
@@ -36,6 +37,7 @@ config.keys = {
 }
 
 return config
+
 
 
 
