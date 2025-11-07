@@ -11,7 +11,6 @@ config.launch_menu = {
 }
 config.default_prog = { "cmd"}
 config.color_scheme = "Tokyo Night"
--- config.color_scheme = "Dracula"
 config.window_background_opacity = 0.9
 config.window_close_confirmation = "AlwaysPrompt"
 config.use_fancy_tab_bar = false
@@ -22,15 +21,11 @@ config.font = wezterm.font_with_fallback({
 })
 
 config.font_size = 10.0
-
 config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.enable_tab_bar = true
 
-
 config.keys = {
-    -- Split horizontally (top/bottom)
     {key="%", mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
-    -- Split vertically (left/right)
     {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
 }
 
