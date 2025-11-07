@@ -14,6 +14,7 @@ config.color_scheme = "Tokyo Night"
 -- config.color_scheme = "Dracula"
 config.window_background_opacity = 0.9
 config.window_close_confirmation = "AlwaysPrompt"
+config.use_fancy_tab_bar = false
 
 config.font = wezterm.font_with_fallback({
     'Hack Nerd Font',
@@ -22,13 +23,10 @@ config.font = wezterm.font_with_fallback({
 
 config.font_size = 10.0
 
--- Hide the title bar (cleaner look on macOS/Linux)
 config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
-
--- Enable the tab bar
 config.enable_tab_bar = true
--- Hide the tab bar if there's only one tab
-config.hide_tab_bar_if_only_one_tab = true
+
+
 config.keys = {
     -- Split horizontally (top/bottom)
     {key="%", mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
@@ -37,6 +35,7 @@ config.keys = {
 }
 
 return config
+
 
 
 
