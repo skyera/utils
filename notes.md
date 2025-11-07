@@ -430,5 +430,7 @@ Core dump
     - kernel.core_pattern = core
     - sudo sysctl -p
 
+### wezterm
+Ctrl-Tab: Navigate tabs
 
 
