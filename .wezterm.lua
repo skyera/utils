@@ -26,9 +26,12 @@ config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.enable_tab_bar = true
 config.enable_scroll_bar = true
 
+config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
+
 config.keys = {
     {key="%", mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
     {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
+    {key='[', mods='LEADER', action=wezterm.action.ActivateCopyMode,}
 }
 
 wezterm.on("update-status", function(window, pane)
