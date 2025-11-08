@@ -12,6 +12,7 @@ config.launch_menu = {
 config.default_prog = { "cmd"}
 config.color_scheme = "Tokyo Night"
 config.window_background_opacity = 0.9
+config.text_background_opacity = 0.8
 config.window_close_confirmation = "AlwaysPrompt"
 config.use_fancy_tab_bar = false
 
