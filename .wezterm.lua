@@ -25,6 +25,15 @@ config.font_size = 10.0
 config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.enable_tab_bar = true
 config.enable_scroll_bar = true
+config.tab_max_width = 32
+config.colors = {
+    tab_bar = {
+        active_tab = {
+            fg_color = '#073642',
+            bg_color = '#2aa198',
+        }
+    }
+}
 
 config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
 
