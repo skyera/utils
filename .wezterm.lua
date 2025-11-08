@@ -31,7 +31,22 @@ config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
 config.keys = {
     {key="%", mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
     {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
-    {key='[', mods='LEADER', action=wezterm.action.ActivateCopyMode,}
+    {key='[', mods='LEADER', action=wezterm.action.ActivateCopyMode,},
+
+    {
+        key = ',',
+        mods = 'LEADER',
+        action = wezterm.action.PromptInputLine {
+            description = 'Enter new name for tab',
+            action = wezterm.action_callback(
+                function(window, pane, line)
+                    if line then
+                        window:active_tab():set_title(line)
+                    end
+                end
+                ),
+        },
+    },
 }
 
 wezterm.on("update-status", function(window, pane)
