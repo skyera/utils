@@ -24,13 +24,21 @@ config.font = wezterm.font_with_fallback({
 config.font_size = 10.0
 config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.enable_tab_bar = true
+config.enable_scroll_bar = true
 
 config.keys = {
     {key="%", mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
     {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
 }
 
-wezterm.on('update-status', function(window)
+wezterm.on("update-status", function(window, pane)
+    local overrides = window:get_config_overrides() or {}
+    local dimensions = pane:get_dimensions()
+
+    overrides.enable_scroll_bar = dimensions.scrollback_rows > dimensions.viewport_rows and not pane:is_alt_screen_active()
+
+    window:set_config_overrides(overrides)
+  
   local bg = window:effective_config().resolved_palette.background
   window:set_right_status(wezterm.format {
     { Background = { Color = bg } },
