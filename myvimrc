@@ -77,7 +77,6 @@ set nobackup
 set noswapfile
 set showmode
 set completeopt=menu
-set go=a
 set ignorecase
 
 "set guifont=Consolas:h10:cDEFAULT
@@ -91,6 +90,11 @@ elseif has('linux')
     endif
 elseif has("mac")
     set guifont=Hack\ Nerd\ Font:h11
+endif
+
+if !has('nvim')
+    set go=a
+    set browsedir=buffer
 endif
 
 set cursorline
@@ -137,7 +141,6 @@ nmap <C-F10> :tp<cr>
 map <F4> :execute "vimgrep /" . expand("<cword>") . "/j **" <Bar> cw<CR>
 nmap <F11> :silent !start explorer /select,%:p<CR>
 
-set browsedir=buffer
 nmap <C-F2> :browse edit<cr>
 set laststatus=2
 runtime macros/matchit.vim
