@@ -29,4 +29,13 @@ config.keys = {
     {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
 }
 
+wezterm.on('update-status', function(window)
+  local bg = window:effective_config().resolved_palette.background
+  window:set_right_status(wezterm.format {
+    { Background = { Color = bg } },
+    { Foreground = { Color = '#ffffff' } },
+    { Text = ' ' .. wezterm.hostname() .. ' | ' .. wezterm.strftime('%H:%M') .. ' ' },
+  })
+end)
+
 return config
