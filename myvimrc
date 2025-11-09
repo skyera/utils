@@ -78,6 +78,7 @@ set noswapfile
 set showmode
 set completeopt=menu
 set ignorecase
+set clipboard=unnamedplus
 
 "set guifont=Consolas:h10:cDEFAULT
 if has('win32')
