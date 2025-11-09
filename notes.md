@@ -431,6 +431,11 @@ Core dump
     - sudo sysctl -p
 
 ### wezterm
-Ctrl-Tab: Navigate tabs
+```
+* Ctrl-Tab: Navigate tabs
+* copy inside vim:  Press Shift, use mouse to select
+* Use mouse to select: copied to clipboard
 
+
+```
 
