@@ -408,7 +408,13 @@ exa --tree
 -E - to capture to the end of the history.
 
 tmux capture-pane -S - \; save-buffer - \; delete-buffer | xclip -selection clipboard
+
+:capture-pane -S -
+:save-buffer filename.txt
 ```
+
+
+
 ### vim wiki
 ```
 <leader>ww  goto home
