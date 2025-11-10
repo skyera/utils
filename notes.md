@@ -399,6 +399,7 @@ exa --tree
 
 ### tmux
 ```
+:capture-pane  copy visible content to buffer
 :capture-pane -b temp-buffer -S - -E -
 :capture-pane -b temp-buffer -S -100
 :save-buffer /path/to/your/file.txt
