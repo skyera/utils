@@ -7,7 +7,9 @@ config.launch_menu = {
     { label = "Git Bash", args = { "C:\\Program Files\\Git\\bin\\bash.exe", "-l" } },
     { label = "WSL", args = { "wsl.exe" } },
     { label = "centre", args = {"ssh", "zliu@192.168.1.44"} },
-    { label = "pi4" , args = {"ssh", "pi@192.168.1.10"} }
+    { label = "pi4" , args = {"ssh", "pi@192.168.1.10"} },
+    { label="jet", args={"ssh", "zliu@192.168.1.5"}},
+    { label="pi0", args={"ssh", "pi@192.168.1.49"}" }
 }
 config.default_prog = { "cmd"}
 config.color_scheme = "Tokyo Night"
