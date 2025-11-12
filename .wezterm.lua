@@ -14,6 +14,16 @@ config.launch_menu = {
     { label="pad", args={"ssh", "zliu@pad"} },
     { label="pi5", args={"ssh", "pi@pi5"} }
 }
+
+local os = wezterm.target_triple
+
+if os:find("windows") then
+    config.default_prog = { "cmd" }
+elseif os:find("darwin") then
+    config.default_prog = { "/bin/zsh" }
+else
+    config.default_prog = { "bash" }
+end
 config.default_prog = { "cmd"}
 config.color_scheme = "Tokyo Night"
 config.window_background_opacity = 0.9
