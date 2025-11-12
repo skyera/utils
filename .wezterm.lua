@@ -10,7 +10,9 @@ config.launch_menu = {
     { label = "pi4" , args = {"ssh", "pi@192.168.1.10"} },
     { label="jet", args={"ssh", "zliu@192.168.1.5"}},
     { label="pi0", args={"ssh", "pi@192.168.1.49"} },
-    { label="pi3", args={"ssh", "pi@192.168.1.48"} }
+    { label="pi3", args={"ssh", "pi@192.168.1.48"} },
+    { label="pad", args={"ssh", "zliu@pad"} },
+    { label="pi5", args={"ssh", "pi@pi5"} }
 }
 config.default_prog = { "cmd"}
 config.color_scheme = "Tokyo Night"
