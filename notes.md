@@ -399,6 +399,7 @@ exa --tree
 
 ### tmux
 ```
+:capture-pane  copy visible content to buffer
 :capture-pane -b temp-buffer -S - -E -
 :capture-pane -b temp-buffer -S -100
 :save-buffer /path/to/your/file.txt
@@ -406,7 +407,14 @@ exa --tree
 -S - to capture from the start of the scrollback history.
 -E - to capture to the end of the history.
 
+tmux capture-pane -S - \; save-buffer - \; delete-buffer | xclip -selection clipboard
+
+:capture-pane -S -
+:save-buffer filename.txt
 ```
+
+
+
 ### vim wiki
 ```
 <leader>ww  goto home
