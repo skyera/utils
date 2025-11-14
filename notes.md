@@ -13,6 +13,7 @@ export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
 export TERM=xterm-256color
 export PROMPT_DIRTRIM=2
 export NEOVIM_BIN="/home/user/app/nvim-linux-x86_64/bin/nvim"
+eval "$(zoxide init bash)"
 
 # autojump: cd first
 [[ -s /usr/share/autojump/autojump.sh ]] && source /usr/share/autojump/autojump.sh
