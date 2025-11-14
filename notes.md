@@ -455,6 +455,9 @@ grep -e "http.*xxx" **/*.c - C 5 -n
 
 ```
 
+### Find disk space
+du -h ~ | sort -hr | head -n 10
+
 
 
 
