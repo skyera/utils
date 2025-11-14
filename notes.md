@@ -444,7 +444,16 @@ Core dump
 * copy inside vim:  Press Shift, use mouse to select
 * Use mouse to select: copied to clipboard
 * export DISPLAY or unset DISPLAY
+```
 
+### grep
+-e (extended regex)
+grep -e "http.*xxx" **/*.c - C 5 -n
+-C (context)
+-n (line number)
 
 ```
+
+
+
 
