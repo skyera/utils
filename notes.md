@@ -15,6 +15,11 @@ export PROMPT_DIRTRIM=2
 export NEOVIM_BIN="/home/user/app/nvim-linux-x86_64/bin/nvim"
 eval "$(zoxide init bash)"
 
+dexec() {
+    local cid=$(docker ps --format '{{.Names}}' | grep ${USER}|fzf)
+    [ -n "$cid" ] && docker exec -it -u ${USER} "$cid" bash
+}
+
 # autojump: cd first
 [[ -s /usr/share/autojump/autojump.sh ]] && source /usr/share/autojump/autojump.sh
 
