@@ -227,7 +227,7 @@ reverse-continue
 --gen-suppressions=all
 --suppressions=<filename>
 
-export VALGRIND_OPTS="--leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=1"
+export VALGRIND_OPTS="--leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=valgrind_$(date +"%Y%m%d%H%M%S").log --error-exitcode=1"
 
 valgrind --tool=callgrind
 kcachegrind callgrind.out.<pid>
