@@ -30,6 +30,7 @@ config.window_background_opacity = 0.9
 config.text_background_opacity = 0.8
 config.window_close_confirmation = "AlwaysPrompt"
 config.use_fancy_tab_bar = false
+config.audible_bell = "Disabled"
 
 config.font = wezterm.font_with_fallback({
     'Hack Nerd Font',
@@ -89,3 +90,4 @@ wezterm.on("update-status", function(window, pane)
 end)
 
 return config
+
