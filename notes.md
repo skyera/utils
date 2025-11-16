@@ -13,6 +13,12 @@ export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
 export TERM=xterm-256color
 export PROMPT_DIRTRIM=2
 export NEOVIM_BIN="/home/user/app/nvim-linux-x86_64/bin/nvim"
+eval "$(zoxide init bash)"
+
+dexec() {
+    local cid=$(docker ps --format '{{.Names}}' | grep ${USER}|fzf)
+    [ -n "$cid" ] && docker exec -it -u ${USER} "$cid" bash
+}
 
 # autojump: cd first
 [[ -s /usr/share/autojump/autojump.sh ]] && source /usr/share/autojump/autojump.sh
@@ -105,6 +111,7 @@ sudo apt install iptables-persistent
 
 ### play in terminal
 mpv --no-config --vo=tct <your videofile>
+mpv --video-rotate=270 
 
 ### mac .zprofile
 lua lib
@@ -226,7 +233,7 @@ reverse-continue
 --gen-suppressions=all
 --suppressions=<filename>
 
-export VALGRIND_OPTS="--leak-check=full --show-leak-kinds=all --track-origins=yes --error-exitcode=1"
+export VALGRIND_OPTS="--leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=valgrind_$(date +"%Y%m%d%H%M%S").log --error-exitcode=1"
 
 valgrind --tool=callgrind
 kcachegrind callgrind.out.<pid>
@@ -444,7 +451,19 @@ Core dump
 * copy inside vim:  Press Shift, use mouse to select
 * Use mouse to select: copied to clipboard
 * export DISPLAY or unset DISPLAY
+```
 
+### grep
+-e (extended regex)
+grep -e "http.*xxx" **/*.c - C 5 -n
+-C (context)
+-n (line number)
 
 ```
+
+### Find disk space
+du -h ~ | sort -hr | head -n 10
+
+
+
 
