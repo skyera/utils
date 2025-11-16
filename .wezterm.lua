@@ -26,10 +26,11 @@ else
 end
 config.default_prog = { "cmd"}
 config.color_scheme = "Tokyo Night"
-config.window_background_opacity = 0.9
+config.window_background_opacity = 0.8
 config.text_background_opacity = 0.8
 config.window_close_confirmation = "AlwaysPrompt"
 config.use_fancy_tab_bar = false
+config.window_padding = { left = 2, right = 2, top = 0, bottom = 0 }
 
 config.font = wezterm.font_with_fallback({
     'Hack Nerd Font',
