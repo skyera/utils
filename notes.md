@@ -29,6 +29,12 @@ fzfc() {
     curl -ks cht\.sh/$(
       curl -ks cht\.sh/:list | \
       IFS=+ fzf --preview 'curl -ks http://cht.sh{}' -q "$*"); }
+
+valg-save() {
+    local output_file="valgrind_$(date +%Y%m%d_%H%M%S).log"
+    valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="$output_file" "$@"
+    echo "Valgrind output saved to: $output_file"
+}
 ```
 
 ### Nerd fonts
