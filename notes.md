@@ -111,6 +111,7 @@ sudo apt install iptables-persistent
 
 ### play in terminal
 mpv --no-config --vo=tct <your videofile>
+mpv --video-rotate=270 
 
 ### mac .zprofile
 lua lib
