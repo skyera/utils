@@ -14,6 +14,7 @@ export TERM=xterm-256color
 export PROMPT_DIRTRIM=2
 export NEOVIM_BIN="/home/user/app/nvim-linux-x86_64/bin/nvim"
 eval "$(zoxide init bash)"
+eval "$(fzf --bash)"
 
 dexec() {
     local cid=$(docker ps --format '{{.Names}}' | grep ${USER}|fzf)
