@@ -10,7 +10,8 @@ export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
 export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/LuaBridge/Source/LuaBridge:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
 export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
-export TERM=xterm-256color
+#export TERM=xterm-256color
+export TERM=tmux-256color
 export PROMPT_DIRTRIM=2
 export NEOVIM_BIN="/home/user/app/nvim-linux-x86_64/bin/nvim"
 eval "$(zoxide init bash)"
