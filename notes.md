@@ -248,6 +248,12 @@ kcachegrind callgrind.out.<pid>
 valgrind --tool=massif ./my_program
 ms_print massif.out.<pid>
 
+## fast valgrind
+valgrind --leak-check=full --show-leak-kinds=definite,possible \
+         --undef-value-errors=no --track-origins=no \
+         --fair-sched=try \
+         ./your_program
+
 ```
 
 ### AddressSanitizer
