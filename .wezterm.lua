@@ -26,9 +26,9 @@ else
 end
 config.default_prog = { "cmd"}
 -- config.color_scheme = "Tokyo Night"
-config.color_scheme = "Catppuccin Mocha"
--- config.color_scheme = "Gruvbox Dark"
-config.window_background_opacity = 0.9
+-- config.color_scheme = "Catppuccin Mocha"
+config.color_scheme = "Gruvbox Dark"
+-- config.window_background_opacity = 0.9
 -- config.text_background_opacity = 0.8
 config.window_close_confirmation = "AlwaysPrompt"
 config.use_fancy_tab_bar = false
