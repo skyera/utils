@@ -36,6 +36,8 @@ valg-save() {
     valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="$output_file" "$@"
     echo "Valgrind output saved to: $output_file"
 }
+
+alias reload='source ~/.bashrc'
 ```
 
 ### Nerd fonts
