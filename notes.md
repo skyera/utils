@@ -37,6 +37,14 @@ valg-save() {
     echo "Valgrind output saved to: $output_file"
 }
 
+valgrind_exe() {
+    local ts
+    ts=$(date +%Y%m%d_%H%M%S)
+    local LOGFILE="valgrind_${ts}.log"
+    echo "Valgrind output saved to: $LOGFILE"
+    local VALGRIND_OPTS="--leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=$LOGFILE"
+    valgrind $VALGRIND_OPTS "$@"
+}
 alias reload='source ~/.bashrc'
 ```
 
