@@ -53,6 +53,8 @@ EXCLUDED_DIRS = [
     "OpenThreads",
     "OpenCV",
     "Anaconda",
+    "Debug",
+    "Release",
 ]
 EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
 CSCOPE_FILE_NAME = "cscope.files"
