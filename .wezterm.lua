@@ -54,7 +54,7 @@ config.colors = {
     }
 }
 
-config.leader = { key = "Space", mods = "CTRL", timeout_milliseconds = 2000 }
+config.leader = { key = "/", mods = "CTRL", timeout_milliseconds = 2000 }
 
 config.keys = {
     {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
