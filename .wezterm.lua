@@ -24,7 +24,6 @@ elseif os:find("darwin") then
 else
     config.default_prog = { "bash" }
 end
-config.default_prog = { "cmd"}
 -- config.color_scheme = "Tokyo Night"
 -- config.color_scheme = "Catppuccin Mocha"
 config.color_scheme = "Gruvbox Dark"
