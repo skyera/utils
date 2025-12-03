@@ -1,12 +1,52 @@
-# export FZF_DEFAULT_COMMAND='rg --files'
-export FZF_DEFAULT_COMMAND="fd --type file --follow --hidden --ignore-file ~/.fdignore"
-export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
+# fzf
+export FZF_DEFAULT_COMMAND="fd --follow --hidden --ignore-file ~/.fdignore"
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --exclude .git"
+#export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
+_fzf_compgen_path() {
+  fd --hidden --exclude .git . "$1"
+}
+
+_fzf_compgen_dir() {
+  fd --type=d --hidden --exclude .git . "$1"
+}
+
+show_file_or_dir_preview="if [ -d {} ]; then eza --tree --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
+
+export FZF_CTRL_T_OPTS="--preview '$show_file_or_dir_preview'"
+export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always {} | head -200'"
+
+# Advanced customization of fzf options via _fzf_comprun function
+# - The first argument to the function is the name of the command.
+# - You should make sure to pass the rest of the arguments to fzf.
+_fzf_comprun() {
+  local command=$1
+  shift
+
+  case "$command" in
+    cd)           fzf --preview 'eza --tree --color=always {} | head -200' "$@" ;;
+    export|unset) fzf --preview "eval 'echo ${}'"         "$@" ;;
+    ssh)          fzf --preview 'dig {}'                   "$@" ;;
+    *)            fzf --preview "$show_file_or_dir_preview" "$@" ;;
+  esac
+}
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
 export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/LuaBridge/Source/LuaBridge:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
+export C_INCLUDE_PATH="/usr/local/include/quickjs:$C_INCLUDE_PATH"
 export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
 export TERM=xterm-256color
 export PROMPT_DIRTRIM=2
 export LIBGL_ALWAYS_SOFTWARE=1
+export NEOVIM_BIN="$HOME/app/nvim-linux-x86_64/bin/nvim"
+
+eval "$(zoxide init bash)"
+eval "$(fzf --bash)"
+source ~/test/fzf-git.sh/fzf-git.sh
+
+dexec() {
+    local cid=$(docker ps --format '{{.Names}}' | grep ${USER}|fzf)
+    [ -n "$cid" ] && docker exec -it -u ${USER} "$cid" bash
+}
 
 # autojump: cd first
 [[ -s /usr/share/autojump/autojump.sh ]] && source /usr/share/autojump/autojump.sh
@@ -16,3 +56,20 @@ fzfc() {
     curl -ks cht\.sh/$(
       curl -ks cht\.sh/:list | \
       IFS=+ fzf --preview 'curl -ks http://cht.sh{}' -q "$*"); }
+
+valg-save() {
+    local output_file="valgrind_$(date +%Y%m%d_%H%M%S).log"
+    valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="$output_file" "$@"
+    echo "Valgrind output saved to: $output_file"
+}
+
+valgrind_exe() {
+    local ts
+    ts=$(date +%Y%m%d_%H%M%S)
+    local LOGFILE="valgrind_${ts}.log"
+    echo "Valgrind output saved to: $LOGFILE"
+    local VALGRIND_OPTS="--leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=$LOGFILE"
+    valgrind $VALGRIND_OPTS "$@"
+}
+alias reload='source ~/.bashrc'
+

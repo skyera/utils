@@ -2,8 +2,7 @@
 ```
 ### Fzf & rg
 # /.gitignore affect rg
-export FZF_DEFAULT_COMMAND='rg --files'
-export FZF_DEFAULT_COMMAND="fd --type file --follow --hidden --ignore-file ~/.fdignore"
+export FZF_DEFAULT_COMMAND="fd --follow --hidden --ignore-file ~/.fdignore"
 # on Windowx: fd  --no-ignore-vcs --type file --follow --hidden --ignore-file c:\users\zliu\.fdignore
 
 export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
@@ -532,4 +531,6 @@ C-GW look for git worktrees
 C-GE look for git for-each-ref
 ```
 
+### zoxide
+trigger fzf: z, space+tab
 
