@@ -4,7 +4,7 @@ export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --exclude .git"
 #export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
 export FZF_DEFAULT_OPTS='
-  --preview="if [ -d {} ]; then exa -T --color=always {}; else bat --color=always {}; fi"
+  --preview="if [ -d {} ]; then eza -T --color=always {}; else bat --color=always {}; fi"
 '
 
 _fzf_compgen_path() {
