@@ -481,6 +481,7 @@ Core dump
 ```
 
 ### grep
+```
 -e (extended regex)
 grep -e "http.*xxx" **/*.c - C 5 -n
 -C (context)
