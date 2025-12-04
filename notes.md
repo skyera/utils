@@ -159,6 +159,10 @@ git reset --hard
 # move branch tip to commit, del all commits after it
 git reset --hard <commit>
 
+# switch from submodule
+git clean -fd
+git checkout -f <branch>
+
 ```
 
 ### gdb TUI
