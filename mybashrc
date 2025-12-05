@@ -93,3 +93,15 @@ valgrind_exe() {
 alias reload='source ~/.bashrc'
 alias fd='fd --no-ignore-vcs'
 
+# forgit
+export PATH=$HOME/.local/share/forgit/bin:$PATH
+
+if [ -f $HOME/.local/share/forgit/forgit.plugin.sh ]; then
+    source $HOME/.local/share/forgit/forgit.plugin.sh
+fi
+
+# optional bash completion
+if [ -f $HOME/.local/share/bash-completion/completions/git-forgit.bash ]; then
+    source $HOME/.local/share/bash-completion/completions/git-forgit.bash
+fi
+
