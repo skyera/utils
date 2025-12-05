@@ -41,8 +41,9 @@ _fzf_comprun() {
 
 fcd() {
   local dir
-  dir=$(fd --type d | fzf) && cd "$dir"
+  dir=$(fd -t d | fzf --preview 'tree -C {} | head -200') && cd "$dir"
 }
+
 
 fvim() {
     nvim $(fzf)
