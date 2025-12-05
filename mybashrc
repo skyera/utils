@@ -1,7 +1,7 @@
 # fzf
-export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude .git --ignore-file ~/.fdignore"
+export FZF_DEFAULT_COMMAND="fd --no-ignore-vcs --follow --hidden --strip-cwd-prefix --exclude .git --ignore-file ~/.fdignore"
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --strip-cwd-prefix --exclude .git"
+export FZF_ALT_C_COMMAND="fd --no-ignore-vcs --type d --follow --hidden --strip-cwd-prefix --exclude .git"
 export FZF_DEFAULT_OPTS='
   --preview="if [ -d {} ]; then eza -T --color=always {}; else bat --color=always {}; fi"
 '
@@ -91,4 +91,5 @@ valgrind_exe() {
     valgrind $VALGRIND_OPTS "$@"
 }
 alias reload='source ~/.bashrc'
+alias fd='fd --no-ignore-vcs'
 
