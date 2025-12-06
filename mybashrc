@@ -109,7 +109,7 @@ rgf() {
   local results file line files
 
   results="$(
-    rg --line-number --no-heading . \
+    rg --no-ignore-vcs --line-number --no-heading . \
       | fzf --multi --delimiter : \
             --preview 'bat --style=numbers --color=always {1}' \
             --preview-window=right:60%
