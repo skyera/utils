@@ -105,3 +105,28 @@ if [ -f $HOME/.local/share/bash-completion/completions/git-forgit.bash ]; then
     source $HOME/.local/share/bash-completion/completions/git-forgit.bash
 fi
 
+rgf() {
+  local results file line files
+
+  results="$(
+    rg --line-number --no-heading . \
+      | fzf --multi --delimiter : \
+            --preview 'bat --style=numbers --color=always {1}' \
+            --preview-window=right:60%
+  )" || return
+
+  # If only one selection, open at line
+  if [[ $(echo "$results" | wc -l) -eq 1 ]]; then
+    file=$(echo "$results" | cut -d: -f1)
+    line=$(echo "$results" | cut -d: -f2)
+    nvim "+${line}" "$file"
+    return
+  fi
+
+  # For multiple selections: extract just the filenames
+  files=$(echo "$results" | cut -d: -f1 | sort -u)
+
+  # Open all files in nvim (tabs)
+  nvim $files
+}
+
