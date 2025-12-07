@@ -11,4 +11,3 @@
 --glob=!Debug/
 --glob=!Release/
 --glob=!dist/
-
