@@ -105,7 +105,7 @@ if [ -f $HOME/.local/share/bash-completion/completions/git-forgit.bash ]; then
     source $HOME/.local/share/bash-completion/completions/git-forgit.bash
 fi
 
-rgf() {
+frg() {
   local results file line files
 
   results="$(
@@ -129,4 +129,3 @@ rgf() {
   # Open all files in nvim (tabs)
   nvim $files
 }
-
