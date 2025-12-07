@@ -1,0 +1,18 @@
+# Ignore cscope files
+cscope.*
+
+# Ignore tags files
+tags
+filenametags
+
+# Ignore temporary files
+*.bak
+*.swp
+*.tmp
+*.o
+*.obj
+
+# Ignore build directories
+build/
+dist/
+
