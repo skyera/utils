@@ -1,1 +1,4 @@
 --no-ignore-parent
+--glob='!cscope.*'
+--glob='!tags'
+--glob='!filenametags'
