@@ -288,7 +288,22 @@ if has('nvim')
         \ prefix="<C-\\>",
         \ skip_input_prompt=true,
         \ })
-    lua require('telescope').setup()
+
+lua << EOF
+require('telescope').setup({
+defaults = {
+    layout_strategy = 'bottom_pane',
+
+    layout_config = {
+      bottom_pane = {
+        height = 0.5,        -- 50% of the screen height
+        prompt_position = "bottom",
+      },
+    },
+  },
+})
+EOF
+
     nnoremap <leader>xf <cmd>Telescope find_files<cr>
     nnoremap <leader>xg <cmd>Telescope live_grep<cr>
     nnoremap <leader>xb <cmd>Telescope buffers<cr>
