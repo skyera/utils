@@ -129,3 +129,5 @@ frg() {
   # Open all files in nvim (tabs)
   nvim $files
 }
+
+export RIPGREP_CONFIG_PATH=$HOME/.rgignore
