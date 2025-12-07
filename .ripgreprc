@@ -1,5 +1,1 @@
 --no-ignore-parent
---glob='cscope.*'
---glob='tags'
---glob='tags.*'
---glob='filenametags'
