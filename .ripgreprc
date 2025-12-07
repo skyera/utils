@@ -1,1 +1,14 @@
 --no-ignore-parent
+# Ignore cscope files and tags
+--glob=!cscope.*
+--glob=!tags
+--glob=!filenametags
+
+--glob=!*.o
+--glob=!*.swp
+--glob=!*.tmp
+--glob=!build/
+--glob=!Debug/
+--glob=!Release/
+--glob=!dist/
+

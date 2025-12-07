@@ -130,4 +130,4 @@ frg() {
   nvim $files
 }
 
-export RIPGREP_CONFIG_PATH=$HOME/.rgignore
+export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
