@@ -539,3 +539,10 @@ C-GE look for git for-each-ref
 ### zoxide
 trigger fzf: z, space+tab
 
+### neovim
+```
+telescope
+* <C-q> send all to quickfix
+* <M-q> send selected to quickfix
+
+```
