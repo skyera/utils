@@ -15,6 +15,7 @@ if has('nvim')
     Plug 'nvim-tree/nvim-web-devicons'
     Plug 'nvim-tree/nvim-tree.lua'
     Plug 'rbgrouleff/bclose.vim'
+    Plug 'ibhagwan/fzf-lua', {'do': ':UpdateRemotePlugins'}
 else
     Plug 'vim-scripts/cscope_macros.vim'
     Plug 'ojroques/vim-oscyank', { 'branch': 'main' }
@@ -304,10 +305,10 @@ defaults = {
 })
 EOF
 
-    nnoremap <leader>xf <cmd>Telescope find_files<cr>
-    nnoremap <leader>xg <cmd>Telescope live_grep<cr>
-    nnoremap <leader>xb <cmd>Telescope buffers<cr>
-    nnoremap <leader>xh <cmd>Telescope help_tags<cr>
+    nnoremap <leader>sf <cmd>Telescope find_files<cr>
+    nnoremap <leader>sg <cmd>Telescope live_grep<cr>
+    nnoremap <leader>sb <cmd>Telescope buffers<cr>
+    nnoremap <leader>sh <cmd>Telescope help_tags<cr>
     lua vim.g.loaded_netrw = 1
     lua vim.g.loaded_netrwPlugin = 1
     lua vim.opt.termguicolors = true
@@ -326,6 +327,10 @@ lua << EOF
 EOF
     nnoremap <leader>e :NvimTreeToggle<cr>
     nnoremap <leader>n :NvimTreeFindFile<cr>
+
+    nnoremap <silent> <leader>pf :lua require('fzf-lua').files()<CR>
+    nnoremap <silent> <leader>pg :lua require('fzf-lua').live_grep()<CR>
+    nnoremap <silent> <leader>pb :lua require('fzf-lua').buffers()<CR>
 endif
 
 au FileType vimwiki silent! iunmap <buffer> <Tab>
