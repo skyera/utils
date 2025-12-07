@@ -1,0 +1,6 @@
+# Ignore cscope files
+cscope.*
+
+# Ignore tags files
+tags
+filenametags
