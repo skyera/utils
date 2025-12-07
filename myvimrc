@@ -11,7 +11,7 @@ Plug 'vim-scripts/lookupfile'
 if has('nvim')
     Plug 'dhananjaylatkar/cscope_maps.nvim'
     Plug 'nvim-lua/plenary.nvim'
-    Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.8' }
+    Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.2.0' }
     Plug 'nvim-tree/nvim-web-devicons'
     Plug 'nvim-tree/nvim-tree.lua'
     Plug 'rbgrouleff/bclose.vim'
