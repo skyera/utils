@@ -359,7 +359,6 @@ fzf_lua.setup({
         "--color=always",
         "--smart-case",
         "--hidden",
-        "--no-ignore",
         "--follow",
         "--glob=!cscope.out",
         "--glob=!cscope.files",

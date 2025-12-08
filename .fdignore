@@ -12,3 +12,6 @@ boost*
 *.d
 *.obj
 *.sbr
+*.o
+Debug/
+Release
