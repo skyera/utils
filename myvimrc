@@ -360,6 +360,7 @@ fzf_lua.setup({
         "--smart-case",
         "--hidden",
         "--follow",
+        "--no-ignore",
         "--glob=!cscope.out",
         "--glob=!cscope.files",
         "--glob=!tags",
