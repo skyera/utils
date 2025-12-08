@@ -327,7 +327,18 @@ lua << EOF
 EOF
     nnoremap <leader>e :NvimTreeToggle<cr>
     nnoremap <leader>n :NvimTreeFindFile<cr>
+lua << EOF
+local fzf_lua = require('fzf-lua')
 
+fzf_lua.setup({
+    keymap = {
+        fzf = {
+            ["ctrl-q"] = "select-all+accept",
+        },
+    },
+})
+EOF
+    " Map <leader>ff to find files
     nnoremap <silent> <leader>pf :lua require('fzf-lua').files()<CR>
     nnoremap <silent> <leader>pg :lua require('fzf-lua').live_grep()<CR>
     nnoremap <silent> <leader>pb :lua require('fzf-lua').buffers()<CR>
