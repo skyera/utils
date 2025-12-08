@@ -340,7 +340,10 @@ fzf_lua.setup({
         git_icons = true,
         git_ignore = true,
         fd_opts = "--type f --hidden --follow --exclude cscope.out --exclude cscope.files --exclude .git --exclude tags --exclude filenametags",
-  }
+    },
+    grep = {
+        rg_opts = "--column --line-number --no-heading --color=always --smart-case --hidden --glob '!cscope.out' --glob '!tags'",
+    },
 })
 EOF
     " Map <leader>ff to find files
