@@ -13,9 +13,9 @@
 --glob=!*.obj
 --glob=!*.swp
 --glob=!*.tmp
+--glob=!*.lck
 --glob=!build/
 --glob=!Debug/
 --glob=!Release/
 --glob=!dist/
---glob=!bin/
 --glob=!obj/
