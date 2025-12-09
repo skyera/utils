@@ -315,7 +315,6 @@ defaults = {
         '--exclude', 'filenametags',
       }
     }
-<<<<<<< HEAD
   },
   vimgrep_arguments = {
       'rg',
