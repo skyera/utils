@@ -554,3 +554,14 @@ telescope
 * ~/config/fd/ignore
 * %APPDATA%\fd\ignore (Windows)
 * delete files: fd -H 'xxxx' -tf -X rm
+
+### ripgrep
+* RIPGREP_CONFIG_PATH
+* $HOME/.ripgreprc
+```
+--type-add
+web:*.{html,css,js}*
+
+--glob=!.git/*
+--smart-case
+```
