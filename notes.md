@@ -548,12 +548,19 @@ telescope
 ```
 
 ### fd
-* exclude files or directories: --exclude(-E) .git
-* -E /mnt/external-drive
+* exclude files or directories:
+    *--exclude(-E) .git
+    * -E /mnt/external-drive
 * skip file types: fd -E '*.bak'
-* ~/config/fd/ignore
-* %APPDATA%\fd\ignore (Windows)
 * delete files: fd -H 'xxxx' -tf -X rm
+* in git repos: not search in .gitignore, to disable it, use -I (--no-ignore)
+* search all files/dor: -HI
+* exclude patterns:
+ * ~/config/fd/ignore
+ * %APPDATA%\fd\ignore (Windows)
+```
+*.bak
+```
 
 ### ripgrep
 * RIPGREP_CONFIG_PATH
