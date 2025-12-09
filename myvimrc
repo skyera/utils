@@ -302,6 +302,20 @@ defaults = {
       },
     },
   },
+  pickers = {
+    find_files = {
+      find_command = {
+        'fd',
+        '--type', 'f',
+        '--hidden',
+        '--follow',
+        '--exclude', '.git',
+        '--exclude', 'cscope.out',
+        '--exclude', 'tags',
+        '--exclude', 'filenametags',
+      }
+    }
+  }
 })
 EOF
 
