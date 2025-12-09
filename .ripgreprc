@@ -1,13 +1,21 @@
 --no-ignore-parent
+--smarrt-case
+--follow
+--hidden
+
 # Ignore cscope files and tags
+--glob=!.git
 --glob=!cscope.*
 --glob=!tags
 --glob=!filenametags
 
 --glob=!*.o
+--glob=!*.obj
 --glob=!*.swp
 --glob=!*.tmp
 --glob=!build/
 --glob=!Debug/
 --glob=!Release/
 --glob=!dist/
+--glob=!bin/
+--glob=!obj/

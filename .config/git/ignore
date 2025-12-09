@@ -15,4 +15,8 @@ filenametags
 # Ignore build directories
 build/
 dist/
+Debug/
+Release/
+bin/
+obj/
 
