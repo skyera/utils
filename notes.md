@@ -546,3 +546,11 @@ telescope
 * <M-q> send selected to quickfix
 
 ```
+
+### fd
+* exclude files or directories: --exclude(-E) .git
+* -E /mnt/external-drive
+* skip file types: fd -E '*.bak'
+* ~/config/fd/ignore
+* %APPDATA%\fd\ignore (Windows)
+* delete files: fd -H 'xxxx' -tf -X rm
