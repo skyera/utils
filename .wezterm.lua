@@ -24,9 +24,9 @@ elseif os:find("darwin") then
 else
     config.default_prog = { "bash" }
 end
--- config.color_scheme = "Tokyo Night"
+config.color_scheme = "Tokyo Night"
 -- config.color_scheme = "Catppuccin Mocha"
-config.color_scheme = "Gruvbox Dark"
+-- config.color_scheme = "Gruvbox Dark"
 -- config.window_background_opacity = 0.9
 -- config.text_background_opacity = 0.8
 config.window_close_confirmation = "AlwaysPrompt"
