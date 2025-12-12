@@ -91,7 +91,7 @@ valgrind_exe() {
     valgrind $VALGRIND_OPTS "$@"
 }
 alias reload='source ~/.bashrc'
-alias fd='fd --no-ignore-vcs'
+# alias fd='fd --no-ignore-vcs'
 
 # forgit
 export PATH=$HOME/.local/share/forgit/bin:$PATH
