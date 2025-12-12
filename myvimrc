@@ -336,40 +336,6 @@ fzf_lua.setup({
             ["ctrl-q"] = "select-all+accept",
         },
     },
-    files = {
-        git_icons = true,
-        git_ignore = true,
-        fd_opts = table.concat({
-            "--type f",
-            "--hidden",
-            "--follow",
-            "--no-ignore-vcs",
-            "--exclude cscope.out",
-            "--exclude cscope.files",
-            "--exclude .git",
-            "--exclude tags",
-            "--exclude filenametags",
-            }, " "),
-    },
-    grep = {
-        rg_opts = table.concat({
-        "--column",
-        "--line-number",
-        "--no-heading",
-        "--color=always",
-        "--smart-case",
-        "--hidden",
-        "--follow",
-        "--no-ignore",
-        "--glob=!cscope.out",
-        "--glob=!cscope.files",
-        "--glob=!tags",
-        "--glob=!.git",
-        "--glob=!filenametags",
-        "--glob=!*.o",
-        "--glob=!*.obj",
-        }, " "),
-    },   
 })
 EOF
     " Map <leader>ff to find files
