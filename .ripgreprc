@@ -19,3 +19,4 @@
 --glob=!Release/
 --glob=!dist/
 --glob=!obj/
+--glob=!ThirdParty/
