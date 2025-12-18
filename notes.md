@@ -573,3 +573,10 @@ web:*.{html,css,js}*
 --glob=!.git/*
 --smart-case
 ```
+
+### X server
+```
+Mobaxterm, local terminal: echo $DISPLAY
+Windows ip
+export DISPLAY=ip:1.0 inside docker
+```
