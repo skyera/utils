@@ -6,12 +6,15 @@ set history filename ~/.gdb_history
 set history size 1000
 set auto-load safe-path /
 
-set logging file gdb.log
-set logging enabled on
+# logging
+set logging file ~/gdb.log
 set logging overwrite on
+set logging redirect off
+set logging enabled on
+
 set print array on
 set print object on
 set width 0
-
+set height 0
 set listsize 10
 
