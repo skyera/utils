@@ -580,3 +580,9 @@ Mobaxterm, local terminal: echo $DISPLAY
 Windows ip
 export DISPLAY=ip:1.0 inside docker
 ```
+
+### find
+```
+-exec <cmd> {} +       run command in batches
+-exec <cmd> {} \;      run command on each file
+```
