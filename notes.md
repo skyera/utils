@@ -585,4 +585,17 @@ export DISPLAY=ip:1.0 inside docker
 ```
 -exec <cmd> {} +       run command in batches
 -exec <cmd> {} \;      run command on each file
+
+use -print0 with xargs -0 to handle filenames with spaces
+use \(...\) to combine OR filters
+combine with grep for content search inside found files
+
+find . type f -name "*.py" -exec grep -H "TODO" {} \;
+find . type f -empty # find empty files
+-delete # delete found files
+-size +10M # find files larger than 10M
+-size -1k # find files smaller than 1k
+-mtime -7 # find files modified in last 7 days
+
+
 ```
