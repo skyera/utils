@@ -597,5 +597,15 @@ find . type f -empty # find empty files
 -size -1k # find files smaller than 1k
 -mtime -7 # find files modified in last 7 days
 
+```
+
+### grep
+```
+Use extended regex (-E)
+grep -r -E "foo|bar" **/*.c
+find . -name "*.c" | xargs grep "TODO"
+grep -rn --include="*.c" "TODO"
+grep -r -L "Copyright" **/*.c  # find files without copyright header
+grep -rE "(TODOD|FIXME|BUG)" --include="*.c"  # find TODOs in C files
 
 ```
