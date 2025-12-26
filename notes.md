@@ -556,6 +556,7 @@ telescope
 * in git repos: not search in .gitignore, to disable it, use -I (--no-ignore)
 * search all files/dor: -HI
 * exclude patterns:
+ * ~/.fdignore
  * ~/config/fd/ignore
  * %APPDATA%\fd\ignore (Windows)
 ```
