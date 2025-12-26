@@ -1,8 +1,5 @@
 .git/
-cscope.out
-cscope.in.out
-cscope.po.out
-cscope.files
+cscope.*
 tags
 tags.files
 filenametags
