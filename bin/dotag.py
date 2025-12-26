@@ -31,6 +31,7 @@ FILE_EXTS = (
     ".cu",
     ".cuh",
 )
+
 EXCLUDED_DIRS = [
     "boost",
     "omniorb",
@@ -56,6 +57,7 @@ EXCLUDED_DIRS = [
     "Debug",
     "Release",
 ]
+
 EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
 CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
@@ -305,6 +307,7 @@ def log_find_method(find_method, abspath):
 
 
 def main():
+    print(sys.version)
     print(datetime.datetime.now())
     global abspath
     find_method, abspath = parse()
