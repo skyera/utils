@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-Create cscope, filename, tag database for source code
-"""
+#
+# Create cscope, filename, tag database for source code
+#
 import argparse
 import datetime
 import os
@@ -61,7 +61,6 @@ EXCLUDED_DIRS = [
 EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
 CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
-
 abspath = False
 
 
