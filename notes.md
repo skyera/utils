@@ -555,7 +555,7 @@ telescope
 * delete files: fd -H 'xxxx' -tf -X rm
 * in git repos: not search in .gitignore, to disable it, use -I (--no-ignore)
 * search all files/dirs: -HI
-* exclude patterns:
+* exclude patterns in ignore files:
  * ~/.fdignore
  * ~/config/fd/ignore
  * %APPDATA%\fd\ignore (Windows)
