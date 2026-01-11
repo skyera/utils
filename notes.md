@@ -224,7 +224,7 @@ info line *xxxx
 * check current substitute-path: (gdb) show substitute-path
 
 ```
-.gbdinit
+.gdbinit
 set substitute-path /build/project ~/dev/project
 
 define connect-target
