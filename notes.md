@@ -216,6 +216,12 @@ info line *xxxx
 2. set sysroot /
 3. target extended-remote | vgdb --multi --vargs -q
 
+### gdb server
+* server: gdbserver :1234 <binary> args
+* client: gdb <binary>
+* target remote <ip>:1234
+* set substitute-path /build/project ~/dev/project
+
 ### git diff meld
 ```
 git config --global diff.tool meld
@@ -225,6 +231,8 @@ git difftool commit1 commit2 # open file by file
 git difftool -d commit1 commit2 # compare directory
 git difftool -d main feature-branch
 git diff commit1 commit2 # without meld
+
+
 git difftool -d commit # compare to working tree
 git difftool -d commit
 ```
