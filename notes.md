@@ -218,9 +218,14 @@ info line *xxxx
 
 ### gdb server
 * server: gdbserver :1234 ./myapp arg1 arg2
+* gdbserver --multi :1234
 * host: gdb ./myapp
     * (gdb) target remote <target-ip>:1234
+    * (gdb) target extended-remote <target-ip>:1234
     * (gdb) set substitute-path /build/project ~/dev/project
+    * (gdb) set remote exec-file ./myapp
+    * (gdb) set args arg1 arg2
+    * (gdb) run arg1 arg2
 * check current substitute-path: (gdb) show substitute-path
 
 ```
