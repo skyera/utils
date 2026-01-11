@@ -230,6 +230,12 @@ set substitute-path /build/project ~/dev/project
 define connect-target
     echo "connect to remote target\n"
     target remote <ip>:1234 
+end
+
+# Auto connect
+connect-target
+
+break
 ```
 
 ### git diff meld
