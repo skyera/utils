@@ -221,6 +221,7 @@ info line *xxxx
 * client: gdb <binary>
 * target remote <ip>:1234
 * set substitute-path /build/project ~/dev/project
+* project .gdbinit
 
 ### git diff meld
 ```
