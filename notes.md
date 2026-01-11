@@ -217,8 +217,9 @@ info line *xxxx
 3. target extended-remote | vgdb --multi --vargs -q
 
 ### gdb server
-* server: gdbserver :1234 ./myapp arg1 arg2
-* gdbserver --multi :1234
+* server: 
+    * gdbserver :1234 ./myapp arg1 arg2
+    * gdbserver --multi :1234 # no args
 * host: gdb ./myapp
     * (gdb) target remote <target-ip>:1234
     * (gdb) target extended-remote <target-ip>:1234
@@ -234,7 +235,7 @@ set substitute-path /build/project ~/dev/project
 
 define connect-target
     echo "connect to remote target\n"
-    target remote <ip>:1234 
+    target remote-extended <ip>:1234 
 end
 
 symbol-file ./myapp
