@@ -232,6 +232,8 @@ define connect-target
     target remote <ip>:1234 
 end
 
+symbol-file ./myapp
+
 # Auto connect
 connect-target
 
