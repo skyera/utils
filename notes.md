@@ -217,11 +217,20 @@ info line *xxxx
 3. target extended-remote | vgdb --multi --vargs -q
 
 ### gdb server
-* server: gdbserver :1234 <binary> args
-* client: gdb <binary>
-* target remote <ip>:1234
-* set substitute-path /build/project ~/dev/project
-* project .gdbinit
+* server: gdbserver :1234 ./myapp arg1 arg2
+* host: gdb ./myapp
+    * (gdb) target remote <target-ip>:1234
+    * (gdb) set substitute-path /build/project ~/dev/project
+* check current substitute-path: (gdb) show substitute-path
+
+```
+.gbdinit
+set substitute-path /build/project ~/dev/project
+
+define connect-target
+    echo "connect to remote target\n"
+    target remote <ip>:1234 
+```
 
 ### git diff meld
 ```
