@@ -243,7 +243,9 @@ symbol-file ./myapp
 # Auto connect
 connect-target
 
-break
+set remote exec-file /server/.../myapp
+set args arg1 arg2
+break main
 ```
 
 ### git diff meld
