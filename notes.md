@@ -238,12 +238,14 @@ define connect-target
     target remote-extended <ip>:1234 
 end
 
-symbol-file ./myapp
+symbol-file /host/...myapp
 
 # Auto connect
 connect-target
 
-break
+set remote exec-file /server/.../myapp
+set args arg1 arg2
+break main
 ```
 
 ### git diff meld
