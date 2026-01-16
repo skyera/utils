@@ -33,6 +33,7 @@ config.window_close_confirmation = "NeverPrompt"
 config.use_fancy_tab_bar = false
 config.window_padding = { left = 2, right = 2, top = 0, bottom = 0 }
 config.audible_bell = "Disabled"
+config.enable_kitty_keyboard = false
 
 config.font = wezterm.font_with_fallback({
     'Hack Nerd Font',
