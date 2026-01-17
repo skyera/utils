@@ -5,6 +5,8 @@
 import argparse
 import datetime
 import os
+import shlex
+import subprocess
 import sys
 import time
 
@@ -56,6 +58,7 @@ EXCLUDED_DIRS = [
     "Anaconda",
     "Debug",
     "Release",
+    "*cudafe1*",
 ]
 
 EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
@@ -73,7 +76,7 @@ def parse():
         "-f",
         "--find",
         choices=["py", "find", "fd"],
-        default="py",
+        default="fd",
         help="find files method(defualt: py)",
     )
     parser.add_argument(
@@ -158,35 +161,35 @@ class FindCmd:
 
 
 class FdCmd:
-    def __init__(self, excluded_dirs, file_exts):
-        self.excluded_dirs = excluded_dirs
+    def __init__(self, excluded_patterns, file_exts):
+        self.excluded_patterns = excluded_patterns
         self.file_exts = file_exts
-        self.ext_str = ""
-        self.excluded_str = ""
-        self.fd_cmd = ""
+        self.fd_cmd = ["fd", "--type", "f", "--follow", "--ignore-case"]
 
-    def create(self):
-        self.create_ext_str()
-        self.create_excluded_str()
-        self.create_fd_cmd()
-
-    def create_ext_str(self):
-        items = []
+    def build_cmd(self):
         for ext in self.file_exts:
-            ext = ext.lstrip(".")
-            item = f"-e {ext}"
-            items.append(item)
-        self.ext_str = " ".join(items)
+            self.fd_cmd.extend(["-e", ext.lstrip(".")])
 
-    def create_excluded_str(self):
-        items = []
-        for name in self.excluded_dirs:
-            item = f"-E {name}"
-            items.append(item)
-        self.excluded_str = " ".join(items)
+        for pat in self.excluded_patterns:
+            self.fd_cmd.extend(["--exclude", pat])
 
-    def create_fd_cmd(self):
-        self.fd_cmd = f"fd {self.ext_str} {self.excluded_str} > {CSCOPE_FILE_NAME}"
+    def run_fd(self):
+        print("Running fd")
+        print(" ".join(shlex.quote(x) for x in self.fd_cmd))
+
+        result = subprocess.run(
+            self.fd_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            print(result.stderr, file=sys.stderr)
+            sys.exit(1)
+
+        with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
+            cscope_f.write(result.stdout)
 
 
 def get_files():
@@ -208,9 +211,8 @@ def gnu_find_files():
 
 def fd_files():
     cmd = FdCmd(EXCLUDED_DIRS, FILE_EXTS)
-    cmd.create()
-    print(cmd.fd_cmd)
-    os.system(cmd.fd_cmd)
+    cmd.build_cmd()
+    cmd.run_fd()
 
 
 def py_find_files():
