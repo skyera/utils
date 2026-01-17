@@ -9,6 +9,7 @@ import shlex
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 FILE_EXTS = (
     ".c",
@@ -164,7 +165,7 @@ class FdCmd:
     def __init__(self, excluded_patterns, file_exts):
         self.excluded_patterns = excluded_patterns
         self.file_exts = file_exts
-        self.fd_cmd = ["fd", "--type", "f", "--follow", "--ignore-case"]
+        self.fd_cmd = ["fd", "--type", "f", "--ignore-case"]
 
     def build_cmd(self):
         for ext in self.file_exts:
@@ -188,8 +189,11 @@ class FdCmd:
             print(result.stderr, file=sys.stderr)
             sys.exit(1)
 
+        files = result.stdout.splitlines()
+        files = [f for f in files if not Path(f).is_symlink()]
         with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
-            cscope_f.write(result.stdout)
+            for line in files:
+                cscope_f.write(f"{line}\n")
 
 
 def get_files():
