@@ -644,3 +644,6 @@ grep -r -L "Copyright" **/*.c  # find files without copyright header
 grep -rE "(TODOD|FIXME|BUG)" --include="*.c"  # find TODOs in C files
 
 ```
+
+### wezterm
+disable xterm mouse tracking modes: printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'
