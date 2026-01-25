@@ -130,5 +130,11 @@ frg() {
 }
 alias tmuxfix="printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'"
 
+alias tpe='file=/tmp/tmux_capture_$(date +%Y%m%d_%H%M%S)_$$; \
+tmux capture-pane -Jp -S - -E - > "$file"; \
+editor=$(command -v nvim || command -v vim || echo vi); \
+"$editor" "$file"; \
+rm -f "$file"; \
+echo "Deleted $file"'
 
 # export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
