@@ -191,6 +191,7 @@ class FdCmd:
 
         files = result.stdout.splitlines()
         files = [f for f in files if not Path(f).is_symlink()]
+        files = [f for f in files if not " " in f]
         with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
             for line in files:
                 cscope_f.write(f"{line}\n")
