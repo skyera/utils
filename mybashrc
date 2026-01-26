@@ -137,4 +137,13 @@ editor=$(command -v nvim || command -v vim || echo vi); \
 rm -f "$file"; \
 echo "Deleted $file"'
 
+# Preview local branches whose upstream is gone
+alias git-branch-gone='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'''
+
+# Safely delete local branches not on remote (only merged ones)
+alias git-clean-branches='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -d'
+
+# Force delete local branches not on remote (even if not merged)
+alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -D'
+
 # export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
