@@ -146,4 +146,39 @@ alias git-clean-branches='git fetch --prune && git branch -vv | awk '\''/: gone]
 # Force delete local branches not on remote (even if not merged)
 alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -D'
 
+git-del-branch() {
+    # Select one or more local branches (excluding current)
+    branches=$(git branch --format='%(refname:short)' \
+        | grep -v "^\*" \
+        | fzf --multi --prompt="Select branch(es) to delete: ")
+
+    [ -z "$branches" ] && echo "No branch selected." && return 1
+
+    echo "Selected branches:"
+    echo "$branches"
+
+    # Confirm
+    read -rp "Delete selected branches? [y/N] " ans
+    [[ "$ans" =~ ^[Yy]$ ]] || { echo "Aborted."; return 1; }
+
+    # Delete safely
+    echo "$branches" | xargs -n 1 git branch -d
+}
+
+git-del-branch-force() {
+    branches=$(git branch --format='%(refname:short)' \
+        | grep -v "^\*" \
+        | fzf --multi --prompt="Select branch(es) to FORCE delete: ")
+
+    [ -z "$branches" ] && echo "No branch selected." && return 1
+
+    echo "Selected branches:"
+    echo "$branches"
+
+    read -rp "FORCE delete selected branches? [y/N] " ans
+    [[ "$ans" =~ ^[Yy]$ ]] || { echo "Aborted."; return 1; }
+
+    echo "$branches" | xargs -n 1 git branch -D
+}
+
 # export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
