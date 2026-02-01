@@ -46,7 +46,6 @@ Plug 'tpope/vim-unimpaired'
 Plug 'tpope/vim-fugitive'
 Plug 'mhinz/vim-startify'
 "Plug 'unblevable/quick-scope'
-Plug 'sheerun/vim-polyglot'
 Plug 'dense-analysis/ale'
 Plug 'godlygeek/tabular'
 Plug 'tmhedberg/SimpylFold'
@@ -189,6 +188,11 @@ set directory^=$HOME/.vim/tmp//
 noremap <F12> <Esc>:syntax sync fromstart<CR>
 autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
 autocmd FileType html setlocal shiftwidth=2 tabstop=2
+
+augroup sh_indent
+  autocmd!
+  autocmd FileType sh,bash setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+augroup END
 
 if !has('nvim')
     set cscopequickfix=s-,c-,d-,i-,t-,e-
