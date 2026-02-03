@@ -10,7 +10,7 @@ set auto-load safe-path /
 set logging file ~/gdb.log
 set logging overwrite on
 set logging redirect off
-set logging enabled on
+set logging on
 
 set print array on
 set print object on
