@@ -592,7 +592,7 @@ telescope
 * exclude patterns in ignore files:
  * ~/.fdignore
  * ~/config/fd/ignore
- * %APPDATA%\fd\ignore (Windows)
+ * 📝 %APPDATA%\fd\ignore (Windows)
 ```
 *.bak
 ```
