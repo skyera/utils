@@ -3,7 +3,6 @@ filetype off
 
 call plug#begin()
 Plug 'flazz/vim-colorschemes'
-Plug 'ctrlpvim/ctrlp.vim'
 Plug 'tiagofumo/vim-nerdtree-syntax-highlight'
 Plug 'scrooloose/nerdtree'
 Plug 'vim-scripts/genutils'
@@ -25,7 +24,6 @@ if !has('win32') && !has('gui_running')
 endif
 
 Plug 'jlanzarotta/bufexplorer'
-Plug 'vim-scripts/taglist.vim'
 Plug 'vim-scripts/Color-Scheme-Explorer'
 Plug 'yegappan/mru'
 Plug 'vim-scripts/a.vim'
@@ -61,7 +59,7 @@ Plug 'psf/black'
 call plug#end()
 
 set backspace=indent,eol,start
-set history=200
+set history=1000
 set ruler
 set showcmd
 set incsearch
@@ -80,7 +78,13 @@ set noswapfile
 set showmode
 set completeopt=menu
 set ignorecase
-set clipboard=unnamedplus
+if has('clipboard')
+    if has('unnamedplus')
+        set clipboard=unnamedplus
+    else
+        set clipboard=unnamed
+    endif
+endif
 
 "set guifont=Consolas:h10:cDEFAULT
 if has('win32')
@@ -135,25 +139,6 @@ autocmd BufReadPost *
     \   exe "normal! g`\"" |
     \ endif
 
-let g:winManagerWindowLayout='FileExplorer|TagList'
-let Tlist_Show_One_File=1
-map <F2> <Esc>:1,$!xmllint --format -<CR>
-nmap <silent> <leader>ll :LUBufs<cr>
-
-let g:LookupFile_MinPatLength = 3
-let g:LookupFile_PreserveLastPattern = 0
-let g:LookupFile_PreservePatternHistory = 1
-let g:LookupFile_AlwaysAcceptFirst = 1
-let g:LookupFile_AllowNewFiles = 0
-let g:LookupFile_smartcase = 1
-let g:LookupFile_EscCancelsPopup = 1
-let g:LookupFile_ignorecase = 1
-let g:LookupFile_EnableRemapCmd = 0
-
-"if filereadable("./filenametags")
-let g:LookupFile_TagExpr = '"filenametags"'
-"endif
-
 nmap <F6> :cn<cr>
 nmap <F7> :cp<cr>
 nmap <F8> :bn<cr>
@@ -167,17 +152,6 @@ nmap <F11> :silent !start explorer /select,%:p<CR>
 nmap <C-F2> :browse edit<cr>
 set laststatus=2
 runtime macros/matchit.vim
-
-let g:ctrlp_max_files = 0
-let g:ctrlp_clear_cache_on_exit=0
-
-let g:ctrlp_custom_ignore = {
-  \ 'dir':  '\v(Debug|Release|lost+found|ucm_components|ThirdParty|omniORB|.jazz5|.jazzShed)$',
-  \ 'file': '\v\.(exe|obj|dll|lib|exp|o|pdb|xml|log|png|bmp|resx|pyc|a|txt)$',
-  \ 'link': 'some_bad_symbolic_links',
-  \ }
-let g:ctrlp_regexp = 1
-let g:ctrlp_by_filename = 1
 
 set wrapscan
 set cindent
@@ -193,6 +167,7 @@ autocmd FileType html setlocal shiftwidth=2 tabstop=2
 augroup sh_indent
   autocmd!
   autocmd FileType sh,bash setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+  autocmd FileType python setlocal foldmethod=indent
 augroup END
 
 if !has('nvim')
