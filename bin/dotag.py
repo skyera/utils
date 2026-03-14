@@ -43,7 +43,7 @@ EXCLUDED_DIRS = [
     ".jazz5",
     ".jazzShed",
     "node_modules",
-    "wabapp",
+    "webapp",
     "OmniORB",
     "Omni",
     "Omni_VS2015",
@@ -154,10 +154,10 @@ class FindCmd:
     def generate_find_cmd(self):
         if self.excluded_dirs_str != "":
             self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} \
-                    -print | grep -v " " >  {CSCOPE_FILE_NAME}'
+                    -print | grep -v " " > {CSCOPE_FILE_NAME}'
         else:
             self.find_cmd = (
-                f'find . {self.file_exts_str} -print | grep -v " " {CSCOPE_FILE_NAME} '
+                f'find . {self.file_exts_str} -print | grep -v " " > {CSCOPE_FILE_NAME}'
             )
 
 
@@ -211,7 +211,7 @@ def gnu_find_files():
     cmd = FindCmd(EXCLUDED_DIRS, FILE_EXTS)
     cmd.create()
     print(cmd.find_cmd)
-    os.system(cmd.find_cmd)
+    subprocess.run(cmd.find_cmd, shell=True, check=True)
 
 
 def fd_files():
@@ -248,9 +248,9 @@ def collect_files(find_method):
 
 def run_cscope():
     start = time.time()
-    cmd = f"cscope -b -q -k -i {CSCOPE_FILE_NAME}"
-    print(cmd)
-    os.system(cmd)
+    cmd = ["cscope", "-b", "-q", "-k", "-i", CSCOPE_FILE_NAME]
+    print(" ".join(cmd))
+    subprocess.run(cmd, check=True)
     log_cpu("cscope", start)
 
 
@@ -270,25 +270,23 @@ class FilenametagsCreator:
 
     def __init__(self, cscope_filename, tag_filename):
         self.cscope_filename = cscope_filename
-        self.temp_filename = "temp.txt"
+        self.temp_filename = "temp_dotag.txt"
         self.tag_filename = tag_filename
 
     def run(self):
         self.create_tagfile()
         self.create_tempfile()
         self.sort_append_file()
-        os.remove(self.temp_filename)
+        if os.path.exists(self.temp_filename):
+            os.remove(self.temp_filename)
 
     def create_tempfile(self):
-        cscope_f = open(self.cscope_filename)
-        temp_f = open(self.temp_filename, "w")
-        for line in cscope_f:
-            path = line.strip('"\n')
-            name = os.path.basename(path)
-            line = "%s\t%s\t1" % (name, path)
-            temp_f.write(line + "\n")
-        cscope_f.close()
-        temp_f.close()
+        with open(self.cscope_filename, "r") as cscope_f, \
+             open(self.temp_filename, "w") as temp_f:
+            for line in cscope_f:
+                path = line.strip('"\n')
+                name = os.path.basename(path)
+                temp_f.write(f"{name}\t{path}\t1\n")
 
     def create_tagfile(self):
         with open(self.tag_filename, "w") as tag_f:
@@ -297,14 +295,14 @@ class FilenametagsCreator:
     def sort_append_file(self):
         cmd = f"sort -f {self.temp_filename} >> {self.tag_filename}"
         print(cmd)
-        os.system(cmd)
+        subprocess.run(cmd, shell=True, check=True)
 
 
 def create_tags():
     start = time.time()
-    cmd = f"ctags -L {CSCOPE_FILE_NAME}"
-    print(cmd)
-    os.system(cmd)
+    cmd = ["ctags", "-L", CSCOPE_FILE_NAME]
+    print(" ".join(cmd))
+    subprocess.run(cmd, check=True)
     log_cpu("ctags", start)
 
 
