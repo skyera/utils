@@ -1,49 +1,38 @@
-### bash
-```
-### Fzf & rg
-# /.gitignore affect rg
-export FZF_DEFAULT_COMMAND="fd --follow --hidden --ignore-file ~/.fdignore"
-# on Windowx: fd  --no-ignore-vcs --type file --follow --hidden --ignore-file c:\users\zliu\.fdignore
+### bash (Modern fzf & git setup)
+```bash
+# History optimization
+export HISTSIZE=10000
+export HISTFILESIZE=20000
+export HISTCONTROL=ignoreboth:erasedups
+shopt -s histappend
 
-export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
-export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
-export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/LuaBridge/Source/LuaBridge:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
-export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
-#export TERM=xterm-256color
-export TERM=tmux-256color
-export PROMPT_DIRTRIM=2
-export NEOVIM_BIN="/home/user/app/nvim-linux-x86_64/bin/nvim"
-eval "$(zoxide init bash)"
-eval "$(fzf --bash)"
+# fzf & fd
+export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude .git --ignore-file ~/.fdignore"
+export FZF_DEFAULT_OPTS='--preview="if [ -d {} ]; then eza -T --color=always {}; else bat --color=always {}; fi"'
 
-dexec() {
-    local cid=$(docker ps --format '{{.Names}}' | grep ${USER}|fzf)
-    [ -n "$cid" ] && docker exec -it -u ${USER} "$cid" bash
+# Terminal Safety
+[[ -z "$TMUX" ]] && export TERM=xterm-256color
+
+# Power Tools
+fhist() { eval $(history | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//'); } # Interactive history search
+fkill() { local pid; pid=$(ps -ef | sed 1d | fzf -m | awk '{print $2}'); [ -n "$pid" ] && echo "$pid" | xargs kill -${1:-9}; }
+up() { local d=""; for ((i=1 ; i <= $1 ; i++)); do d=$d"../"; done; cd $d; } # up 3
+
+# Optimized Search (frg)
+frg() {
+  local pattern="$1"
+  [ -z "$pattern" ] && read -rp "Search pattern: " pattern
+  results=$(rg --smart-case --no-ignore-vcs --line-number --no-heading "$pattern" | fzf -m --delimiter : --preview 'bat --style=numbers --color=always {1}') || return
+  files=$(echo "$results" | cut -d: -f1 | sort -u)
+  nvim -p $files
 }
 
-# autojump: cd first
-[[ -s /usr/share/autojump/autojump.sh ]] && source /usr/share/autojump/autojump.sh
-
-# cheat.sh + fzf: fzfc git merge
-fzfc() {
-    curl -ks cht\.sh/$(
-      curl -ks cht\.sh/:list | \
-      IFS=+ fzf --preview 'curl -ks http://cht.sh{}' -q "$*"); }
-
-valg-save() {
-    local output_file="valgrind_$(date +%Y%m%d_%H%M%S).log"
-    valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="$output_file" "$@"
-    echo "Valgrind output saved to: $output_file"
+# Valgrind consolidated
+valg() {
+    local LOGFILE="valgrind_$(date +%Y%m%d_%H%M%S).log"
+    valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="$LOGFILE" "$@"
 }
 
-valgrind_exe() {
-    local ts
-    ts=$(date +%Y%m%d_%H%M%S)
-    local LOGFILE="valgrind_${ts}.log"
-    echo "Valgrind output saved to: $LOGFILE"
-    local VALGRIND_OPTS="--leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=$LOGFILE"
-    valgrind $VALGRIND_OPTS "$@"
-}
 alias reload='source ~/.bashrc'
 ```
 
