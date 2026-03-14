@@ -11,6 +11,12 @@ export FZF_CTRL_R_OPTS='
   --preview="echo {}"
 '
 
+# History optimization
+export HISTSIZE=10000
+export HISTFILESIZE=20000
+export HISTCONTROL=ignoreboth:erasedups
+shopt -s histappend
+
 _fzf_compgen_path() {
   fd --hidden --exclude .git . "$1"
 }
@@ -25,8 +31,6 @@ export FZF_CTRL_T_OPTS="--preview '$show_file_or_dir_preview'"
 export FZF_ALT_C_OPTS="--preview 'eza --tree --icons=always --color=always {} | head -200'"
 
 # Advanced customization of fzf options via _fzf_comprun function
-# - The first argument to the function is the name of the command.
-# - You should make sure to pass the rest of the arguments to fzf.
 _fzf_comprun() {
   local command=$1
   shift
@@ -39,38 +43,44 @@ _fzf_comprun() {
   esac
 }
 
+# --- Functions ---
+
 fcd() {
   local dir
   dir=$(fd -t d | fzf --preview 'tree -C {} | head -200') && cd "$dir"
 }
 
-
 fvim() {
-    nvim $(fzf)
+    local file
+    file=$(fzf)
+    [ -n "$file" ] && nvim "$file"
 }
 
-export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
-export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/LuaBridge/Source/LuaBridge:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
-# export C_INCLUDE_PATH="/usr/local/include/quickjs:$C_INCLUDE_PATH"
-export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
-[[ -z "$TMUX" ]] && export TERM=xterm-256color
-export PROMPT_DIRTRIM=2
-export LIBGL_ALWAYS_SOFTWARE=1
-export NEOVIM_BIN="$HOME/app/nvim-linux-x86_64/bin/nvim"
+fhist() {
+  eval $(history | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')
+}
 
-eval "$(zoxide init bash)"
-eval "$(fzf --bash)"
-source ~/test/fzf-git.sh/fzf-git.sh
+fkill() {
+    local pid
+    pid=$(ps -ef | sed 1d | fzf -m | awk '{print $2}')
+    [ -n "$pid" ] && echo "$pid" | xargs kill -${1:-9}
+}
+
+up() {
+  local d=""
+  limit=$1
+  for ((i=1 ; i <= limit ; i++))
+  do
+    d=$d"../"
+  done
+  cd $d
+}
 
 dexec() {
     local cid=$(docker ps --format '{{.Names}}' | grep ${USER}|fzf)
     [ -n "$cid" ] && docker exec -it -u ${USER} "$cid" bash
 }
 
-# autojump: cd first
-[[ -s /usr/share/autojump/autojump.sh ]] && source /usr/share/autojump/autojump.sh
-
-# cheat.sh + fzf: fzfc git merge
 fzfc() {
     curl -s cht\.sh/$(
       curl -s cht\.sh/:list | \
@@ -83,31 +93,22 @@ valg() {
     echo "Valgrind output will be saved to: $LOGFILE"
     valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="$LOGFILE" "$@"
 }
-alias reload='source ~/.bashrc'
-# alias fd='fd --no-ignore-vcs'
-
-# forgit
-export PATH=$HOME/.local/share/forgit/bin:$PATH
-
-# optional bash completion
-if [ -f $HOME/.local/share/bash-completion/completions/git-forgit.bash ]; then
-    source $HOME/.local/share/bash-completion/completions/git-forgit.bash
-fi
-if [ -f $HOME/.local/share/forgit/forgit.plugin.sh ]; then
-    source $HOME/.local/share/forgit/forgit.plugin.sh
-fi
 
 frg() {
+  local pattern="$1"
   local results file line files
 
+  if [[ -z "$pattern" ]]; then
+    read -rp "Search pattern: " pattern
+  fi
+
   results="$(
-    rg --no-ignore-vcs --line-number --no-heading . \
+    rg --smart-case --no-ignore-vcs --line-number --no-heading "$pattern" \
       | fzf --multi --delimiter : \
             --preview 'bat --style=numbers --color=always {1}' \
             --preview-window=right:60%
   )" || return
 
-  # If only one selection, open at line
   if [[ $(echo "$results" | wc -l) -eq 1 ]]; then
     file=$(echo "$results" | cut -d: -f1)
     line=$(echo "$results" | cut -d: -f2)
@@ -115,14 +116,34 @@ frg() {
     return
   fi
 
-  # For multiple selections: extract just the filenames
   files=$(echo "$results" | cut -d: -f1 | sort -u)
-
-  # Open all files in nvim (tabs)
-  nvim $files
+  nvim -p $files
 }
-alias tmuxfix="printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'"
 
+git_tag() {
+    local tag="$1"
+    local message="$2"
+    if [[ -z "$tag" || -z "$message" ]]; then
+        echo "Usage: git_tag <tag> <message>"
+        return 1
+    fi
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo "Error: not inside a git repository"
+        return 1
+    fi
+    if git rev-parse "$tag" >/dev/null 2>&1; then
+        echo "Error: tag '$tag' already exists"
+        return 1
+    fi
+    git tag -a "$tag" -m "$message" || return 1
+    git push origin "$tag"
+    echo "Tag '$tag' created and pushed."
+}
+
+# --- Aliases ---
+
+alias reload='source ~/.bashrc'
+alias tmuxfix="printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'"
 alias tpe='file=/tmp/tmux_capture_$(date +%Y%m%d_%H%M%S)_$$; \
 tmux capture-pane -Jp -S - -E - > "$file"; \
 editor=$(command -v nvim || command -v vim || echo vi); \
@@ -130,73 +151,37 @@ editor=$(command -v nvim || command -v vim || echo vi); \
 rm -f "$file"; \
 echo "Deleted $file"'
 
-# Preview local branches whose upstream is gone
+if command -v eza >/dev/null 2>&1; then
+    alias ls='eza --icons=always --group-directories-first'
+    alias ll='eza -lh --icons=always --group-directories-first'
+    alias la='eza -a --icons=always --group-directories-first'
+    alias lt='eza --tree --icons=always'
+fi
+
 alias git-branch-gone='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'''
-
-# Safely delete local branches not on remote (only merged ones)
 alias git-clean-branches='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -d'
-
-# Force delete local branches not on remote (even if not merged)
 alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -D'
 
-git-del-branch() {
-    # Select one or more local branches (excluding current)
-    branches=$(git branch --format='%(refname:short)' \
-        | grep -v "^\*" \
-        | fzf --multi --prompt="Select branch(es) to delete: ")
+# --- Exports ---
 
-    [ -z "$branches" ] && echo "No branch selected." && return 1
+export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
+export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/LuaBridge/Source/LuaBridge:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
+export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
+[[ -z "$TMUX" ]] && export TERM=xterm-256color
+export PROMPT_DIRTRIM=2
+export LIBGL_ALWAYS_SOFTWARE=1
+export NEOVIM_BIN="$HOME/app/nvim-linux-x86_64/bin/nvim"
+export PATH=$HOME/.local/share/forgit/bin:$PATH
 
-    echo "Selected branches:"
-    echo "$branches"
+# --- Sources ---
 
-    # Confirm
-    read -rp "Delete selected branches? [y/N] " ans
-    [[ "$ans" =~ ^[Yy]$ ]] || { echo "Aborted."; return 1; }
-
-    # Delete safely
-    echo "$branches" | xargs -n 1 git branch -d
-}
-
-git-del-branch-force() {
-    branches=$(git branch --format='%(refname:short)' \
-        | grep -v "^\*" \
-        | fzf --multi --prompt="Select branch(es) to FORCE delete: ")
-
-    [ -z "$branches" ] && echo "No branch selected." && return 1
-
-    echo "Selected branches:"
-    echo "$branches"
-
-    read -rp "FORCE delete selected branches? [y/N] " ans
-    [[ "$ans" =~ ^[Yy]$ ]] || { echo "Aborted."; return 1; }
-
-    echo "$branches" | xargs -n 1 git branch -D
-}
-
-git_tag() {
-    local tag="$1"
-    local message="$2"
-
-    if [[ -z "$tag" || -z "$message" ]]; then
-        echo "Usage: git_tag <tag> <message>"
-        return 1
-    fi
-
-    # Ensure we are inside a git repo
-    if ! git rev-parse --git-dir >/dev/null 2>&1; then
-        echo "Error: not inside a git repository"
-        return 1
-    fi
-
-    # Check if tag already exists
-    if git rev-parse "$tag" >/dev/null 2>&1; then
-        echo "Error: tag '$tag' already exists"
-        return 1
-    fi
-
-    git tag -a "$tag" -m "$message" || return 1
-    git push origin "$tag"
-
-    echo "Tag '$tag' created and pushed."
-}
+eval "$(zoxide init bash)"
+eval "$(fzf --bash)"
+source ~/test/fzf-git.sh/fzf-git.sh
+[[ -s /usr/share/autojump/autojump.sh ]] && source /usr/share/autojump/autojump.sh
+if [ -f $HOME/.local/share/bash-completion/completions/git-forgit.bash ]; then
+    source $HOME/.local/share/bash-completion/completions/git-forgit.bash
+fi
+if [ -f $HOME/.local/share/forgit/forgit.plugin.sh ]; then
+    source $HOME/.local/share/forgit/forgit.plugin.sh
+fi
