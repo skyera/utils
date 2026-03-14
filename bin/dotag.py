@@ -65,7 +65,6 @@ EXCLUDED_DIRS = [
 EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
 CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
-abspath = False
 
 
 def parse():
@@ -78,26 +77,20 @@ def parse():
         "--find",
         choices=["py", "find", "fd"],
         default="fd",
-        help="find files method(defualt: py)",
+        help="find files method (default: fd)",
     )
     parser.add_argument(
         "-a", "--abspath", action="store_true", help="store absolute path"
     )
     args = parser.parse_args()
-    if not args.find in ("py", "find", "fd"):
-        parser.print_help()
-        sys.exit()
-
     return args.find, args.abspath
 
 
 def is_excluded(path):
     """Is the directory name excluded?"""
-    path = path.lower()
-    for excluded_dir in EXCLUDED_DIRS_LOWER_CASES:
-        if excluded_dir in path:
-            return True
-    return False
+    path_parts = Path(path).parts
+    excluded_dirs = set(EXCLUDED_DIRS_LOWER_CASES)
+    return any(part.lower() in excluded_dirs for part in path_parts)
 
 
 def visit(files, dirpath, file_names):
@@ -189,19 +182,18 @@ class FdCmd:
             print(result.stderr, file=sys.stderr)
             sys.exit(1)
 
-        files = result.stdout.splitlines()
-        files = [f for f in files if not Path(f).is_symlink()]
-        files = [f for f in files if not " " in f]
+        files = [
+            f for f in result.stdout.splitlines()
+            if not Path(f).is_symlink() and " " not in f
+        ]
         with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
             for line in files:
                 cscope_f.write(f"{line}\n")
 
 
-def get_files():
+def get_files(use_abspath=False):
     myfiles = []
-    curr_dir = "."
-    if abspath:
-        curr_dir = os.getcwd()
+    curr_dir = Path.cwd() if use_abspath else "."
     for root, _, file_names in os.walk(curr_dir):
         visit(myfiles, root, file_names)
     return myfiles
@@ -220,11 +212,11 @@ def fd_files():
     cmd.run_fd()
 
 
-def py_find_files():
-    files = get_files()
-    with open(CSCOPE_FILE_NAME, "w") as cscope_f:
+def py_find_files(use_abspath=False):
+    files = get_files(use_abspath)
+    with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
         for fname in files:
-            cscope_f.write("%s\n" % fname)
+            cscope_f.write(f"{fname}\n")
 
 
 def log_cpu(msg, start):
@@ -232,11 +224,11 @@ def log_cpu(msg, start):
     print(msg, "CPU", cpu, "seconds")
 
 
-def collect_files(find_method):
+def collect_files(find_method, use_abspath=False):
     print("finding files...")
     start = time.time()
     if find_method == "py":
-        py_find_files()
+        py_find_files(use_abspath)
     elif find_method == "find":
         gnu_find_files()
     else:
@@ -255,7 +247,7 @@ def run_cscope():
 
 
 def get_number_files(filename=CSCOPE_FILE_NAME):
-    with open(filename, "r") as cscope_f:
+    with open(filename, "r", encoding="utf-8") as cscope_f:
         lines = cscope_f.readlines()
     return len(lines)
 
@@ -281,21 +273,25 @@ class FilenametagsCreator:
             os.remove(self.temp_filename)
 
     def create_tempfile(self):
-        with open(self.cscope_filename, "r") as cscope_f, \
-             open(self.temp_filename, "w") as temp_f:
+        with open(self.cscope_filename, "r", encoding="utf-8") as cscope_f, \
+             open(self.temp_filename, "w", encoding="utf-8") as temp_f:
             for line in cscope_f:
                 path = line.strip('"\n')
-                name = os.path.basename(path)
+                name = Path(path).name
                 temp_f.write(f"{name}\t{path}\t1\n")
 
     def create_tagfile(self):
-        with open(self.tag_filename, "w") as tag_f:
+        with open(self.tag_filename, "w", encoding="utf-8") as tag_f:
             tag_f.write("!_TAG_FILE_SORTED\t2\t/2=foldcase/\n")
 
     def sort_append_file(self):
-        cmd = f"sort -f {self.temp_filename} >> {self.tag_filename}"
-        print(cmd)
-        subprocess.run(cmd, shell=True, check=True)
+        print(f"sort -f {self.temp_filename} >> {self.tag_filename}")
+        with open(self.tag_filename, "a", encoding="utf-8") as out_f:
+            subprocess.run(
+                ["sort", "-f", self.temp_filename],
+                stdout=out_f,
+                check=True
+            )
 
 
 def create_tags():
@@ -313,12 +309,11 @@ def log_find_method(find_method, abspath):
 def main():
     print(sys.version)
     print(datetime.datetime.now())
-    global abspath
     find_method, abspath = parse()
     log_find_method(find_method, abspath)
 
     start = time.time()
-    collect_files(find_method)
+    collect_files(find_method, abspath)
     run_cscope()
     create_filenametags()
     create_tags()
