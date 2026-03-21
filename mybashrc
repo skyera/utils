@@ -1,7 +1,7 @@
 # fzf
-export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude .git --ignore-file ~/.fdignore"
+export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude.git --ignore-file ~/.fdignore"
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --strip-cwd-prefix --exclude .git"
+export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --strip-cwd-prefix --exclude.git"
 export FZF_DEFAULT_OPTS='
   --preview="if [ -d {} ]; then eza -T --color=always {}; else bat --color=always {}; fi"
 '
@@ -18,11 +18,11 @@ export HISTCONTROL=ignoreboth:erasedups
 shopt -s histappend
 
 _fzf_compgen_path() {
-  fd --hidden --exclude .git . "$1"
+  fd --hidden --exclude.git. "$1"
 }
 
 _fzf_compgen_dir() {
-  fd --type=d --hidden --exclude .git . "$1"
+  fd --type=d --hidden --exclude.git. "$1"
 }
 
 show_file_or_dir_preview="if [ -d {} ]; then eza --tree --icons=always --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
@@ -127,7 +127,7 @@ git_tag() {
         echo "Usage: git_tag <tag> <message>"
         return 1
     fi
-    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    if! git rev-parse --git-dir >/dev/null 2>&1; then
         echo "Error: not inside a git repository"
         return 1
     fi
@@ -165,7 +165,7 @@ alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/:
 # --- Exports ---
 
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
-export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/LuaBridge/Source/LuaBridge:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
+export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
 export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
 [[ -z "$TMUX" ]] && export TERM=xterm-256color
 export PROMPT_DIRTRIM=2
