@@ -68,12 +68,12 @@ fkill() {
 
 up() {
   local d=""
-  limit=$1
+  limit=${1:-1}
   for ((i=1 ; i <= limit ; i++))
   do
     d=$d"../"
   done
-  cd $d
+  cd "$d"
 }
 
 dexec() {
