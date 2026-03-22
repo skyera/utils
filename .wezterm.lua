@@ -41,7 +41,7 @@ config.font = wezterm.font_with_fallback({
 })
 
 config.font_size = 10.0
-config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
+-- config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.enable_tab_bar = true
 config.enable_scroll_bar = true
 config.tab_max_width = 32
