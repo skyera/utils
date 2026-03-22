@@ -64,7 +64,7 @@ Plug 'psf/black'
 call plug#end()
 
 set backspace=indent,eol,start
-set history=1000
+set history=10000
 set ruler
 set showcmd
 set incsearch
