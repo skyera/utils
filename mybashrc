@@ -127,7 +127,7 @@ git_tag() {
         echo "Usage: git_tag <tag> <message>"
         return 1
     fi
-    if! git rev-parse --git-dir >/dev/null 2>&1; then
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
         echo "Error: not inside a git repository"
         return 1
     fi
