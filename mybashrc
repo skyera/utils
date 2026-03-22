@@ -57,7 +57,7 @@ fhist() {
 
 fkill() {
     local pid
-    pid=$(ps -ef | sed 1d | fzf -m | awk '{print $2}')
+    pid=$(ps -ef | fzf -m --header-lines=1 --header='[Process List] (TAB to multi-select)' | awk '{print $2}')
     [ -n "$pid" ] && echo "$pid" | xargs kill -${1:-9}
 }
 
@@ -111,8 +111,9 @@ frg() {
     return
   fi
 
-  files=$(echo "$results" | cut -d: -f1 | sort -u)
-  nvim -p $files
+  # Correctly handle filenames with spaces by using an array
+  mapfile -t files < <(echo "$results" | cut -d: -f1 | sort -u)
+  nvim -p "${files[@]}"
 }
 
 git_tag() {
