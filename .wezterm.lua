@@ -48,8 +48,8 @@ config.tab_max_width = 32
 config.colors = {
     tab_bar = {
         active_tab = {
-            fg_color = '#073642',
-            bg_color = '#2aa198',
+            fg_color = '#282828',
+            bg_color = '#fe8019',
         }
     }
 }
@@ -76,19 +76,23 @@ config.keys = {
     },
 }
 
+local hostname = wezterm.hostname()
+
 wezterm.on("update-status", function(window, pane)
     local overrides = window:get_config_overrides() or {}
     local dimensions = pane:get_dimensions()
+    local show_scroll_bar = dimensions.scrollback_rows > dimensions.viewport_rows and not pane:is_alt_screen_active()
 
-    overrides.enable_scroll_bar = dimensions.scrollback_rows > dimensions.viewport_rows and not pane:is_alt_screen_active()
-
-    window:set_config_overrides(overrides)
+    if overrides.enable_scroll_bar ~= show_scroll_bar then
+        overrides.enable_scroll_bar = show_scroll_bar
+        window:set_config_overrides(overrides)
+    end
   
   local bg = window:effective_config().resolved_palette.background
   window:set_right_status(wezterm.format {
     { Background = { Color = bg } },
     { Foreground = { Color = '#ffffff' } },
-    { Text = ' ' .. wezterm.hostname() .. ' | ' .. wezterm.strftime('%H:%M') .. ' ' },
+    { Text = ' ' .. hostname .. ' | ' .. wezterm.strftime('%H:%M') .. ' ' },
   })
 end)
 
