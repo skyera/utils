@@ -362,6 +362,11 @@ ${IMAGE_NAME}:${TAG} sleep infinity
 ### Ranger
 git clone https://github.com/alexanderjeurissen/ranger_devicons ~/.config/ranger/plugins/ranger_devicons
 
+rename files
+* select files using Space
+* Type :bulkrename
+* Edit in text editor, exit
+
 ```
 yp: copy full path to clipboard
 ctrl + n: open a new tab
