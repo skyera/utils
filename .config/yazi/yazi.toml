@@ -1,0 +1,20 @@
+# Yazi Configuration (Cross-platform)
+# Linux: ~/.config/yazi/yazi.toml
+# Windows: %APPDATA%\yazi\config\yazi.toml
+
+[plugin]
+append_preloaders = [
+    { mime = "text/*", run = "bat" },
+    { mime = "application/json", run = "bat" },
+]
+
+[opener]
+edit = [
+    { run = 'cmd /c "where nvim >nul 2>nul && nvim %* || vim %*"', block = true, for = "windows" },
+    { run = '${EDITOR:-vi} "$@"', block = true, for = "unix" }
+]
+
+[open]
+rules = [
+    { name = "*", use = "edit" }
+]

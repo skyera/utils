@@ -12,9 +12,9 @@ set shell powershell
  
 # change the default open command to work in powerShell
 #cmd open &start $Env:f
-# edit with vim
-map e $vim $Env:f
-map <enter> $vim $Env:f
+# edit with nvim if exists, else vim
+map e $if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim $env:f } else { vim $env:f }
+map <enter> $if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim $env:f } else { vim $env:f }
 # page through any file with bat
 # paging=always so that shorter files don't immediately exit back to lf
 map i $bat --paging=always $Env:f

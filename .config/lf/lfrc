@@ -1,8 +1,8 @@
 # .config/lf/lfrc
 
 set shell bash
-map e $vim $f
-map <enter> $vim $f
+map e $$EDITOR $f
+map <enter> $$EDITOR $f
 
 map i $bat --paging=always $f
 cmd doc $lf -doc | bat -p

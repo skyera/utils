@@ -6,6 +6,8 @@
 export PATH=$HOME/.local/share/forgit/bin:$PATH
 
 # Editor
+export EDITOR=$(command -v nvim || command -v vim || echo vi)
+export VISUAL="$EDITOR"
 export NEOVIM_BIN="$HOME/app/nvim-linux-x86_64/bin/nvim"
 
 # Tool configs
