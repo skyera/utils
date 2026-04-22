@@ -63,6 +63,7 @@ chmod +x "$HOME/.config/ranger/scope.sh" 2>/dev/null
 deploy_file "$REPO_DIR/.config/lf/lfrc"             "$HOME/.config/lf/lfrc"
 deploy_file "$REPO_DIR/.config/lf/icons"            "$HOME/.config/lf/icons"
 deploy_file "$REPO_DIR/.config/git/ignore"          "$HOME/.config/git/ignore"
+deploy_file "$REPO_DIR/.config/fd/ignore"           "$HOME/.config/fd/ignore"
 
 # Yazi configuration
 echo "Deploying Yazi configuration..."

@@ -13,13 +13,21 @@ if not exist "C:\app\bin" mkdir "C:\app\bin"
 xcopy /Y /S /E "%REPO_DIR%\bin\*" "C:\app\bin\"
 
 :: 2. Deploy lf configuration
-echo [2/2] Deploying lf configuration...
+echo [2/2] Deploying application configurations...
 set "LF_CONFIG_DIR=%LOCALAPPDATA%\lf"
 if not exist "%LF_CONFIG_DIR%" mkdir "%LF_CONFIG_DIR%"
+set "FD_CONFIG_DIR=%APPDATA%\fd"
+if not exist "%FD_CONFIG_DIR%" mkdir "%FD_CONFIG_DIR%"
 
-:: Copy lfrc_windows and icons to the target location
+:: Copy configs
 copy /Y "%REPO_DIR%\.config\lf\lfrc_windows" "%LF_CONFIG_DIR%\lfrc"
 if exist "%REPO_DIR%\.config\lf\icons" copy /Y "%REPO_DIR%\.config\lf\icons" "%LF_CONFIG_DIR%\icons"
+copy /Y "%REPO_DIR%\.config\fd\ignore" "%FD_CONFIG_DIR%\ignore"
+copy /Y "%REPO_DIR%\.ripgreprc" "%USERPROFILE%\.ripgreprc"
+
+:: Set Ripgrep Environment Variable
+echo Setting RIPGREP_CONFIG_PATH...
+setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc"
 
 echo.
 echo Deployment complete!

@@ -1,0 +1,17 @@
+.git/
+cscope.*
+tags
+tags.files
+filenametags
+*.bak
+boost*
+*.dep
+*.d
+*.obj
+*.sbr
+*.o
+*.obj
+Debug/
+Release/
+obj/
+ThirdParty/
