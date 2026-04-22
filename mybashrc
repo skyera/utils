@@ -32,7 +32,7 @@ fi
 # FZF
 # =============================================================================
 
-export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude .git --ignore-file ~/.fdignore"
+export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude .git --ignore-file ~/.config/fd/ignore"
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --strip-cwd-prefix --exclude .git"
 
