@@ -208,6 +208,14 @@ install_plugin() {
 install_plugin "junegunn/fzf-git.sh"
 install_plugin "wfxr/forgit"
 
+# Ranger Plugins
+RANGER_PLUGIN_DIR="$HOME/.config/ranger/plugins"
+if [ ! -d "$RANGER_PLUGIN_DIR/ranger_devicons" ]; then
+    echo "Installing ranger_devicons..."
+    mkdir -p "$RANGER_PLUGIN_DIR"
+    git clone --depth 1 https://github.com/alexanderjeurissen/ranger_devicons "$RANGER_PLUGIN_DIR/ranger_devicons"
+fi
+
 if [ -f "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh" ]; then
     source "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh"
 fi
