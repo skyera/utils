@@ -1,32 +1,29 @@
 " Enable preview mode on startup
-"~/.vifm/vifmrc
-"Windows: C:\Users\xxx\AppData\Roaming\Vifm\vifmrc
-"export TERM=xterm-256color
 view!
 set vifminfo+=tui
 
-" Preview text and code files with bat
-fileviewer *.txt,*.md,*.c,*.h,*.py,*.sh,*.js,*.json,*.cpp,*.java,*.go,*.lua bat --color=always --style=numbers %c
-
-" Fallback for other files (non-directories)
-fileviewer *.[!d]/ bat --color=always --style=plain %c
-
+" --- File Viewers ---
 " Preview directories with ls
-fileviewer */ ls --color=always %c
-fileviewer .*/ ls --color=always %c
+fileviewer */,**/ ls --color=always %c
 
+" Preview everything else with bat
+" bat handles binary files and unknown extensions gracefully
+fileviewer * bat --color=always --style=numbers %c
+
+" --- Keybindings ---
 " Toggle preview with 'w'
 nnoremap w :view!<cr>
-
-" Linux
-command! FZFfind :let $FZF_PICK = term('fd . --type f | fzf --preview "bat --color=always --style=numbers {}" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
+" Map 's' to FZF search
 nnoremap s :FZFfind<cr>
-
-" Windows
-" Define FZFfind command to run the batch script
-command! FZFfind :execute '!C:\app\bin\vifm_fzf_find.bat %u'
-
-" Map to 's' key in normal mode
-nnoremap s :FZFfind<cr>
-
+" Quick quit
 nnoremap q :q<cr>
+
+" --- Commands ---
+" Cross-platform FZFfind
+if $OS == 'Windows_NT'
+    " Windows: Expects vifm_fzf_find.bat to be in PATH (installed via deploy.sh)
+    command! FZFfind :execute '!vifm_fzf_find.bat %u'
+else
+    " Linux/macOS: Run inline fzf with a preview window
+    command! FZFfind :let $FZF_PICK = term('fd . --type f | fzf --preview "bat --color=always --style=numbers {}" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
+endif
