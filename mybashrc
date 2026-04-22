@@ -18,11 +18,15 @@ export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
 export PROMPT_DIRTRIM=2
 export LIBGL_ALWAYS_SOFTWARE=1
 
-# History
+# History (shell-agnostic)
 export HISTSIZE=10000
 export HISTFILESIZE=20000
 export HISTCONTROL=ignoreboth:erasedups
-shopt -s histappend
+if [[ -n "$BASH_VERSION" ]]; then
+    shopt -s histappend
+elif [[ -n "$ZSH_VERSION" ]]; then
+    setopt HIST_APPEND HIST_IGNORE_DUPS HIST_IGNORE_SPACE
+fi
 
 # =============================================================================
 # FZF
@@ -67,7 +71,11 @@ fvim() {
 }
 
 fhist() {
-    eval $(history | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')
+    if [[ -n "$BASH_VERSION" ]]; then
+        eval $(history | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')
+    elif [[ -n "$ZSH_VERSION" ]]; then
+        eval $(fc -l 1 | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')
+    fi
 }
 
 fkill() {
@@ -110,7 +118,11 @@ frg() {
     local results file line files
 
     if [[ -z "$pattern" ]]; then
-        read -rp "Search pattern: " pattern
+        if [[ -n "$BASH_VERSION" ]]; then
+            read -rp "Search pattern: " pattern
+        elif [[ -n "$ZSH_VERSION" ]]; then
+            read "pattern?Search pattern: "
+        fi
     fi
 
     results="$(
@@ -127,7 +139,7 @@ frg() {
         return
     fi
 
-    mapfile -t files < <(echo "$results" | cut -d: -f1 | sort -u)
+    files=($(echo "$results" | cut -d: -f1 | sort -u))
     nvim -p "${files[@]}"
 }
 
@@ -181,9 +193,15 @@ alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/:
 # =============================================================================
 # SOURCES
 # =============================================================================
+export FORGIT_INSTALL_DIR="$HOME/.local/share/forgit"
 
-eval "$(zoxide init bash)"
-eval "$(fzf --bash)"
+if [[ -n "$BASH_VERSION" ]]; then
+    eval "$(zoxide init bash)"
+    eval "$(fzf --bash)"
+elif [[ -n "$ZSH_VERSION" ]]; then
+    eval "$(zoxide init zsh)"
+    eval "$(fzf --zsh)"
+fi
 
 # =============================================================================
 # PLUGINS
@@ -246,7 +264,10 @@ if [ -f "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh" ]; then
     source "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh"
 fi
 if [ -f "$PLUGINS_DIR/forgit/completions/git-forgit.bash" ]; then
-    source "$PLUGINS_DIR/forgit/completions/git-forgit.bash"
+    [[ -n "$BASH_VERSION" ]] && source "$PLUGINS_DIR/forgit/completions/git-forgit.bash"
+fi
+if [ -f "$PLUGINS_DIR/forgit/completions/git-forgit.zsh" ]; then
+    [[ -n "$ZSH_VERSION" ]] && source "$PLUGINS_DIR/forgit/completions/git-forgit.zsh"
 fi
 if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
     source "$PLUGINS_DIR/forgit/forgit.plugin.sh"
