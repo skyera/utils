@@ -3,8 +3,8 @@
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# 1. Create necessary directories
-mkdir -p ~/.config/ranger ~/.config/lf ~/.config/git ~/.config/yazi ~/.config/nvim ~/.vifm ~/bin
+# 1. Ensure bin exists (for scripts)
+mkdir -p ~/bin
 
 # 2. Helper function to copy
 deploy_file() {
@@ -15,6 +15,9 @@ deploy_file() {
         echo "Warning: Source $src does not exist. Skipping."
         return
     fi
+
+    # Create destination directory if it doesn't exist
+    mkdir -p "$(dirname "$dest")"
 
     if [ -f "$dest" ]; then
         if cmp -s "$src" "$dest"; then
