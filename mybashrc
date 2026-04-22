@@ -172,10 +172,32 @@ export PATH=$HOME/.local/share/forgit/bin:$PATH
 
 eval "$(zoxide init bash)"
 eval "$(fzf --bash)"
-source ~/test/fzf-git.sh/fzf-git.sh
-if [ -f $HOME/.local/share/bash-completion/completions/git-forgit.bash ]; then
-    source $HOME/.local/share/bash-completion/completions/git-forgit.bash
+# --- Plugins ---
+# NOTE: To switch to a dedicated plugin manager (Sheldon), install via:
+# Cargo: cargo install sheldon
+
+PLUGINS_DIR="$HOME/.local/share"
+mkdir -p "$PLUGINS_DIR"
+
+install_plugin() {
+    local repo=$1
+    local name=$(basename "$repo")
+    local dir="$PLUGINS_DIR/$name"
+    if [ ! -d "$dir" ]; then
+        echo "Installing $repo..."
+        git clone --depth 1 "https://github.com/$repo.git" "$dir"
+    fi
+}
+
+install_plugin "junegunn/fzf-git.sh"
+install_plugin "wfxr/forgit"
+
+if [ -f "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh" ]; then
+    source "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh"
 fi
-if [ -f $HOME/.local/share/forgit/forgit.plugin.sh ]; then
-    source $HOME/.local/share/forgit/forgit.plugin.sh
+if [ -f "$PLUGINS_DIR/forgit/completions/git-forgit.bash" ]; then
+    source "$PLUGINS_DIR/forgit/completions/git-forgit.bash"
+fi
+if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
+    source "$PLUGINS_DIR/forgit/forgit.plugin.sh"
 fi
