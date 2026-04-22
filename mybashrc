@@ -208,6 +208,16 @@ if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
     git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 fi
 
+# Install Hack Nerd Font if missing
+if [ ! -f "$HOME/.local/share/fonts/HackNerdFont-Regular.ttf" ]; then
+    echo "Installing Hack Nerd Font..."
+    mkdir -p "$HOME/.local/share/fonts"
+    curl -fLo "$HOME/.local/share/fonts/HackNerdFont-Regular.ttf" \
+        https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack/Regular/HackNerdFont-Regular.ttf
+    # Update font cache if fc-cache is available
+    command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$HOME/.local/share/fonts"
+fi
+
 PLUGINS_DIR="$HOME/.local/share"
 mkdir -p "$PLUGINS_DIR"
 
