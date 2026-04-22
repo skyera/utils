@@ -17,8 +17,9 @@ echo [2/2] Deploying lf configuration...
 set "LF_CONFIG_DIR=%LOCALAPPDATA%\lf"
 if not exist "%LF_CONFIG_DIR%" mkdir "%LF_CONFIG_DIR%"
 
-:: Copy lfrc_windows to the target location as 'lfrc'
+:: Copy lfrc_windows and icons to the target location
 copy /Y "%REPO_DIR%\.config\lf\lfrc_windows" "%LF_CONFIG_DIR%\lfrc"
+if exist "%REPO_DIR%\.config\lf\icons" copy /Y "%REPO_DIR%\.config\lf\icons" "%LF_CONFIG_DIR%\icons"
 
 echo.
 echo Deployment complete!

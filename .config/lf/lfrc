@@ -17,8 +17,8 @@ cmd fzf_find $~/bin/fzf_find.sh
 map zz :fzf_find
 
 # --- Navigation ---
-# Freeze the starting directory at load time
-%lf -remote "send $id cmd go_origin cd $(pwd)"
+# Freeze the starting directory at load time using a sync shell call
+$lf -remote "send $id cmd go_origin cd '$(pwd)'"
 map go :go_origin
 
 # https://github.com/gokcehan/lf/blob/master/etc/icons.example->~/.config/lf/icons
