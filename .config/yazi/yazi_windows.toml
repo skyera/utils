@@ -1,4 +1,4 @@
-# C:\Users\zliu\AppData\Roaming\yazi\config\yazi.toml
+# %APPDATA%\yazi\config\yazi.toml
 [plugin]
 append_preloaders = [
     { mime = "text/*", run = "bat" },
