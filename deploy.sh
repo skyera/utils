@@ -58,10 +58,10 @@ deploy_file "$REPO_DIR/.config/git/ignore"          "$HOME/.config/git/ignore"
 
 # Yazi configuration
 echo "Deploying Yazi configuration..."
-deploy_file "$REPO_DIR/yazi/theme.toml"             "$HOME/.config/yazi/theme.toml"
+deploy_file "$REPO_DIR/.config/yazi/theme.toml"             "$HOME/.config/yazi/theme.toml"
 # Note: yazi_windows.toml is present but usually yazi expects yazi.toml on Linux
-if [ -f "$REPO_DIR/yazi/yazi.toml" ]; then
-    deploy_file "$REPO_DIR/yazi/yazi.toml"          "$HOME/.config/yazi/yazi.toml"
+if [ -f "$REPO_DIR/.config/yazi/yazi.toml" ]; then
+    deploy_file "$REPO_DIR/.config/yazi/yazi.toml"          "$HOME/.config/yazi/yazi.toml"
 fi
 
 # Binaries
