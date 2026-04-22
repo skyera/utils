@@ -42,7 +42,7 @@ fi
 
 deploy_file "$REPO_DIR/myvimrc"    "$HOME/.vimrc"
 deploy_file "$REPO_DIR/myvimrc"    "$HOME/.config/nvim/init.vim"
-deploy_file "$REPO_DIR/tigrc"      "$HOME/.tigrc"
+deploy_file "$REPO_DIR/.tigrc"      "$HOME/.tigrc"
 deploy_file "$REPO_DIR/.tmux.conf" "$HOME/.tmux.conf"
 deploy_file "$REPO_DIR/.ripgreprc" "$HOME/.ripgreprc"
 
