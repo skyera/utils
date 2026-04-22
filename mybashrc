@@ -1,47 +1,63 @@
-# fzf
-export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude .git --ignore-file ~/.fdignore"
-export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --strip-cwd-prefix --exclude .git"
+# =============================================================================
+# ENVIRONMENT
+# =============================================================================
 
-# History optimization
+# PATH
+export PATH=$HOME/.local/share/forgit/bin:$PATH
+
+# Editor
+export NEOVIM_BIN="$HOME/app/nvim-linux-x86_64/bin/nvim"
+
+# Tool configs
+export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
+export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
+export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
+
+# Terminal & Display
+[[ -z "$TMUX" ]] && export TERM=xterm-256color
+export PROMPT_DIRTRIM=2
+export LIBGL_ALWAYS_SOFTWARE=1
+
+# History
 export HISTSIZE=10000
 export HISTFILESIZE=20000
 export HISTCONTROL=ignoreboth:erasedups
 shopt -s histappend
 
-_fzf_compgen_path() {
-  fd --hidden --exclude .git "$1"
-}
+# =============================================================================
+# FZF
+# =============================================================================
 
-_fzf_compgen_dir() {
-  fd --type=d --hidden --exclude .git "$1"
-}
+export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude .git --ignore-file ~/.fdignore"
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --strip-cwd-prefix --exclude .git"
 
 show_file_or_dir_preview="if [ -d {} ]; then eza --tree --icons=always --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
-
 export FZF_DEFAULT_OPTS="--preview '$show_file_or_dir_preview'"
 export FZF_CTRL_T_OPTS="--preview '$show_file_or_dir_preview'"
 export FZF_ALT_C_OPTS="--preview 'eza --tree --icons=always --color=always {} | head -200'"
 export FZF_CTRL_R_OPTS="--sort --exact --preview 'echo {}'"
 
-# Advanced customization of fzf options via _fzf_comprun function
-_fzf_comprun() {
-  local command=$1
-  shift
+_fzf_compgen_path() { fd --hidden --exclude .git "$1"; }
+_fzf_compgen_dir() { fd --type=d --hidden --exclude .git "$1"; }
 
-  case "$command" in
-    cd)           fzf --preview 'eza --tree --color=always {} | head -200' "$@" ;;
-    export|unset) fzf --preview "eval 'echo ${}'"         "$@" ;;
-    ssh)          fzf --preview 'dig {}'                   "$@" ;;
-    *)            fzf --preview "$show_file_or_dir_preview" "$@" ;;
-  esac
+_fzf_comprun() {
+    local command=$1; shift
+    case "$command" in
+        cd) fzf --preview 'eza --tree --color=always {} | head -200' "$@" ;;
+        export|unset) fzf --preview "eval 'echo ${}'" "$@" ;;
+        ssh) fzf --preview 'dig {}' "$@" ;;
+        *) fzf --preview "$show_file_or_dir_preview" "$@" ;;
+    esac
 }
 
-# --- Functions ---
+# =============================================================================
+# FUNCTIONS
+# =============================================================================
 
 fcd() {
-  local dir
-  dir=$(fd -t d | fzf --preview 'eza --tree --icons=always --color=always {} | head -200') && cd "$dir"
+    local dir
+    dir=$(fd -t d | fzf --preview 'eza --tree --icons=always --color=always {} | head -200') && cd "$dir"
 }
 
 fvim() {
@@ -51,7 +67,7 @@ fvim() {
 }
 
 fhist() {
-  eval $(history | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')
+    eval $(history | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')
 }
 
 fkill() {
@@ -61,13 +77,12 @@ fkill() {
 }
 
 up() {
-  local d=""
-  limit=${1:-1}
-  for ((i=1 ; i <= limit ; i++))
-  do
-    d=$d"../"
-  done
-  cd "$d"
+    local d=""
+    limit=${1:-1}
+    for ((i=1; i <= limit; i++)); do
+        d=$d"../"
+    done
+    cd "$d"
 }
 
 dexec() {
@@ -77,8 +92,10 @@ dexec() {
 
 fzfc() {
     curl -s cht\.sh/$(
-      curl -s cht\.sh/:list | \
-      IFS=+ fzf --preview 'curl -s http://cht.sh{}' -q "$*"); }
+        curl -s cht\.sh/:list |
+        IFS=+ fzf --preview 'curl -s http://cht.sh{}' -q "$*"
+    )
+}
 
 valg() {
     local ts
@@ -89,30 +106,29 @@ valg() {
 }
 
 frg() {
-  local pattern="$1"
-  local results file line files
+    local pattern="$1"
+    local results file line files
 
-  if [[ -z "$pattern" ]]; then
-    read -rp "Search pattern: " pattern
-  fi
+    if [[ -z "$pattern" ]]; then
+        read -rp "Search pattern: " pattern
+    fi
 
-  results="$(
-    rg --smart-case --no-ignore-vcs --line-number --no-heading "$pattern" \
-      | fzf --multi --delimiter : \
+    results="$(
+        rg --smart-case --no-ignore-vcs --line-number --no-heading "$pattern" |
+        fzf --multi --delimiter : \
             --preview 'bat --style=numbers --color=always {1}' \
             --preview-window=right:60%
-  )" || return
+    )" || return
 
-  if [[ $(echo "$results" | wc -l) -eq 1 ]]; then
-    file=$(echo "$results" | cut -d: -f1)
-    line=$(echo "$results" | cut -d: -f2)
-    nvim "+${line}" "$file"
-    return
-  fi
+    if [[ $(echo "$results" | wc -l) -eq 1 ]]; then
+        file=$(echo "$results" | cut -d: -f1)
+        line=$(echo "$results" | cut -d: -f2)
+        nvim "+${line}" "$file"
+        return
+    fi
 
-  # Correctly handle filenames with spaces by using an array
-  mapfile -t files < <(echo "$results" | cut -d: -f1 | sort -u)
-  nvim -p "${files[@]}"
+    mapfile -t files < <(echo "$results" | cut -d: -f1 | sort -u)
+    nvim -p "${files[@]}"
 }
 
 git_tag() {
@@ -135,16 +151,21 @@ git_tag() {
     echo "Tag '$tag' created and pushed."
 }
 
-# --- Aliases ---
+# =============================================================================
+# ALIASES
+# =============================================================================
 
 alias reload='source ~/.bashrc'
 alias tmuxfix="printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'"
-alias tpe='file=/tmp/tmux_capture_$(date +%Y%m%d_%H%M%S)_$$; \
-tmux capture-pane -Jp -S - -E - > "$file"; \
-editor=$(command -v nvim || command -v vim || echo vi); \
-"$editor" "$file"; \
-rm -f "$file"; \
-echo "Deleted $file"'
+
+tpe() {
+    local file="/tmp/tmux_capture_$(date +%Y%m%d_%H%M%S)_$$"
+    tmux capture-pane -Jp -S - -E - > "$file"
+    local editor=$(command -v nvim || command -v vim || echo vi)
+    "$editor" "$file"
+    rm -f "$file"
+    echo "Deleted $file"
+}
 
 if command -v eza >/dev/null 2>&1; then
     alias ls='eza --icons=always --group-directories-first'
@@ -157,22 +178,17 @@ alias git-branch-gone='git fetch --prune && git branch -vv | awk '\''/: gone]/{p
 alias git-clean-branches='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -d'
 alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -D'
 
-# --- Exports ---
-
-export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
-export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
-export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
-[[ -z "$TMUX" ]] && export TERM=xterm-256color
-export PROMPT_DIRTRIM=2
-export LIBGL_ALWAYS_SOFTWARE=1
-export NEOVIM_BIN="$HOME/app/nvim-linux-x86_64/bin/nvim"
-export PATH=$HOME/.local/share/forgit/bin:$PATH
-
-# --- Sources ---
+# =============================================================================
+# SOURCES
+# =============================================================================
 
 eval "$(zoxide init bash)"
 eval "$(fzf --bash)"
-# --- Plugins ---
+
+# =============================================================================
+# PLUGINS
+# =============================================================================
+
 # NOTE: To switch to a dedicated plugin manager (Sheldon), install via:
 # Cargo: cargo install sheldon
 
