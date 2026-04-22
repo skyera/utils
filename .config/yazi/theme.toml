@@ -6,7 +6,7 @@ selection       = { bg = "#504945", bold = true }
 
 [filetype]
 rules = [
-    { name = "*/", fg = "#458588", bold = true },
+    { name = "*/", fg = "#83a598", bold = true },
     { mime = "application/x-executable", fg = "#b8bb26" },
     { mime = "image/*", fg = "#d3869b" },
     { mime = "video/*", fg = "#d3869b" },
