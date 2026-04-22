@@ -4,7 +4,7 @@
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # 1. Create necessary directories
-mkdir -p ~/.config/ranger ~/.config/lf ~/.config/git ~/.config/yazi ~/bin
+mkdir -p ~/.config/ranger ~/.config/lf ~/.config/git ~/.config/yazi ~/.config/nvim ~/bin
 
 # 2. Helper function to copy
 deploy_file() {
@@ -41,6 +41,7 @@ if ! grep -Fxq "$BASHRC_LINE" "$HOME/.bashrc" 2>/dev/null; then
 fi
 
 deploy_file "$REPO_DIR/myvimrc"    "$HOME/.vimrc"
+deploy_file "$REPO_DIR/myvimrc"    "$HOME/.config/nvim/init.vim"
 deploy_file "$REPO_DIR/tigrc"      "$HOME/.tigrc"
 deploy_file "$REPO_DIR/.tmux.conf" "$HOME/.tmux.conf"
 deploy_file "$REPO_DIR/.ripgreprc" "$HOME/.ripgreprc"
