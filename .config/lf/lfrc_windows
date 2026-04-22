@@ -52,4 +52,4 @@ map go :go_origin
 
 set icons true
 # https://github.com/gokcehan/lf/blob/master/etc/icons.example ->C:\Users\zliu\AppData\Local\lf\icons
-map ;y $echo -n $env:f | clip
+map <c-c> $echo -n $env:f | clip

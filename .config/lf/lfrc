@@ -23,5 +23,4 @@ map go :go_origin
 
 # https://github.com/gokcehan/lf/blob/master/etc/icons.example->~/.config/lf/icons
 set icons true
-map ;y $echo -n "$d/$f" | xclip -selection clipboard
 
