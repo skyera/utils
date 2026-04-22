@@ -44,6 +44,11 @@ map V $C:\Users\zliu\AppData\Local\Programs\QuickLook\QuickLook.exe $env:f
 cmd fzf_find $C:/app/bin/fzf_find.bat
 map zz :fzf_find
 
+# --- Navigation ---
+# Capture starting directory to allow returning with 'go'
+cmd go_origin cd %CD%
+map go :go_origin
+
 set icons true
 # https://github.com/gokcehan/lf/blob/master/etc/icons.example ->C:\Users\zliu\AppData\Local\lf\icons
 map <c-c> $echo $env:f | clip
