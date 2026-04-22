@@ -49,6 +49,8 @@ deploy_file "$REPO_DIR/.ripgreprc" "$HOME/.ripgreprc"
 # Config directories
 deploy_file "$REPO_DIR/.config/ranger/rc.conf"      "$HOME/.config/ranger/rc.conf"
 deploy_file "$REPO_DIR/.config/ranger/commands.py"  "$HOME/.config/ranger/commands.py"
+deploy_file "$REPO_DIR/.config/ranger/scope.sh"     "$HOME/.config/ranger/scope.sh"
+chmod +x "$HOME/.config/ranger/scope.sh" 2>/dev/null
 deploy_file "$REPO_DIR/.config/lf/lfrc"             "$HOME/.config/lf/lfrc"
 deploy_file "$REPO_DIR/.config/lf/icons"            "$HOME/.config/lf/icons"
 deploy_file "$REPO_DIR/.config/git/ignore"          "$HOME/.config/git/ignore"
