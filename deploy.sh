@@ -40,6 +40,14 @@ if ! grep -Fxq "$BASHRC_LINE" "$HOME/.bashrc" 2>/dev/null; then
     echo -e "\n# Source personal aliases and functions\n$BASHRC_LINE" >> "$HOME/.bashrc"
 fi
 
+# Also add to .zshrc on macOS (default shell since Catalina)
+if [ "$(uname)" = "Darwin" ]; then
+    if ! grep -Fxq "$BASHRC_LINE" "$HOME/.zshrc" 2>/dev/null; then
+        echo "Adding sourcing line to ~/.zshrc"
+        echo -e "\n# Source personal aliases and functions\n$BASHRC_LINE" >> "$HOME/.zshrc"
+    fi
+fi
+
 deploy_file "$REPO_DIR/myvimrc"    "$HOME/.vimrc"
 deploy_file "$REPO_DIR/myvimrc"    "$HOME/.config/nvim/init.vim"
 deploy_file "$REPO_DIR/.tigrc"      "$HOME/.tigrc"
@@ -74,3 +82,26 @@ for f in "$REPO_DIR/bin/"*; do
 done
 
 echo "Deployment complete! Please restart your shell or run 'source ~/.bashrc'."
+
+# 4. Git commit and push (optional)
+git_commit_push() {
+    if [ ! -d ".git" ]; then
+        echo "Not a git repository. Skipping commit/push."
+        return
+    fi
+
+    local message="${1:-Update dotfiles}"
+
+    git add -A
+
+    if git diff --quiet && git diff --cached --quiet; then
+        echo "No changes to commit."
+        return
+    fi
+
+    echo "Committing and pushing..."
+    git commit -m "$message" && git push
+    echo "Done!"
+}
+
+git_commit_push "${1:-Update dotfiles}"
