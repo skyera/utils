@@ -1,4 +1,41 @@
-color date             cyan   black      # Commit dates
-set diff-options = --diff-merges=m
+# --- Visuals & Layout ---
+set vertical-split = yes
+set line-number = yes
+set tab-size = 4
+set main-view = date:default author:email-user,maxwidth=15 id:yes,color graph:yes,refs commit-title
+
+color date             cyan   black
+color cursor           black  yellow bold
+color author           yellow default
+color "---"            red    default
+color "+++"            green  default
+color "+ "             green  default
+color "- "             red    default
+
+# --- Behavior ---
 set ignore-case = yes
-color cursor black yellow bold
+set wrap-search = yes
+set refresh-mode = auto
+set diff-options = -C5 --diff-merges=m
+
+# --- Keybindings ---
+# General Navigation
+bind generic <C-f> scroll-page-down
+bind generic <C-b> scroll-page-up
+bind generic <C-d> scroll-half-page-down
+bind generic <C-u> scroll-half-page-up
+bind generic <C-e> scroll-line-down
+bind generic <C-y> scroll-line-up
+bind generic <C-Down> scroll-line-down
+bind generic <C-Up>   scroll-line-up
+
+# Diff Navigation (within a commit)
+bind diff    [     chunk-prev
+bind diff    ]     chunk-next
+bind diff    {     file-prev
+bind diff    }     file-next
+
+# Actions
+bind generic W     :toggle diff-options --ignore-all-space
+bind generic Y     !@sh -c "echo -n %(commit) | ~/test/utils/bin/osc52-yank.sh"
+bind generic V     !nvim +%(line) %(file)
