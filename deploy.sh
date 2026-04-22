@@ -82,26 +82,3 @@ for f in "$REPO_DIR/bin/"*; do
 done
 
 echo "Deployment complete! Please restart your shell or run 'source ~/.bashrc'."
-
-# 4. Git commit and push (optional)
-git_commit_push() {
-    if [ ! -d ".git" ]; then
-        echo "Not a git repository. Skipping commit/push."
-        return
-    fi
-
-    local message="${1:-Update dotfiles}"
-
-    git add -A
-
-    if git diff --quiet && git diff --cached --quiet; then
-        echo "No changes to commit."
-        return
-    fi
-
-    echo "Committing and pushing..."
-    git commit -m "$message" && git push
-    echo "Done!"
-}
-
-git_commit_push "${1:-Update dotfiles}"
