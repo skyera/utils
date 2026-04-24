@@ -25,9 +25,10 @@ call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
 :: Neovim configuration selection
 echo.
 echo Select Neovim configuration style:
-echo 1) Lua (Modern, faster, separate config)
+echo 1) Lua (Modern, faster, separate config) [Default]
 echo 2) Vimscript (Legacy, uses myvimrc/init.vim)
-set /p NVIM_CHOICE="Enter choice [1-2]: "
+set /p NVIM_CHOICE="Enter choice [1-2] (default 1): "
+if "!NVIM_CHOICE!"=="" set "NVIM_CHOICE=1"
 
 if "%NVIM_CHOICE%"=="1" (
     :: Deploy Neovim Lua configuration

@@ -56,9 +56,10 @@ deploy_file "$REPO_DIR/myvimrc"    "$HOME/.vimrc"
 # Neovim configuration selection
 echo ""
 echo "Select Neovim configuration style:"
-echo "1) Lua (Modern, faster, separate config)"
+echo "1) Lua (Modern, faster, separate config) [Default]"
 echo "2) Vimscript (Legacy, uses myvimrc/init.vim)"
-read -p "Enter choice [1-2]: " NVIM_CHOICE
+read -p "Enter choice [1-2] (default 1): " NVIM_CHOICE
+NVIM_CHOICE=${NVIM_CHOICE:-1}
 
 case $NVIM_CHOICE in
     1)
