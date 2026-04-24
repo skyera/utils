@@ -20,6 +20,8 @@ call :deploy_file "%REPO_DIR%\.config\lf\lfrc_windows" "%LOCALAPPDATA%\lf\lfrc"
 call :deploy_file "%REPO_DIR%\.config\lf\icons"        "%LOCALAPPDATA%\lf\icons"
 call :deploy_file "%REPO_DIR%\.config\fd\ignore"      "%APPDATA%\fd\ignore"
 call :deploy_file "%REPO_DIR%\.ripgreprc"             "%USERPROFILE%\.ripgreprc"
+call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
+call :deploy_file "%REPO_DIR%\myvimrc"                "%LOCALAPPDATA%\nvim\init.vim"
 
 :: Set Environment Variables
 echo Setting Environment Variables...
