@@ -15,9 +15,11 @@ if has('nvim')
     Plug 'nvim-tree/nvim-tree.lua'
     Plug 'rbgrouleff/bclose.vim'
     Plug 'ibhagwan/fzf-lua', {'do': ':UpdateRemotePlugins'}
+    Plug 'goolord/alpha-nvim'
 else
     Plug 'vim-scripts/cscope_macros.vim'
     Plug 'ojroques/vim-oscyank', { 'branch': 'main' }
+    Plug 'mhinz/vim-startify'
 endif
 if !has('win32') && !has('gui_running')
     Plug 'francoiscabrol/ranger.vim'
@@ -355,6 +357,10 @@ EOF
     nnoremap <silent> <leader>pf :lua require('fzf-lua').files()<CR>
     nnoremap <silent> <leader>pg :lua require('fzf-lua').live_grep()<CR>
     nnoremap <silent> <leader>pb :lua require('fzf-lua').buffers()<CR>
+
+    lua << EOF
+    require'alpha'.setup(require'alpha.themes.startify'.config)
+EOF
 endif
 
 au FileType vimwiki silent! iunmap <buffer> <Tab>
