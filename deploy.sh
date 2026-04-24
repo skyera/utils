@@ -52,7 +52,17 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 deploy_file "$REPO_DIR/myvimrc"    "$HOME/.vimrc"
-deploy_file "$REPO_DIR/myvimrc"    "$HOME/.config/nvim/init.vim"
+
+# Neovim configuration (Lua)
+if [ -d "$REPO_DIR/.config/nvim" ]; then
+    echo "Deploying Neovim Lua configuration..."
+    mkdir -p "$HOME/.config/nvim"
+    # Remove old init.vim if it exists to avoid conflicts
+    [ -f "$HOME/.config/nvim/init.vim" ] && rm "$HOME/.config/nvim/init.vim"
+    cp -r "$REPO_DIR/.config/nvim/"* "$HOME/.config/nvim/"
+    echo "Deployed Neovim configuration to $HOME/.config/nvim"
+fi
+
 deploy_file "$REPO_DIR/.tigrc"      "$HOME/.tigrc"
 deploy_file "$REPO_DIR/.vifm/vifmrc" "$HOME/.vifm/vifmrc"
 deploy_file "$REPO_DIR/.tmux.conf" "$HOME/.tmux.conf"
