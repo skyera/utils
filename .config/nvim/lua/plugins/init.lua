@@ -43,7 +43,10 @@ return {
 
   -- Navigation (Classic Tools)
   "scrooloose/nerdtree",
-  "tiagofumo/vim-nerdtree-syntax-highlight",
+  {
+    "tiagofumo/vim-nerdtree-syntax-highlight",
+    dependencies = { "scrooloose/nerdtree" },
+  },
   "jlanzarotta/bufexplorer",
   "yegappan/mru",
   {
@@ -51,7 +54,10 @@ return {
     dependencies = { "vim-scripts/genutils" },
   },
   "junegunn/fzf",
-  "junegunn/fzf.vim",
+  {
+    "junegunn/fzf.vim",
+    dependencies = { "junegunn/fzf" },
+  },
   "jremmen/vim-ripgrep",
   "mhinz/vim-grepper",
   "mileszs/ack.vim",
@@ -60,6 +66,7 @@ return {
   -- Tree
   {
     "nvim-tree/nvim-tree.lua",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
       require("nvim-tree").setup({
         view = { width = 30, preserve_window_proportions = true },
@@ -95,6 +102,7 @@ return {
   -- Terminal Utilities (Conditional)
   {
     "francoiscabrol/ranger.vim",
+    dependencies = { "rbgrouleff/bclose.vim" },
     enabled = function() return vim.fn.has("win32") == 0 and vim.fn.has("gui_running") == 0 end,
   },
   {
