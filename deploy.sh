@@ -53,15 +53,34 @@ fi
 
 deploy_file "$REPO_DIR/myvimrc"    "$HOME/.vimrc"
 
-# Neovim configuration (Lua)
-if [ -d "$REPO_DIR/.config/nvim" ]; then
-    echo "Deploying Neovim Lua configuration..."
-    mkdir -p "$HOME/.config/nvim"
-    # Remove old init.vim if it exists to avoid conflicts
-    [ -f "$HOME/.config/nvim/init.vim" ] && rm "$HOME/.config/nvim/init.vim"
-    cp -r "$REPO_DIR/.config/nvim/"* "$HOME/.config/nvim/"
-    echo "Deployed Neovim configuration to $HOME/.config/nvim"
-fi
+# Neovim configuration selection
+echo ""
+echo "Select Neovim configuration style:"
+echo "1) Lua (Modern, faster, separate config)"
+echo "2) Vimscript (Legacy, uses myvimrc/init.vim)"
+read -p "Enter choice [1-2]: " NVIM_CHOICE
+
+case $NVIM_CHOICE in
+    1)
+        if [ -d "$REPO_DIR/.config/nvim" ]; then
+            echo "Deploying Neovim Lua configuration..."
+            mkdir -p "$HOME/.config/nvim"
+            [ -f "$HOME/.config/nvim/init.vim" ] && rm "$HOME/.config/nvim/init.vim"
+            cp -r "$REPO_DIR/.config/nvim/"* "$HOME/.config/nvim/"
+            echo "Deployed Neovim configuration to $HOME/.config/nvim"
+        fi
+        ;;
+    2)
+        echo "Deploying Neovim Vimscript configuration..."
+        # Remove Lua config directory if it exists to avoid conflicts
+        [ -d "$HOME/.config/nvim/lua" ] && rm -rf "$HOME/.config/nvim/lua"
+        [ -f "$HOME/.config/nvim/init.lua" ] && rm "$HOME/.config/nvim/init.lua"
+        deploy_file "$REPO_DIR/myvimrc" "$HOME/.config/nvim/init.vim"
+        ;;
+    *)
+        echo "Invalid choice. Skipping Neovim configuration."
+        ;;
+esac
 
 deploy_file "$REPO_DIR/.tigrc"      "$HOME/.tigrc"
 deploy_file "$REPO_DIR/.vifm/vifmrc" "$HOME/.vifm/vifmrc"
