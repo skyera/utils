@@ -11,6 +11,7 @@ vim.opt.shiftwidth = 4
 vim.opt.expandtab = true
 vim.opt.number = true
 vim.opt.autoindent = true
+vim.opt.copyindent = true
 vim.opt.backup = false
 vim.opt.swapfile = false
 vim.opt.showmode = true
@@ -24,6 +25,9 @@ vim.opt.colorcolumn = "80"
 vim.opt.termguicolors = true
 vim.opt.laststatus = 2
 vim.opt.wrapscan = true
+vim.opt.cindent = true
+vim.opt.cinoptions = "g-1"
+vim.opt.directory:prepend(vim.fn.expand("$HOME") .. "/.vim/tmp//")
 
 -- Theme settings
 pcall(vim.cmd, "colorscheme gruvbox")
