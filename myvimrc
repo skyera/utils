@@ -44,7 +44,6 @@ Plug 'tpope/vim-surround'
 Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-unimpaired'
 Plug 'tpope/vim-fugitive'
-Plug 'mhinz/vim-startify'
 Plug 'christoomey/vim-tmux-navigator'
 let g:tmux_navigator_no_mappings = 1
 nnoremap <silent> <M-h> :TmuxNavigateLeft<cr>
@@ -226,6 +225,7 @@ let g:tagbar_type_typescript = {
 
 "set grepprg=grep\ -nH
 let g:startify_change_to_dir = 0
+let g:startify_disable_at_vimenter = 1
 let g:startify_vcs_number_of_files = 0
 let g:startify_use_env = 0
 let g:startify_enable_unsafe = 1
