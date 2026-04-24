@@ -1,5 +1,6 @@
 return {
   -- Core & UI
+  { "catppuccin/nvim", name = "catppuccin", priority = 1000 },
   "flazz/vim-colorschemes",
   "ellisonleao/gruvbox.nvim",
   "rafi/awesome-vim-colorschemes",

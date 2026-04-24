@@ -90,7 +90,7 @@ vim.cmd([[
 ]])
 
 -- Theme settings
-pcall(vim.cmd, "colorscheme gruvbox")
+pcall(vim.cmd, "colorscheme catppuccin")
 vim.opt.background = "dark"
 
 -- Auto-restore cursor position

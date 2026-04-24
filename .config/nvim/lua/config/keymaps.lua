@@ -55,6 +55,8 @@ if vim.fn.has("gui_running") == 0 then
   vim.keymap.set("n", "<leader>lf", ":Lf<CR>", { silent = true })
 end
 
+vim.keymap.set("n", "<leader>sc", ":Telescope colorscheme<CR>", { silent = true })
+
 -- Functions
 vim.cmd([[
 function! ToggleALEFixOnSave()
