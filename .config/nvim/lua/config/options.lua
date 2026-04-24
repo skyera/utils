@@ -61,18 +61,6 @@ vim.g.LookupFile_ignorecase = 1
 vim.g.LookupFile_EnableRemapCmd = 0
 vim.g.LookupFile_TagExpr = '"filenametags"'
 
--- ALE Globals
-vim.g.ale_fixers = { python = { 'black', 'isort', 'remove_trailing_lines', 'trim_whitespace' } }
-vim.g.ale_cpp_cpplint_options = '--filter=-whitespace/braces,-legal/copyright,-whitespace/indent'
-vim.g.ale_c_cpplint_options = '--filter=-whitespace/braces,-legal/copyright'
-vim.g.ale_echo_msg_format = '[%linter%] %code: %%s [%severity%]'
-vim.g.ale_lint_on_text_changed = 'never'
-vim.g.ale_lint_on_insert_leave = 0
-vim.g.ale_lint_on_enter = 0
-vim.g.ale_fix_on_save = 0
-vim.g.ale_lint_on_save = 0
-vim.g.ale_virtualtext_cursor = 'current'
-
 -- Tagbar TypeScript
 vim.g.tagbar_type_typescript = {
   ctagstype = 'typescript',

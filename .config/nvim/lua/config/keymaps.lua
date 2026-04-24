@@ -33,12 +33,6 @@ vim.keymap.set("n", "<leader>l", ":FzfLines<CR>", { silent = true })
 vim.keymap.set("n", "<leader>lb", ":FzfBLines<CR>", { silent = true })
 vim.keymap.set("n", "<leader>tb", ":FzfBTags<CR>", { silent = true })
 
--- ALE Mappings
-vim.keymap.set("n", "<C-k>", "<Plug>(ale_previous_wrap)", { silent = true })
-vim.keymap.set("n", "<C-j>", "<Plug>(ale_next_wrap)", { silent = true })
-vim.keymap.set("n", "<leader>al", ":ALELint<CR>", { silent = true })
-vim.keymap.set("n", "<leader>tfix", ":call ToggleALEFixOnSave()<CR>")
-
 -- NERDTree Mappings
 vim.keymap.set("n", "<leader>nn", ":NERDTreeToggle<cr>")
 vim.keymap.set("n", "<leader>nb", ":NERDTreeFromBookmark ")
@@ -59,15 +53,6 @@ vim.keymap.set("n", "<leader>sc", ":Telescope colorscheme<CR>", { silent = true 
 
 -- Functions
 vim.cmd([[
-function! ToggleALEFixOnSave()
-    if exists('g:ale_fix_on_save') && g:ale_fix_on_save == 1
-        let g:ale_fix_on_save = 0
-    else
-        let g:ale_fix_on_save = 1
-    endif
-    echo "g:ale_fix_on_save is now set to " . g:ale_fix_on_save
-endfunction
-
 function! s:align()
   let p = '^\s*|\s.*\s|\s*$'
   if exists(':Tabularize') && getline('.') =~# '^\s*|' && (getline(line('.')-1) =~# p || getline(line('.')+1) =~# p)
