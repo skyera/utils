@@ -72,6 +72,15 @@ return {
   },
   
   -- Coding
+  {
+    "dhananjaylatkar/cscope_maps.nvim",
+    config = function()
+      require("cscope_maps").setup({
+        prefix = "<C-\\>",
+        skip_input_prompt = true,
+      })
+    end,
+  },
   "tpope/vim-surround",
   "tpope/vim-commentary",
   "tpope/vim-unimpaired",
