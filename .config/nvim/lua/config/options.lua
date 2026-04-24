@@ -29,6 +29,16 @@ vim.opt.cindent = true
 vim.opt.cinoptions = "g-1"
 vim.opt.directory:prepend(vim.fn.expand("$HOME") .. "/.vim/tmp//")
 
+-- FZF Configuration
+vim.g.fzf_command_prefix = "Fzf"
+vim.g.fzf_layout = { down = "40%" }
+vim.env.FZF_DEFAULT_OPTS = (vim.env.FZF_DEFAULT_OPTS or "") .. ' --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
+
+-- Custom Frg command for FZF
+vim.cmd([[
+  command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview(), <bang>0)
+]])
+
 -- Theme settings
 pcall(vim.cmd, "colorscheme gruvbox")
 vim.opt.background = "dark"
