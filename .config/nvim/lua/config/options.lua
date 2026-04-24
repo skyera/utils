@@ -26,7 +26,7 @@ vim.opt.laststatus = 2
 vim.opt.wrapscan = true
 
 -- Theme settings
-vim.cmd("colorscheme gruvbox")
+pcall(vim.cmd, "colorscheme gruvbox")
 vim.opt.background = "dark"
 
 -- Auto-restore cursor position

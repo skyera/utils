@@ -24,6 +24,7 @@ call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
 :: Deploy Neovim Lua configuration
 if exist "%REPO_DIR%\.config\nvim" (
     if not exist "%LOCALAPPDATA%\nvim" mkdir "%LOCALAPPDATA%\nvim"
+    if exist "%LOCALAPPDATA%\nvim\init.vim" del /Q "%LOCALAPPDATA%\nvim\init.vim"
     xcopy /Y /S /E "%REPO_DIR%\.config\nvim\*" "%LOCALAPPDATA%\nvim\"
     echo Deployed Neovim configuration to %LOCALAPPDATA%\nvim
 )
