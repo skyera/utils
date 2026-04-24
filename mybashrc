@@ -8,7 +8,7 @@ export PATH=$HOME/.local/share/forgit/bin:$PATH
 # Editor
 export EDITOR=$(command -v nvim || command -v vim || echo vi)
 export VISUAL="$EDITOR"
-export NEOVIM_BIN="$HOME/app/nvim-linux-x86_64/bin/nvim"
+export NEOVIM_BIN=$(command -v nvim)
 
 # Tool configs
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
@@ -169,6 +169,9 @@ git_tag() {
 # ALIASES
 # =============================================================================
 
+if [[ -n "$NEOVIM_BIN" ]]; then
+    alias neovide="neovide --neovim-bin $NEOVIM_BIN"
+fi
 alias reload='source ~/.bashrc'
 alias tmuxfix="printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'"
 
