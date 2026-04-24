@@ -231,14 +231,16 @@ if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
     git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 fi
 
-# Install Hack Nerd Font if missing
-if [ ! -f "$HOME/.local/share/fonts/HackNerdFontMono-Regular.ttf" ]; then
-    echo "Installing Hack Nerd Font (Mono) weights..."
+# Install Hack Nerd Font variations if missing
+if [ ! -f "$HOME/.local/share/fonts/HackNerdFont-Regular.ttf" ]; then
+    echo "Installing all Hack Nerd Font variations..."
     mkdir -p "$HOME/.local/share/fonts"
     BASE_URL="https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack"
-    for weight in "Regular" "Bold" "Italic" "BoldItalic"; do
-        FILE="HackNerdFontMono-${weight}.ttf"
-        curl -sfLo "$HOME/.local/share/fonts/$FILE" "$BASE_URL/${weight}/$FILE"
+    for style in "" "Mono" "Propo"; do
+        for weight in "Regular" "Bold" "Italic" "BoldItalic"; do
+            FILE="HackNerdFont${style}-${weight}.ttf"
+            curl -sfLo "$HOME/.local/share/fonts/$FILE" "$BASE_URL/${weight}/$FILE"
+        done
     done
     # Update font cache if fc-cache is available
     command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$HOME/.local/share/fonts"
