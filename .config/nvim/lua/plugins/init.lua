@@ -46,8 +46,10 @@ return {
   "tiagofumo/vim-nerdtree-syntax-highlight",
   "jlanzarotta/bufexplorer",
   "yegappan/mru",
-  "vim-scripts/lookupfile",
-  "vim-scripts/genutils",
+  {
+    "vim-scripts/lookupfile",
+    dependencies = { "vim-scripts/genutils" },
+  },
   "junegunn/fzf",
   "junegunn/fzf.vim",
   "jremmen/vim-ripgrep",
