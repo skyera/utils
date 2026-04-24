@@ -137,8 +137,19 @@ set smartcase
 set encoding=utf-8
 set colorcolumn=80
 if has('win32') && !has('nvim')
-    set pythonthreehome=c:\\app\\miniforge3
-    set pythonthreedll=c:\\app\\miniforge3\\python310.dll
+    let s:python_exe = exepath('python.exe')
+    if !empty(s:python_exe)
+        let s:python_home = fnamemodify(s:python_exe, ':h')
+        let &pythonthreehome = s:python_home
+        " Find the version-specific DLL (e.g., python312.dll)
+        let s:dlls = globpath(s:python_home, 'python3*.dll', 0, 1)
+        for s:dll in s:dlls
+            if s:dll !~? 'python3\.dll$' " Skip the generic python3.dll
+                let &pythonthreedll = s:dll
+                break
+            endif
+        endfor
+    endif
 endif
 autocmd BufReadPost *
     \ if line("'\"") > 1 && line("'\"") <= line("$") |
