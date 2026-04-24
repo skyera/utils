@@ -224,6 +224,15 @@ let g:tagbar_type_typescript = {
 
 "set grepprg=grep\ -nH
 let g:startify_change_to_dir = 0
+let g:startify_vcs_number_of_files = 0
+let g:startify_use_env = 0
+let g:startify_enable_unsafe = 1
+let g:startify_lists = [
+      \ { 'type': 'files',     'header': ['   MRU']            },
+      \ { 'type': 'dir',       'header': ['   MRU '. getcwd()] },
+      \ { 'type': 'sessions',  'header': ['   Sessions']       },
+      \ { 'type': 'bookmarks', 'header': ['   Bookmarks']      },
+      \ ]
 command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview(), <bang>0)
 let g:fzf_command_prefix = 'Fzf'
 let $FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS . ' --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
