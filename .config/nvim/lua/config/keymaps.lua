@@ -1,5 +1,5 @@
 -- Keymaps (translated from myvimrc)
-vim.g.mapleader = " " -- Set space as leader
+vim.g.mapleader = "\\" -- Set backslash as leader
 
 -- General mappings
 vim.keymap.set("n", "<leader>ll", ":LUBufs<cr>", { silent = true })
