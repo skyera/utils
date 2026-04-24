@@ -53,6 +53,7 @@ return {
   "jremmen/vim-ripgrep",
   "mhinz/vim-grepper",
   "mileszs/ack.vim",
+  "vim-scripts/Color-Scheme-Explorer",
 
   -- Tree
   {
@@ -84,8 +85,26 @@ return {
   "majutsushi/tagbar",
   "vimwiki/vimwiki",
   "psf/black",
-  "Exafunction/windsurf.vim", -- AI Plugin from your myvimrc
+  "Exafunction/windsurf.vim",
   "preservim/nerdcommenter",
   "vim-scripts/a.vim",
   "rbgrouleff/bclose.vim",
+
+  -- Terminal Utilities (Conditional)
+  {
+    "francoiscabrol/ranger.vim",
+    enabled = function() return vim.fn.has("win32") == 0 and vim.fn.has("gui_running") == 0 end,
+  },
+  {
+    "ptzz/lf.vim",
+    enabled = function() return vim.fn.has("gui_running") == 0 end,
+  },
+  {
+    "voldikss/vim-floaterm",
+    enabled = function() return vim.fn.has("gui_running") == 0 end,
+  },
+  {
+    "vifm/vifm.vim",
+    enabled = function() return vim.fn.has("gui_running") == 0 end,
+  },
 }
