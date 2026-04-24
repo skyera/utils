@@ -21,7 +21,12 @@ call :deploy_file "%REPO_DIR%\.config\lf\icons"        "%LOCALAPPDATA%\lf\icons"
 call :deploy_file "%REPO_DIR%\.config\fd\ignore"      "%APPDATA%\fd\ignore"
 call :deploy_file "%REPO_DIR%\.ripgreprc"             "%USERPROFILE%\.ripgreprc"
 call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
-call :deploy_file "%REPO_DIR%\myvimrc"                "%LOCALAPPDATA%\nvim\init.vim"
+:: Deploy Neovim Lua configuration
+if exist "%REPO_DIR%\.config\nvim" (
+    if not exist "%LOCALAPPDATA%\nvim" mkdir "%LOCALAPPDATA%\nvim"
+    xcopy /Y /S /E "%REPO_DIR%\.config\nvim\*" "%LOCALAPPDATA%\nvim\"
+    echo Deployed Neovim configuration to %LOCALAPPDATA%\nvim
+)
 
 :: Set Environment Variables
 echo Setting Environment Variables...
