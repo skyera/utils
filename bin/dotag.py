@@ -80,11 +80,8 @@ def parse():
         default="fd",
         help="find files method (default: fd)",
     )
-    parser.add_argument(
-        "-a", "--abspath", action="store_true", help="store absolute path"
-    )
     args = parser.parse_args()
-    return args.find, args.abspath
+    return args.find
 
 
 def is_excluded(path):
@@ -192,10 +189,9 @@ class FdCmd:
                 cscope_f.write(f"{line}\n")
 
 
-def get_files(use_abspath=False):
+def get_files():
     myfiles = []
-    curr_dir = Path.cwd() if use_abspath else "."
-    for root, _, file_names in os.walk(curr_dir):
+    for root, _, file_names in os.walk("."):
         visit(myfiles, root, file_names)
     return myfiles
 
@@ -213,8 +209,8 @@ def fd_files():
     cmd.run_fd()
 
 
-def py_find_files(use_abspath=False):
-    files = get_files(use_abspath)
+def py_find_files():
+    files = get_files()
     with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
         for fname in files:
             cscope_f.write(f"{fname}\n")
@@ -225,11 +221,11 @@ def log_cpu(msg, start):
     print(msg, "CPU", cpu, "seconds")
 
 
-def collect_files(find_method, use_abspath=False):
+def collect_files(find_method):
     print("finding files...")
     start = time.time()
     if find_method == "py":
-        py_find_files(use_abspath)
+        py_find_files()
     elif find_method == "find":
         gnu_find_files()
     else:
@@ -283,20 +279,20 @@ def create_tags():
     log_cpu("ctags", start)
 
 
-def log_find_method(find_method, abspath):
-    print("find method:", find_method, "abspath:", abspath)
+def log_find_method(find_method):
+    print("find method:", find_method)
 
 
 def main():
     print(sys.version)
     print(datetime.datetime.now())
-    find_method, abspath = parse()
-    log_find_method(find_method, abspath)
+    find_method = parse()
+    log_find_method(find_method)
 
     start = time.time()
     
     # 1. Collect files (Sequential, as it creates the base file)
-    collect_files(find_method, abspath)
+    collect_files(find_method)
     
     # 2. Run post-processing tasks in parallel
     print("Starting post-processing (parallel)...")
