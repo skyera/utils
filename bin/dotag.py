@@ -144,7 +144,12 @@ class FindCmd:
         for path in self.excluded_dirs:
             paths.append(f'-iname "*{path}*"')
         self.excluded_dirs_str = " -or ".join(paths)
-        self.excluded_dirs_str = rf"-type d \( {self.excluded_dirs_str} \) -prune"
+        
+        # On Windows (cmd.exe), parentheses don't need backslash escaping
+        if os.name == "nt":
+            self.excluded_dirs_str = f"-type d ( {self.excluded_dirs_str} ) -prune"
+        else:
+            self.excluded_dirs_str = rf"-type d \( {self.excluded_dirs_str} \) -prune"
 
     def generate_file_exts_str(self):
         """Create exts string"""
@@ -152,7 +157,11 @@ class FindCmd:
         for ext in self.file_exts:
             items.append(f'-iname "*{ext}"')
         self.file_exts_str = " -or ".join(items)
-        self.file_exts_str = rf"-type f \( {self.file_exts_str} \)"
+        
+        if os.name == "nt":
+            self.file_exts_str = f"-type f ( {self.file_exts_str} )"
+        else:
+            self.file_exts_str = rf"-type f \( {self.file_exts_str} \)"
 
     def generate_find_cmd(self):
         self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print'
@@ -198,10 +207,14 @@ def get_files():
 
 
 def gnu_find_files():
+    find_executable = shutil.which("find")
     if os.name == "nt":
+        if not find_executable:
+            print("Error: 'find' command not found.", file=sys.stderr)
+            sys.exit(1)
         try:
             result = subprocess.run(
-                ["find", "--version"],
+                [find_executable, "--version"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -210,14 +223,17 @@ def gnu_find_files():
             if "GNU findutils" not in result.stdout:
                 print("Error: 'find' is not GNU find. On Windows, ensure Git Bash or Cygwin is in your PATH.", file=sys.stderr)
                 sys.exit(1)
-        except FileNotFoundError:
-            print("Error: 'find' command not found.", file=sys.stderr)
+        except Exception as e:
+            print(f"Error checking 'find' version: {e}", file=sys.stderr)
             sys.exit(1)
 
     cmd = FindCmd(EXCLUDED_DIRS, FILE_EXTS)
     cmd.create()
-    print(cmd.find_cmd)
-    result = subprocess.run(cmd.find_cmd, shell=True, check=True, stdout=subprocess.PIPE, text=True)
+    # Replace 'find' in the command string with the resolved executable path
+    # and handle potential spaces in the path.
+    full_cmd = cmd.find_cmd.replace("find .", f'"{find_executable}" .', 1)
+    print(full_cmd)
+    result = subprocess.run(full_cmd, shell=True, check=True, stdout=subprocess.PIPE, text=True)
     files = result.stdout.splitlines()
     write_cscope_files(files)
 
