@@ -100,10 +100,17 @@ def visit(files, dirpath, file_names):
         if os.path.isfile(path) and not os.path.islink(path):
             _, ext = os.path.splitext(file_name)
             if ext.lower() in FILE_EXTS:
-                if " " not in path:
-                    files.append(path)
-                else:
-                    print(path, "has spaces")
+                files.append(path)
+
+
+def write_cscope_files(files):
+    """Write files to cscope.files, skipping those with spaces and printing a warning."""
+    with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
+        for f in files:
+            if " " in f:
+                print(f"{f} has spaces", file=sys.stderr)
+                continue
+            cscope_f.write(f"{f}\n")
 
 
 class FindCmd:
@@ -143,9 +150,9 @@ class FindCmd:
 
     def generate_find_cmd(self):
         if self.excluded_dirs_str != "":
-            self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print | grep -v " " > {CSCOPE_FILE_NAME}'
+            self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print'
         else:
-            self.find_cmd = f'find . {self.file_exts_str} -print | grep -v " " > {CSCOPE_FILE_NAME}'
+            self.find_cmd = f'find . {self.file_exts_str} -print'
 
 
 class FdCmd:
@@ -176,13 +183,8 @@ class FdCmd:
             print(result.stderr, file=sys.stderr)
             sys.exit(1)
 
-        files = [
-            f for f in result.stdout.splitlines()
-            if " " not in f
-        ]
-        with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
-            for line in files:
-                cscope_f.write(f"{line}\n")
+        files = result.stdout.splitlines()
+        write_cscope_files(files)
 
 
 def get_files():
@@ -212,7 +214,9 @@ def gnu_find_files():
     cmd = FindCmd(EXCLUDED_DIRS, FILE_EXTS)
     cmd.create()
     print(cmd.find_cmd)
-    subprocess.run(cmd.find_cmd, shell=True, check=True)
+    result = subprocess.run(cmd.find_cmd, shell=True, check=True, stdout=subprocess.PIPE, text=True)
+    files = result.stdout.splitlines()
+    write_cscope_files(files)
 
 
 def fd_files():
@@ -223,9 +227,7 @@ def fd_files():
 
 def py_find_files():
     files = get_files()
-    with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
-        for fname in files:
-            cscope_f.write(f"{fname}\n")
+    write_cscope_files(files)
 
 
 def log_cpu(msg, start):
