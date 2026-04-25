@@ -307,9 +307,14 @@ def main():
     # 2. Run post-processing tasks in parallel
     print("Starting post-processing (parallel)...")
     with ThreadPoolExecutor() as executor:
-        executor.submit(run_cscope)
-        executor.submit(create_filenametags)
-        executor.submit(create_tags)
+        futures = [
+            executor.submit(run_cscope),
+            executor.submit(create_filenametags),
+            executor.submit(create_tags),
+        ]
+        # Wait for all tasks to complete and raise exceptions if any occurred
+        for future in futures:
+            future.result()
 
     log_cpu("Total", start)
 
