@@ -9,6 +9,7 @@ import shlex
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 FILE_EXTS = (
@@ -253,45 +254,25 @@ def get_number_files(filename=CSCOPE_FILE_NAME):
 
 
 def create_filenametags():
-    creator = FilenametagsCreator(CSCOPE_FILE_NAME, FILENAMETAG_FILE_NAME)
-    creator.run()
-
-
-class FilenametagsCreator:
-    """Create filenametag for lookupfile"""
-
-    def __init__(self, cscope_filename, tag_filename):
-        self.cscope_filename = cscope_filename
-        self.temp_filename = "temp_dotag.txt"
-        self.tag_filename = tag_filename
-
-    def run(self):
-        self.create_tagfile()
-        self.create_tempfile()
-        self.sort_append_file()
-        if os.path.exists(self.temp_filename):
-            os.remove(self.temp_filename)
-
-    def create_tempfile(self):
-        with open(self.cscope_filename, "r", encoding="utf-8") as cscope_f, \
-             open(self.temp_filename, "w", encoding="utf-8") as temp_f:
-            for line in cscope_f:
-                path = line.strip('"\n')
-                name = Path(path).name
-                temp_f.write(f"{name}\t{path}\t1\n")
-
-    def create_tagfile(self):
-        with open(self.tag_filename, "w", encoding="utf-8") as tag_f:
-            tag_f.write("!_TAG_FILE_SORTED\t2\t/2=foldcase/\n")
-
-    def sort_append_file(self):
-        print(f"sort -f {self.temp_filename} >> {self.tag_filename}")
-        with open(self.tag_filename, "a", encoding="utf-8") as out_f:
-            subprocess.run(
-                ["sort", "-f", self.temp_filename],
-                stdout=out_f,
-                check=True
-            )
+    start = time.time()
+    print("creating filenametags (in-memory sort)...")
+    
+    lines = []
+    with open(CSCOPE_FILE_NAME, "r", encoding="utf-8") as f:
+        for line in f:
+            path = line.strip('"\n')
+            name = Path(path).name
+            lines.append(f"{name}\t{path}\t1\n")
+    
+    # Python's sort is stable and efficient. 
+    # key=str.lower emulates 'sort -f' (fold-case)
+    lines.sort(key=str.lower)
+    
+    with open(FILENAMETAG_FILE_NAME, "w", encoding="utf-8") as f:
+        f.write("!_TAG_FILE_SORTED\t2\t/2=foldcase/\n")
+        f.writelines(lines)
+        
+    log_cpu("filenametags", start)
 
 
 def create_tags():
@@ -313,10 +294,16 @@ def main():
     log_find_method(find_method, abspath)
 
     start = time.time()
+    
+    # 1. Collect files (Sequential, as it creates the base file)
     collect_files(find_method, abspath)
-    run_cscope()
-    create_filenametags()
-    create_tags()
+    
+    # 2. Run post-processing tasks in parallel
+    print("Starting post-processing (parallel)...")
+    with ThreadPoolExecutor() as executor:
+        executor.submit(run_cscope)
+        executor.submit(create_filenametags)
+        executor.submit(create_tags)
 
     log_cpu("Total", start)
 
