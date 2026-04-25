@@ -80,8 +80,14 @@ def parse():
         default="fd",
         help="find files method (default: fd)",
     )
+    parser.add_argument(
+        "-c",
+        "--clean",
+        action="store_true",
+        help="clean old database files before starting",
+    )
     args = parser.parse_args()
-    return args.find
+    return args.find, args.clean
 
 
 def is_excluded(path):
@@ -351,7 +357,7 @@ def try_apply_setpath():
 
 
 def main():
-    find_method = parse()
+    find_method, clean = parse()
     log_find_method(find_method)
 
     if os.name == "nt" and not check_sort_version():
@@ -363,12 +369,14 @@ def main():
         print("[INFO] GNU sort detected after environment update.")
 
     # Cleanup old database files to prevent tool-level state conflicts
-    for f in [CSCOPE_FILE_NAME, "cscope.out", "cscope.in.out", "cscope.po.out", "tags"]:
-        if os.path.exists(f):
-            try:
-                os.remove(f)
-            except OSError:
-                pass
+    if clean:
+        print("Cleaning old database files...")
+        for f in [CSCOPE_FILE_NAME, "cscope.out", "cscope.in.out", "cscope.po.out", "tags"]:
+            if os.path.exists(f):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
 
     start = time.time()
     
