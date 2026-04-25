@@ -297,9 +297,32 @@ def log_find_method(find_method):
     print("find method:", find_method)
 
 
+def check_sort_version():
+    """Verify that 'sort' is the GNU version, especially on Windows."""
+    if os.name != "nt":
+        return True
+    try:
+        result = subprocess.run(
+            ["sort", "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        if "GNU coreutils" in result.stdout:
+            return True
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        pass
+    return False
+
+
 def main():
     find_method = parse()
     log_find_method(find_method)
+
+    if os.name == "nt" and not check_sort_version():
+        print("[WARNING] GNU sort not found in PATH. ctags may fail to sort tags.", file=sys.stderr)
+        print("[HINT] Run 'bin\\setpath.bat' to set up Cygwin tools.", file=sys.stderr)
 
     # Cleanup old database files to prevent tool-level state conflicts
     for f in [CSCOPE_FILE_NAME, "cscope.out", "cscope.in.out", "cscope.po.out", "tags"]:
