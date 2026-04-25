@@ -93,8 +93,7 @@ def parse():
 def is_excluded(path):
     """Is the directory name excluded?"""
     path_parts = Path(path).parts
-    excluded_dirs = set(EXCLUDED_DIRS_LOWER_CASES)
-    return any(part.lower() in excluded_dirs for part in path_parts)
+    return any(part.lower() in EXCLUDED_DIRS_LOWER_CASES for part in path_parts)
 
 
 def visit(files, dirpath, file_names):
