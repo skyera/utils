@@ -3,7 +3,7 @@
 # =============================================================================
 
 # PATH
-export PATH=$HOME/.local/share/forgit/bin:$PATH
+export PATH=$HOME/bin:$HOME/.local/share/forgit/bin:$PATH
 
 # Editor
 export EDITOR=$(command -v nvim || command -v vim || echo vi)
@@ -274,10 +274,14 @@ if [ -f "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh" ]; then
     source "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh"
 fi
 if [ -f "$PLUGINS_DIR/forgit/completions/git-forgit.bash" ]; then
+    # Fix forgit completion error: _git_switch_branch not found
+    if [[ -n "$BASH_VERSION" ]]; then
+        _git_switch_branch() { _git_checkout_branch "$@"; }
+    fi
     [[ -n "$BASH_VERSION" ]] && source "$PLUGINS_DIR/forgit/completions/git-forgit.bash"
 fi
-if [ -f "$PLUGINS_DIR/forgit/completions/git-forgit.zsh" ]; then
-    [[ -n "$ZSH_VERSION" ]] && source "$PLUGINS_DIR/forgit/completions/git-forgit.zsh"
+if [ -f "$PLUGINS_DIR/forgit/completions/_git-forgit" ]; then
+    [[ -n "$ZSH_VERSION" ]] && source "$PLUGINS_DIR/forgit/completions/_git-forgit"
 fi
 if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
     source "$PLUGINS_DIR/forgit/forgit.plugin.sh"
