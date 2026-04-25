@@ -316,13 +316,46 @@ def check_sort_version():
     return False
 
 
+def try_apply_setpath():
+    """Try to find and run setpath.bat, applying its PATH changes to os.environ."""
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    setpath_bat = os.path.join(script_dir, "setpath.bat")
+
+    if not os.path.exists(setpath_bat):
+        print(f"[ERROR] {setpath_bat} not found.", file=sys.stderr)
+        return
+
+    # Run the batch file and capture the environment changes
+    try:
+        result = subprocess.run(
+            f'"{setpath_bat}" && set',
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False
+        )
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    if key.upper() == "PATH":
+                        os.environ["PATH"] = value
+    except Exception as e:
+        print(f"[ERROR] Failed to execute setpath.bat: {e}", file=sys.stderr)
+
+
 def main():
     find_method = parse()
     log_find_method(find_method)
 
     if os.name == "nt" and not check_sort_version():
-        print("[WARNING] GNU sort not found in PATH. ctags may fail to sort tags.", file=sys.stderr)
-        print("[HINT] Run 'bin\\setpath.bat' to set up Cygwin tools.", file=sys.stderr)
+        print("[INFO] GNU sort not found. Attempting to run setpath.bat...", file=sys.stderr)
+        try_apply_setpath()
+        if not check_sort_version():
+            print("[ERROR] GNU sort not found even after running setpath.bat. Quitting.", file=sys.stderr)
+            sys.exit(1)
+        print("[INFO] GNU sort detected after environment update.")
 
     # Cleanup old database files to prevent tool-level state conflicts
     for f in [CSCOPE_FILE_NAME, "cscope.out", "cscope.in.out", "cscope.po.out", "tags"]:
