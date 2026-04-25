@@ -284,9 +284,9 @@ def log_find_method(find_method):
 
 
 def main():
+    find_method = parse()
     print(sys.version)
     print(datetime.datetime.now())
-    find_method = parse()
     log_find_method(find_method)
 
     start = time.time()
