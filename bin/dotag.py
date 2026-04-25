@@ -155,10 +155,7 @@ class FindCmd:
         self.file_exts_str = rf"-type f \( {self.file_exts_str} \)"
 
     def generate_find_cmd(self):
-        if self.excluded_dirs_str != "":
-            self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print'
-        else:
-            self.find_cmd = f'find . {self.file_exts_str} -print'
+        self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print'
 
 
 class FdCmd:
