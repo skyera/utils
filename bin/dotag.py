@@ -144,12 +144,9 @@ class FindCmd:
 
     def generate_find_cmd(self):
         if self.excluded_dirs_str != "":
-            self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} \
-                    -print | grep -v " " > {CSCOPE_FILE_NAME}'
+            self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print | grep -v " " > {CSCOPE_FILE_NAME}'
         else:
-            self.find_cmd = (
-                f'find . {self.file_exts_str} -print | grep -v " " > {CSCOPE_FILE_NAME}'
-            )
+            self.find_cmd = f'find . {self.file_exts_str} -print | grep -v " " > {CSCOPE_FILE_NAME}'
 
 
 class FdCmd:
@@ -197,6 +194,22 @@ def get_files():
 
 
 def gnu_find_files():
+    if os.name == "nt":
+        try:
+            result = subprocess.run(
+                ["find", "--version"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+            )
+            if "GNU findutils" not in result.stdout:
+                print("Error: 'find' is not GNU find. On Windows, ensure Git Bash or Cygwin is in your PATH.", file=sys.stderr)
+                sys.exit(1)
+        except FileNotFoundError:
+            print("Error: 'find' command not found.", file=sys.stderr)
+            sys.exit(1)
+
     cmd = FindCmd(EXCLUDED_DIRS, FILE_EXTS)
     cmd.create()
     print(cmd.find_cmd)
