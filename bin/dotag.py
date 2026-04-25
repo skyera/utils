@@ -301,6 +301,14 @@ def main():
     find_method = parse()
     log_find_method(find_method)
 
+    # Cleanup old database files to prevent tool-level state conflicts
+    for f in [CSCOPE_FILE_NAME, "cscope.out", "cscope.in.out", "cscope.po.out", "tags"]:
+        if os.path.exists(f):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+
     start = time.time()
     
     # 1. Collect files (Sequential, as it creates the base file)
