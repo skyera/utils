@@ -5,6 +5,7 @@
 import argparse
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -299,11 +300,15 @@ def log_find_method(find_method):
 
 def check_sort_version():
     """Verify that 'sort' is the GNU version, especially on Windows."""
-    if os.name != "nt":
-        return True
+    sort_cmd = "sort.exe" if os.name == "nt" else "sort"
+    # Use shutil.which to ensure we respect the updated os.environ['PATH']
+    executable = shutil.which(sort_cmd)
+    if not executable:
+        return False
+    
     try:
         result = subprocess.run(
-            ["sort", "--version"],
+            [executable, "--version"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -328,7 +333,7 @@ def try_apply_setpath():
     # Run the batch file and capture the environment changes
     try:
         result = subprocess.run(
-            f'"{setpath_bat}" && set',
+            f'"{setpath_bat}" >nul && set',
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

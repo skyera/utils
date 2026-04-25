@@ -21,12 +21,9 @@ if not exist "%NEW_PATH%\sort.exe" (
 if "%NEW_PATH:~-1%"=="\" set "NEW_PATH=%NEW_PATH:~0,-1%"
 
 if exist "%NEW_PATH%\sort.exe" (
-    :: 2. Check if already in PATH to avoid duplicates
-    echo ";%PATH%;" | findstr /i ";%NEW_PATH%;" >nul
-    if errorlevel 1 (
-        set "PATH=%NEW_PATH%;%PATH%"
-        echo [INFO] Prepending Cygwin to PATH: %NEW_PATH%
-    )
+    :: Always prepend to ensure it takes precedence over System32
+    set "PATH=%NEW_PATH%;%PATH%"
+    echo [INFO] Prepending Cygwin to PATH: %NEW_PATH%
 ) else (
     echo [ERROR] Cygwin/GNU sort.exe not found!
 )
