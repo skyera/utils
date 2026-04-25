@@ -60,7 +60,7 @@ EXCLUDED_DIRS = [
     "Anaconda",
     "Debug",
     "Release",
-    "*cudafe1*",
+    "cudafe1",
 ]
 
 EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
@@ -182,7 +182,7 @@ class FdCmd:
 
         files = [
             f for f in result.stdout.splitlines()
-            if not Path(f).is_symlink() and " " not in f
+            if " " not in f
         ]
         with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
             for line in files:
