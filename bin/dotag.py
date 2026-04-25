@@ -273,7 +273,7 @@ def create_filenametags():
     lines = []
     with open(CSCOPE_FILE_NAME, "r", encoding="utf-8") as f:
         for line in f:
-            path = line.strip('"\n')
+            path = line.strip().strip('"')
             name = Path(path).name
             lines.append(f"{name}\t{path}\t1\n")
     
