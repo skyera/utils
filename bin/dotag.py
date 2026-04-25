@@ -3,7 +3,6 @@
 # Create cscope, filename, tag database for source code
 #
 import argparse
-import datetime
 import os
 import shlex
 import subprocess
@@ -298,8 +297,6 @@ def log_find_method(find_method):
 
 def main():
     find_method = parse()
-    print(sys.version)
-    print(datetime.datetime.now())
     log_find_method(find_method)
 
     start = time.time()
