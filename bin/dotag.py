@@ -96,27 +96,17 @@ def is_excluded(path):
     return any(part.lower() in EXCLUDED_DIRS_LOWER_CASES for part in path_parts)
 
 
-def visit(files, dirpath, file_names):
-    """Check filenames and save them"""
-    if is_excluded(dirpath):
-        return
-
-    for file_name in file_names:
-        path = os.path.join(dirpath, file_name)
-        if os.path.isfile(path) and not os.path.islink(path):
-            _, ext = os.path.splitext(file_name)
-            if ext.lower() in FILE_EXTS:
-                files.append(path)
-
-
 def write_cscope_files(files):
     """Write files to cscope.files, skipping those with spaces and printing a warning."""
+    count = 0
     with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
         for f in files:
             if " " in f:
                 print(f"{f} has spaces", file=sys.stderr)
                 continue
             cscope_f.write(f"{f}\n")
+            count += 1
+    return count
 
 
 class FindCmd:
@@ -196,14 +186,19 @@ class FdCmd:
             sys.exit(1)
 
         files = result.stdout.splitlines()
-        write_cscope_files(files)
+        return write_cscope_files(files)
 
 
 def get_files():
-    myfiles = []
     for root, _, file_names in os.walk("."):
-        visit(myfiles, root, file_names)
-    return myfiles
+        if is_excluded(root):
+            continue
+        for file_name in file_names:
+            path = os.path.join(root, file_name)
+            if os.path.isfile(path) and not os.path.islink(path):
+                _, ext = os.path.splitext(file_name)
+                if ext.lower() in FILE_EXTS:
+                    yield path
 
 
 def gnu_find_files():
@@ -229,24 +224,23 @@ def gnu_find_files():
 
     cmd = FindCmd(EXCLUDED_DIRS, FILE_EXTS)
     cmd.create()
-    # Replace 'find' in the command string with the resolved executable path
-    # and handle potential spaces in the path.
-    full_cmd = cmd.find_cmd.replace("find .", f'"{find_executable}" .', 1)
+    quoted_find = shlex.quote(find_executable)
+    full_cmd = cmd.find_cmd.replace("find .", f"{quoted_find} .", 1)
     print(full_cmd)
     result = subprocess.run(full_cmd, shell=True, check=True, stdout=subprocess.PIPE, text=True)
     files = result.stdout.splitlines()
-    write_cscope_files(files)
+    return write_cscope_files(files)
 
 
 def fd_files():
     cmd = FdCmd(EXCLUDED_DIRS, FILE_EXTS)
     cmd.build_cmd()
-    cmd.run_fd()
+    return cmd.run_fd()
 
 
 def py_find_files():
     files = get_files()
-    write_cscope_files(files)
+    return write_cscope_files(files)
 
 
 def log_cpu(msg, start):
@@ -258,13 +252,12 @@ def collect_files(find_method):
     print("finding files...")
     start = time.time()
     if find_method == "py":
-        py_find_files()
+        num_files = py_find_files()
     elif find_method == "find":
-        gnu_find_files()
+        num_files = gnu_find_files()
     else:
-        fd_files()
+        num_files = fd_files()
 
-    num_files = get_number_files()
     log_cpu(f"find files: number of files {num_files}", start)
 
 
@@ -274,12 +267,6 @@ def run_cscope():
     print(" ".join(cmd))
     subprocess.run(cmd, check=True)
     log_cpu("cscope", start)
-
-
-def get_number_files(filename=CSCOPE_FILE_NAME):
-    with open(filename, "r", encoding="utf-8") as cscope_f:
-        lines = cscope_f.readlines()
-    return len(lines)
 
 
 def create_filenametags():
@@ -360,10 +347,13 @@ def try_apply_setpath():
         )
         if result.returncode == 0:
             for line in result.stdout.splitlines():
-                if "=" in line:
-                    key, value = line.split("=", 1)
-                    if key.upper() == "PATH":
-                        os.environ["PATH"] = value
+                try:
+                    if "=" in line:
+                        key, value = line.split("=", 1)
+                        if key.upper() == "PATH":
+                            os.environ["PATH"] = value
+                except ValueError:
+                    continue
     except Exception as e:
         print(f"[ERROR] Failed to execute setpath.bat: {e}", file=sys.stderr)
 
