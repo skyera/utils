@@ -139,9 +139,14 @@ export DYLD_LIBRARY_PATH="/opt/homebrew/lib/:$DYLD_LIBRARY_PATH"
 export TERM=xterm-256color
 
 ### py on Windows
-Computer\HKEY_CLASSES_ROOT\py_auto_file\shell\open\command
+Fix for .py file associations not passing command-line arguments. Ensure registry keys include `%*` at the end of the command string.
 
-"C:\app\miniforge3\python.exe" "%1" %*
+Registry Keys:
+- `HKEY_CLASSES_ROOT\Applications\python.exe\shell\open\command`
+- `HKEY_CLASSES_ROOT\py_auto_file\shell\open\command`
+
+Value:
+`"C:\app\miniforge3\python.exe" "%1" %*`
 
 ### git
 ```
