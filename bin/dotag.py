@@ -59,7 +59,6 @@ EXCLUDED_DIRS = [
     "cudafe1",
 ]
 
-EXCLUDED_DIRS_LOWER_CASES = [item.lower() for item in EXCLUDED_DIRS]
 CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
 
@@ -141,8 +140,8 @@ class FindCmd:
 
 
 class FdCmd:
-    def __init__(self, excluded_patterns, file_exts, no_ignore=False):
-        self.excluded_patterns = excluded_patterns
+    def __init__(self, excluded_dirs, file_exts, no_ignore=False):
+        self.excluded_dirs = excluded_dirs
         self.file_exts = file_exts
         self.fd_cmd = ["fd", "--type", "f", "--ignore-case"]
         if no_ignore:
@@ -152,7 +151,7 @@ class FdCmd:
         for ext in self.file_exts:
             self.fd_cmd.extend(["-e", ext.lstrip(".")])
 
-        for pat in self.excluded_patterns:
+        for pat in self.excluded_dirs:
             self.fd_cmd.extend(["--exclude", pat])
 
     def run_fd(self):
@@ -178,7 +177,7 @@ def get_files():
     for root, dirs, file_names in os.walk("."):
         # Prune excluded directories in-place to prevent os.walk from descending
         # Use substring matching for consistency with the 'find' method
-        dirs[:] = [d for d in dirs if not any(excl in d.lower() for excl in EXCLUDED_DIRS_LOWER_CASES)]
+        dirs[:] = [d for d in dirs if not any(excl.lower() in d.lower() for excl in EXCLUDED_DIRS)]
         
         for file_name in file_names:
             path = os.path.join(root, file_name)
@@ -209,7 +208,7 @@ def gnu_find_files():
             print(f"Error checking 'find' version: {e}", file=sys.stderr)
             sys.exit(1)
 
-    cmd = FindCmd(EXCLUDED_DIRS_LOWER_CASES, FILE_EXTS)
+    cmd = FindCmd(EXCLUDED_DIRS, FILE_EXTS)
     cmd.create(find_executable)
     
     # For logging, we can use shlex.join (Python 3.8+) or subprocess.list2cmdline
@@ -224,7 +223,7 @@ def gnu_find_files():
 
 
 def fd_files(no_ignore=False):
-    cmd = FdCmd(EXCLUDED_DIRS_LOWER_CASES, FILE_EXTS, no_ignore)
+    cmd = FdCmd(EXCLUDED_DIRS, FILE_EXTS, no_ignore)
     cmd.build_cmd()
     return cmd.run_fd()
 
