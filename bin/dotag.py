@@ -87,8 +87,14 @@ def parse():
         action="store_true",
         help="clean old database files before starting",
     )
+    parser.add_argument(
+        "-I",
+        "--no-ignore",
+        action="store_true",
+        help="don't respect ignore files (.gitignore, etc.) and include hidden files (only for fd method)",
+    )
     args = parser.parse_args()
-    return args.find, args.clean
+    return args.find, args.clean, args.no_ignore
 
 
 def write_cscope_files(files):
@@ -133,10 +139,12 @@ class FindCmd:
 
 
 class FdCmd:
-    def __init__(self, excluded_patterns, file_exts):
+    def __init__(self, excluded_patterns, file_exts, no_ignore=False):
         self.excluded_patterns = excluded_patterns
         self.file_exts = file_exts
         self.fd_cmd = ["fd", "--type", "f", "--ignore-case"]
+        if no_ignore:
+            self.fd_cmd.extend(["--no-ignore", "--hidden"])
 
     def build_cmd(self):
         for ext in self.file_exts:
@@ -213,8 +221,8 @@ def gnu_find_files():
     return write_cscope_files(files)
 
 
-def fd_files():
-    cmd = FdCmd(EXCLUDED_DIRS, FILE_EXTS)
+def fd_files(no_ignore=False):
+    cmd = FdCmd(EXCLUDED_DIRS, FILE_EXTS, no_ignore)
     cmd.build_cmd()
     return cmd.run_fd()
 
@@ -229,7 +237,7 @@ def log_cpu(msg, start):
     print(msg, "elapsed", elapsed, "seconds")
 
 
-def collect_files(find_method):
+def collect_files(find_method, no_ignore=False):
     print("finding files...")
     start = time.time()
     if find_method == "py":
@@ -237,7 +245,7 @@ def collect_files(find_method):
     elif find_method == "find":
         num_files = gnu_find_files()
     else:
-        num_files = fd_files()
+        num_files = fd_files(no_ignore)
 
     log_cpu(f"find files: number of files {num_files}", start)
 
@@ -366,7 +374,7 @@ def try_apply_setpath():
 
 
 def main():
-    find_method, clean = parse()
+    find_method, clean, no_ignore = parse()
     log_find_method(find_method)
 
     if os.name == "nt" and not check_sort_version():
@@ -392,7 +400,7 @@ def main():
     start = time.time()
     
     # 1. Collect files (Sequential, as it creates the base file)
-    collect_files(find_method)
+    collect_files(find_method, no_ignore)
     
     # 2. Run post-processing tasks in parallel
     print("Starting post-processing (parallel)...")
