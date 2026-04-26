@@ -382,7 +382,7 @@ def main():
     # Cleanup old database files to prevent tool-level state conflicts
     if clean:
         print("Cleaning old database files...")
-        for f in [CSCOPE_FILE_NAME, "cscope.out", "cscope.in.out", "cscope.po.out", "tags"]:
+        for f in [CSCOPE_FILE_NAME, "cscope.out", "cscope.in.out", "cscope.po.out", "tags", FILENAMETAG_FILE_NAME]:
             if os.path.exists(f):
                 try:
                     os.remove(f)
