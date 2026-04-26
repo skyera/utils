@@ -110,49 +110,26 @@ class FindCmd:
     def __init__(self, excluded_dirs, file_exts):
         self.excluded_dirs = excluded_dirs
         self.file_exts = file_exts
-        self.excluded_dirs_str = ""
-        self.file_exts_str = ""
-        self.find_cmd = ""
+        self.args = []
 
-    def create(self):
-        """Create the find cmd"""
-        self.generate_excluded_dirs_str()
-        self.generate_file_exts_str()
-        self.generate_find_cmd()
+    def create(self, find_executable):
+        """Create the find arguments list"""
+        self.args = [find_executable, "."]
 
-    def generate_excluded_dirs_str(self):
-        """Create excluded_str"""
-        if not self.excluded_dirs:
-            return
+        if self.excluded_dirs:
+            self.args.extend(["-type", "d", "("])
+            for i, d in enumerate(self.excluded_dirs):
+                if i > 0:
+                    self.args.append("-or")
+                self.args.extend(["-iname", f"*{d}*"])
+            self.args.extend([")", "-prune", "-or"])
 
-        paths = []
-        for path in self.excluded_dirs:
-            paths.append(f'-iname "*{path}*"')
-        self.excluded_dirs_str = " -or ".join(paths)
-        
-        # On Windows (cmd.exe), parentheses don't need backslash escaping
-        if os.name == "nt":
-            self.excluded_dirs_str = f"-type d ( {self.excluded_dirs_str} ) -prune"
-        else:
-            self.excluded_dirs_str = rf"-type d \( {self.excluded_dirs_str} \) -prune"
-
-    def generate_file_exts_str(self):
-        """Create exts string"""
-        items = []
-        for ext in self.file_exts:
-            items.append(f'-iname "*{ext}"')
-        self.file_exts_str = " -or ".join(items)
-        
-        if os.name == "nt":
-            self.file_exts_str = f"-type f ( {self.file_exts_str} )"
-        else:
-            self.file_exts_str = rf"-type f \( {self.file_exts_str} \)"
-
-    def generate_find_cmd(self):
-        if self.excluded_dirs_str:
-            self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print'
-        else:
-            self.find_cmd = f'find . {self.file_exts_str} -print'
+        self.args.extend(["-type", "f", "("])
+        for i, ext in enumerate(self.file_exts):
+            if i > 0:
+                self.args.append("-or")
+            self.args.extend(["-iname", f"*{ext}"])
+        self.args.extend([")", "-print"])
 
 
 class FdCmd:
@@ -222,11 +199,15 @@ def gnu_find_files():
             sys.exit(1)
 
     cmd = FindCmd(EXCLUDED_DIRS, FILE_EXTS)
-    cmd.create()
-    quoted_find = shlex.quote(find_executable)
-    full_cmd = cmd.find_cmd.replace("find .", f"{quoted_find} .", 1)
-    print(full_cmd)
-    result = subprocess.run(full_cmd, shell=True, check=True, stdout=subprocess.PIPE, text=True)
+    cmd.create(find_executable)
+    
+    # For logging, we can use shlex.join (Python 3.8+) or subprocess.list2cmdline
+    if hasattr(shlex, "join"):
+        print(shlex.join(cmd.args))
+    else:
+        print(" ".join(shlex.quote(arg) for arg in cmd.args))
+
+    result = subprocess.run(cmd.args, check=True, stdout=subprocess.PIPE, text=True)
     files = result.stdout.splitlines()
     return write_cscope_files(files)
 
