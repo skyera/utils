@@ -167,7 +167,8 @@ class FdCmd:
 def get_files():
     for root, dirs, file_names in os.walk("."):
         # Prune excluded directories in-place to prevent os.walk from descending
-        dirs[:] = [d for d in dirs if d.lower() not in EXCLUDED_DIRS_LOWER_CASES]
+        # Use substring matching for consistency with the 'find' method
+        dirs[:] = [d for d in dirs if not any(excl.lower() in d.lower() for excl in EXCLUDED_DIRS)]
         
         for file_name in file_names:
             path = os.path.join(root, file_name)
@@ -224,8 +225,8 @@ def py_find_files():
 
 
 def log_cpu(msg, start):
-    cpu = time.time() - start
-    print(msg, "CPU", cpu, "seconds")
+    elapsed = time.time() - start
+    print(msg, "elapsed", elapsed, "seconds")
 
 
 def collect_files(find_method):
@@ -252,7 +253,11 @@ def run_cscope():
 def create_filenametags():
     start = time.time()
     print("creating filenametags (in-memory sort)...")
-    
+
+    if not os.path.exists(CSCOPE_FILE_NAME):
+        print(f"[ERROR] {CSCOPE_FILE_NAME} not found. Cannot create filenametags.", file=sys.stderr)
+        return
+
     lines = []
     with open(CSCOPE_FILE_NAME, "r", encoding="utf-8") as f:
         for line in f:
@@ -335,7 +340,7 @@ def try_apply_setpath():
 
     if not os.path.exists(setpath_bat):
         print(f"[ERROR] {setpath_bat} not found.", file=sys.stderr)
-        return
+        sys.exit(1)
 
     # Run the batch file and capture the environment changes
     try:
