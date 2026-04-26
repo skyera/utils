@@ -68,6 +68,7 @@ CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
 
 
+
 def parse():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
@@ -90,33 +91,17 @@ def parse():
     return args.find, args.clean
 
 
-def is_excluded(path):
-    """Is the directory name excluded?"""
-    path_parts = Path(path).parts
-    return any(part.lower() in EXCLUDED_DIRS_LOWER_CASES for part in path_parts)
-
-
-def visit(files, dirpath, file_names):
-    """Check filenames and save them"""
-    if is_excluded(dirpath):
-        return
-
-    for file_name in file_names:
-        path = os.path.join(dirpath, file_name)
-        if os.path.isfile(path) and not os.path.islink(path):
-            _, ext = os.path.splitext(file_name)
-            if ext.lower() in FILE_EXTS:
-                files.append(path)
-
-
 def write_cscope_files(files):
     """Write files to cscope.files, skipping those with spaces and printing a warning."""
+    count = 0
     with open(CSCOPE_FILE_NAME, "w", encoding="utf-8") as cscope_f:
         for f in files:
             if " " in f:
                 print(f"{f} has spaces", file=sys.stderr)
                 continue
             cscope_f.write(f"{f}\n")
+            count += 1
+    return count
 
 
 class FindCmd:
@@ -164,7 +149,10 @@ class FindCmd:
             self.file_exts_str = rf"-type f \( {self.file_exts_str} \)"
 
     def generate_find_cmd(self):
-        self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print'
+        if self.excluded_dirs_str:
+            self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print'
+        else:
+            self.find_cmd = f'find . {self.file_exts_str} -print'
 
 
 class FdCmd:
@@ -196,14 +184,20 @@ class FdCmd:
             sys.exit(1)
 
         files = result.stdout.splitlines()
-        write_cscope_files(files)
+        return write_cscope_files(files)
 
 
 def get_files():
-    myfiles = []
-    for root, _, file_names in os.walk("."):
-        visit(myfiles, root, file_names)
-    return myfiles
+    for root, dirs, file_names in os.walk("."):
+        # Prune excluded directories in-place to prevent os.walk from descending
+        dirs[:] = [d for d in dirs if d.lower() not in EXCLUDED_DIRS_LOWER_CASES]
+        
+        for file_name in file_names:
+            path = os.path.join(root, file_name)
+            if not os.path.islink(path):
+                _, ext = os.path.splitext(file_name)
+                if ext.lower() in FILE_EXTS:
+                    yield path
 
 
 def gnu_find_files():
@@ -229,24 +223,23 @@ def gnu_find_files():
 
     cmd = FindCmd(EXCLUDED_DIRS, FILE_EXTS)
     cmd.create()
-    # Replace 'find' in the command string with the resolved executable path
-    # and handle potential spaces in the path.
-    full_cmd = cmd.find_cmd.replace("find .", f'"{find_executable}" .', 1)
+    quoted_find = shlex.quote(find_executable)
+    full_cmd = cmd.find_cmd.replace("find .", f"{quoted_find} .", 1)
     print(full_cmd)
     result = subprocess.run(full_cmd, shell=True, check=True, stdout=subprocess.PIPE, text=True)
     files = result.stdout.splitlines()
-    write_cscope_files(files)
+    return write_cscope_files(files)
 
 
 def fd_files():
     cmd = FdCmd(EXCLUDED_DIRS, FILE_EXTS)
     cmd.build_cmd()
-    cmd.run_fd()
+    return cmd.run_fd()
 
 
 def py_find_files():
     files = get_files()
-    write_cscope_files(files)
+    return write_cscope_files(files)
 
 
 def log_cpu(msg, start):
@@ -258,13 +251,12 @@ def collect_files(find_method):
     print("finding files...")
     start = time.time()
     if find_method == "py":
-        py_find_files()
+        num_files = py_find_files()
     elif find_method == "find":
-        gnu_find_files()
+        num_files = gnu_find_files()
     else:
-        fd_files()
+        num_files = fd_files()
 
-    num_files = get_number_files()
     log_cpu(f"find files: number of files {num_files}", start)
 
 
@@ -274,12 +266,6 @@ def run_cscope():
     print(" ".join(cmd))
     subprocess.run(cmd, check=True)
     log_cpu("cscope", start)
-
-
-def get_number_files(filename=CSCOPE_FILE_NAME):
-    with open(filename, "r", encoding="utf-8") as cscope_f:
-        lines = cscope_f.readlines()
-    return len(lines)
 
 
 def create_filenametags():
@@ -314,6 +300,28 @@ def create_tags():
 
 def log_find_method(find_method):
     print("find method:", find_method)
+
+
+def check_dependencies(find_method):
+    """Verify that required tools are installed."""
+    tools = ["cscope", "ctags"]
+    if find_method == "fd":
+        tools.append("fd")
+    elif find_method == "find":
+        tools.append("find")
+
+    missing = []
+    for tool in tools:
+        if shutil.which(tool) is None:
+            # Special check for find on Windows to avoid the built-in Windows find.exe
+            if tool == "find" and os.name == "nt":
+                continue # gnu_find_files already has a robust check
+            missing.append(tool)
+    
+    if missing:
+        print(f"[ERROR] Missing required dependencies: {', '.join(missing)}", file=sys.stderr)
+        print("Please install them and ensure they are in your PATH.", file=sys.stderr)
+        sys.exit(1)
 
 
 def check_sort_version():
@@ -360,10 +368,13 @@ def try_apply_setpath():
         )
         if result.returncode == 0:
             for line in result.stdout.splitlines():
-                if "=" in line:
-                    key, value = line.split("=", 1)
-                    if key.upper() == "PATH":
-                        os.environ["PATH"] = value
+                try:
+                    if "=" in line:
+                        key, value = line.split("=", 1)
+                        if key.upper() == "PATH":
+                            os.environ["PATH"] = value
+                except ValueError:
+                    continue
     except Exception as e:
         print(f"[ERROR] Failed to execute setpath.bat: {e}", file=sys.stderr)
 
@@ -379,6 +390,8 @@ def main():
             print("[ERROR] GNU sort not found even after running setpath.bat. Quitting.", file=sys.stderr)
             sys.exit(1)
         print("[INFO] GNU sort detected after environment update.")
+
+    check_dependencies(find_method)
 
     # Cleanup old database files to prevent tool-level state conflicts
     if clean:
