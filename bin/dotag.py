@@ -37,18 +37,14 @@ FILE_EXTS = (
 )
 
 EXCLUDED_DIRS = [
+    ".git",
     "boost",
-    "omniorb",
+    "Omni",
     "Generated",
     "_output",
-    ".jazz5",
-    ".jazzShed",
+    "jazz",
     "node_modules",
     "webapp",
-    "OmniORB",
-    "Omni",
-    "Omni_VS2015",
-    "omniwin",
     "PythonStandardLibrary",
     ".vscode",
     "virtualenv",
@@ -176,7 +172,7 @@ def get_files():
     for root, dirs, file_names in os.walk("."):
         # Prune excluded directories in-place to prevent os.walk from descending
         # Use substring matching for consistency with the 'find' method
-        dirs[:] = [d for d in dirs if not any(excl.lower() in d.lower() for excl in EXCLUDED_DIRS)]
+        dirs[:] = [d for d in dirs if not any(excl in d.lower() for excl in EXCLUDED_DIRS_LOWER_CASES)]
         
         for file_name in file_names:
             path = os.path.join(root, file_name)
@@ -207,7 +203,7 @@ def gnu_find_files():
             print(f"Error checking 'find' version: {e}", file=sys.stderr)
             sys.exit(1)
 
-    cmd = FindCmd(EXCLUDED_DIRS, FILE_EXTS)
+    cmd = FindCmd(EXCLUDED_DIRS_LOWER_CASES, FILE_EXTS)
     cmd.create(find_executable)
     
     # For logging, we can use shlex.join (Python 3.8+) or subprocess.list2cmdline
@@ -222,7 +218,7 @@ def gnu_find_files():
 
 
 def fd_files(no_ignore=False):
-    cmd = FdCmd(EXCLUDED_DIRS, FILE_EXTS, no_ignore)
+    cmd = FdCmd(EXCLUDED_DIRS_LOWER_CASES, FILE_EXTS, no_ignore)
     cmd.build_cmd()
     return cmd.run_fd()
 
