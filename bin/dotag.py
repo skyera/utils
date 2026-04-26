@@ -68,6 +68,7 @@ CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
 
 
+
 def parse():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
@@ -88,12 +89,6 @@ def parse():
     )
     args = parser.parse_args()
     return args.find, args.clean
-
-
-def is_excluded(path):
-    """Is the directory name excluded?"""
-    path_parts = Path(path).parts
-    return any(part.lower() in EXCLUDED_DIRS_LOWER_CASES for part in path_parts)
 
 
 def write_cscope_files(files):
@@ -154,7 +149,10 @@ class FindCmd:
             self.file_exts_str = rf"-type f \( {self.file_exts_str} \)"
 
     def generate_find_cmd(self):
-        self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print'
+        if self.excluded_dirs_str:
+            self.find_cmd = f'find . {self.excluded_dirs_str} -or {self.file_exts_str} -print'
+        else:
+            self.find_cmd = f'find . {self.file_exts_str} -print'
 
 
 class FdCmd:
@@ -190,12 +188,13 @@ class FdCmd:
 
 
 def get_files():
-    for root, _, file_names in os.walk("."):
-        if is_excluded(root):
-            continue
+    for root, dirs, file_names in os.walk("."):
+        # Prune excluded directories in-place to prevent os.walk from descending
+        dirs[:] = [d for d in dirs if d.lower() not in EXCLUDED_DIRS_LOWER_CASES]
+        
         for file_name in file_names:
             path = os.path.join(root, file_name)
-            if os.path.isfile(path) and not os.path.islink(path):
+            if not os.path.islink(path):
                 _, ext = os.path.splitext(file_name)
                 if ext.lower() in FILE_EXTS:
                     yield path
@@ -303,6 +302,28 @@ def log_find_method(find_method):
     print("find method:", find_method)
 
 
+def check_dependencies(find_method):
+    """Verify that required tools are installed."""
+    tools = ["cscope", "ctags"]
+    if find_method == "fd":
+        tools.append("fd")
+    elif find_method == "find":
+        tools.append("find")
+
+    missing = []
+    for tool in tools:
+        if shutil.which(tool) is None:
+            # Special check for find on Windows to avoid the built-in Windows find.exe
+            if tool == "find" and os.name == "nt":
+                continue # gnu_find_files already has a robust check
+            missing.append(tool)
+    
+    if missing:
+        print(f"[ERROR] Missing required dependencies: {', '.join(missing)}", file=sys.stderr)
+        print("Please install them and ensure they are in your PATH.", file=sys.stderr)
+        sys.exit(1)
+
+
 def check_sort_version():
     """Verify that 'sort' is the GNU version, especially on Windows."""
     sort_cmd = "sort.exe" if os.name == "nt" else "sort"
@@ -369,6 +390,8 @@ def main():
             print("[ERROR] GNU sort not found even after running setpath.bat. Quitting.", file=sys.stderr)
             sys.exit(1)
         print("[INFO] GNU sort detected after environment update.")
+
+    check_dependencies(find_method)
 
     # Cleanup old database files to prevent tool-level state conflicts
     if clean:
