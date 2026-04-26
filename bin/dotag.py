@@ -89,8 +89,14 @@ def parse():
         action="store_true",
         help="don't respect ignore files (.gitignore, etc.) and include hidden files (only for fd method)",
     )
+    parser.add_argument(
+        "-S",
+        "--in-memory-sort",
+        action="store_true",
+        help="use in-memory sort instead of external sort command (external is now default)",
+    )
     args = parser.parse_args()
-    return args.find, args.clean, args.no_ignore
+    return args.find, args.clean, args.no_ignore, not args.in_memory_sort
 
 
 def write_cscope_files(files):
@@ -254,28 +260,57 @@ def run_cscope():
     log_cpu("cscope", start)
 
 
-def create_filenametags():
+def create_filenametags(use_external_sort=False, sort_executable="sort"):
     start = time.time()
-    print("creating filenametags (in-memory sort)...")
+    if use_external_sort:
+        print(f"creating filenametags (external {sort_executable} -f)...")
+    else:
+        print("creating filenametags (in-memory sort)...")
 
     if not os.path.exists(CSCOPE_FILE_NAME):
         print(f"[ERROR] {CSCOPE_FILE_NAME} not found. Cannot create filenametags.", file=sys.stderr)
         return
 
-    lines = []
-    with open(CSCOPE_FILE_NAME, "r", encoding="utf-8") as f:
-        for line in f:
-            path = line.strip().strip('"')
-            name = Path(path).name
-            lines.append(f"{name}\t{path}\t1\n")
-    
-    # Python's sort is stable and efficient. 
-    # key=str.lower emulates 'sort -f' (fold-case)
-    lines.sort(key=str.lower)
-    
-    with open(FILENAMETAG_FILE_NAME, "w", encoding="utf-8") as f:
-        f.write("!_TAG_FILE_SORTED\t2\t/2=foldcase/\n")
-        f.writelines(lines)
+    if use_external_sort:
+        # Generate raw tag lines and pipe them to 'sort -f'
+        try:
+            # Create the tag entries as a byte string for the pipe
+            tag_entries = []
+            with open(CSCOPE_FILE_NAME, "r", encoding="utf-8") as f:
+                for line in f:
+                    path = line.strip().strip('"')
+                    name = Path(path).name
+                    tag_entries.append(f"{name}\t{path}\t1\n")
+            
+            input_data = "".join(tag_entries).encode("utf-8")
+            
+            # Run sort -f and capture output
+            result = subprocess.run(
+                [sort_executable, "-f"],
+                input=input_data,
+                stdout=subprocess.PIPE,
+                check=True
+            )
+            
+            with open(FILENAMETAG_FILE_NAME, "w", encoding="utf-8") as f:
+                f.write("!_TAG_FILE_SORTED\t2\t/2=foldcase/\n")
+                f.write(result.stdout.decode("utf-8"))
+        except subprocess.CalledProcessError as e:
+            print(f"[ERROR] External sort failed: {e}", file=sys.stderr)
+            return
+    else:
+        lines = []
+        with open(CSCOPE_FILE_NAME, "r", encoding="utf-8") as f:
+            for line in f:
+                path = line.strip().strip('"')
+                name = Path(path).name
+                lines.append(f"{name}\t{path}\t1\n")
+        
+        lines.sort(key=str.lower)
+        
+        with open(FILENAMETAG_FILE_NAME, "w", encoding="utf-8") as f:
+            f.write("!_TAG_FILE_SORTED\t2\t/2=foldcase/\n")
+            f.writelines(lines)
         
     log_cpu("filenametags", start)
 
@@ -320,7 +355,7 @@ def check_sort_version():
     # Use shutil.which to ensure we respect the updated os.environ['PATH']
     executable = shutil.which(sort_cmd)
     if not executable:
-        return False
+        return None
     
     try:
         result = subprocess.run(
@@ -331,10 +366,10 @@ def check_sort_version():
             check=False,
         )
         if "GNU coreutils" in result.stdout:
-            return True
+            return executable
     except (FileNotFoundError, subprocess.CalledProcessError):
         pass
-    return False
+    return None
 
 
 def try_apply_setpath():
@@ -370,16 +405,22 @@ def try_apply_setpath():
 
 
 def main():
-    find_method, clean, no_ignore = parse()
+    find_method, clean, no_ignore, sort_external = parse()
     log_find_method(find_method)
 
-    if os.name == "nt" and not check_sort_version():
+    sort_executable = check_sort_version()
+    if os.name == "nt" and not sort_executable:
         print("[INFO] GNU sort not found. Attempting to run setpath.bat...", file=sys.stderr)
         try_apply_setpath()
-        if not check_sort_version():
+        sort_executable = check_sort_version()
+        if not sort_executable:
             print("[ERROR] GNU sort not found even after running setpath.bat. Quitting.", file=sys.stderr)
             sys.exit(1)
         print("[INFO] GNU sort detected after environment update.")
+    
+    # Default to "sort" if not on NT or if check_sort_version failed but we didn't exit
+    if not sort_executable:
+        sort_executable = "sort"
 
     check_dependencies(find_method)
 
@@ -403,7 +444,7 @@ def main():
     with ThreadPoolExecutor() as executor:
         futures = [
             executor.submit(run_cscope),
-            executor.submit(create_filenametags),
+            executor.submit(create_filenametags, sort_external, sort_executable),
             executor.submit(create_tags),
         ]
         # Wait for all tasks to complete and raise exceptions if any occurred

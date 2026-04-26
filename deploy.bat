@@ -1,6 +1,23 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: Default choice
+set "NVIM_CHOICE=lua"
+
+:: Parse arguments
+:parse_args
+if "%~1"=="" goto :end_parse
+if /i "%~1"=="/h" goto :show_help
+if /i "%~1"=="--help" goto :show_help
+if /i "%~1"=="/help" goto :show_help
+if /i "%~1"=="/v" set "NVIM_CHOICE=vim"
+if /i "%~1"=="--vim" set "NVIM_CHOICE=vim"
+if /i "%~1"=="/l" set "NVIM_CHOICE=lua"
+if /i "%~1"=="--lua" set "NVIM_CHOICE=lua"
+shift
+goto :parse_args
+:end_parse
+
 :: Get the directory where the script is located
 set "REPO_DIR=%~dp0"
 set "REPO_DIR=%REPO_DIR:~0,-1%"
@@ -23,14 +40,7 @@ call :deploy_file "%REPO_DIR%\.ripgreprc"             "%USERPROFILE%\.ripgreprc"
 call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
 
 :: Neovim configuration selection
-echo.
-echo Select Neovim configuration style:
-echo 1) Lua (Modern, faster, separate config) [Default]
-echo 2) Vimscript (Legacy, uses myvimrc/init.vim)
-set /p NVIM_CHOICE="Enter choice [1-2] (default 1): "
-if "!NVIM_CHOICE!"=="" set "NVIM_CHOICE=1"
-
-if "%NVIM_CHOICE%"=="1" (
+if "%NVIM_CHOICE%"=="lua" (
     :: Deploy Neovim Lua configuration
     if exist "%REPO_DIR%\.config\nvim" (
         if not exist "%LOCALAPPDATA%\nvim" mkdir "%LOCALAPPDATA%\nvim"
@@ -38,14 +48,12 @@ if "%NVIM_CHOICE%"=="1" (
         xcopy /Y /S /E "%REPO_DIR%\.config\nvim\*" "%LOCALAPPDATA%\nvim\"
         echo Deployed Neovim configuration to %LOCALAPPDATA%\nvim
     )
-) else if "%NVIM_CHOICE%"=="2" (
+) else (
     echo Deploying Neovim Vimscript configuration...
     :: Remove Lua config directory if it exists to avoid conflicts
     if exist "%LOCALAPPDATA%\nvim\lua" rd /S /Q "%LOCALAPPDATA%\nvim\lua"
     if exist "%LOCALAPPDATA%\nvim\init.lua" del /Q "%LOCALAPPDATA%\nvim\init.lua"
     call :deploy_file "%REPO_DIR%\myvimrc" "%LOCALAPPDATA%\nvim\init.vim"
-) else (
-    echo Invalid choice. Skipping Neovim configuration.
 )
 
 :: Set Environment Variables
@@ -59,6 +67,17 @@ echo Deployment complete!
 echo Note: Environment variables will take effect in NEW terminal windows.
 echo Note: Ensure C:\app\bin is in your System PATH.
 pause
+goto :eof
+
+:show_help
+echo Usage: deploy.bat [OPTIONS]
+echo.
+echo Options:
+echo   /h, --help      Show this help message
+echo   /v, --vim       Use myvimrc as init.vim (Vimscript style)
+echo   /l, --lua       Use .config/nvim as Neovim config (Lua style, default)
+echo.
+echo By default, Neovim Lua configuration is deployed.
 goto :eof
 
 :deploy_file
