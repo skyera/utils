@@ -236,7 +236,13 @@ def gnu_find_files():
     else:
         print(" ".join(shlex.quote(arg) for arg in cmd.args))
 
-    result = subprocess.run(cmd.args, check=True, stdout=subprocess.PIPE, text=True)
+    # On Windows, Cygwin/MSYS find.exe might try to expand globs itself if it thinks
+    # it's in a non-POSIX shell. We disable this by setting the noglob environment variable.
+    env = os.environ.copy()
+    env["CYGWIN"] = "noglob"
+    env["MSYS"] = "noglob"
+
+    result = subprocess.run(cmd.args, check=True, stdout=subprocess.PIPE, text=True, env=env)
     files = result.stdout.splitlines()
     return write_cscope_files(files)
 
