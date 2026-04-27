@@ -41,6 +41,7 @@ call :deploy_file "%REPO_DIR%\.config\lf\icons"        "%LOCALAPPDATA%\lf\icons"
 call :deploy_file "%REPO_DIR%\.config\fd\ignore"      "%APPDATA%\fd\ignore"
 call :deploy_file "%REPO_DIR%\.ripgreprc"             "%USERPROFILE%\.ripgreprc"
 call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
+call :deploy_file "%REPO_DIR%\.vifm\vifmrc"           "%APPDATA%\vifm\vifmrc"
 
 :: Neovim configuration selection
 if "%NVIM_CHOICE%"=="lua" (
