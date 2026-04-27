@@ -156,11 +156,10 @@ Value:
 `"C:\app\miniforge3\python.exe" "%1" %*`
 
 ### git
-```
-# vim git: affect vim
-
-git config --global core.autocrlf false
-git config --global core.eol lf
+```bash
+# Manual .gitconfig location:
+# Linux/macOS: ~/.gitconfig
+# Windows:     C:\Users\<User>\.gitconfig
 
 # generate a merge commit
 git merge --no-ff branch
