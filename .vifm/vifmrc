@@ -4,8 +4,13 @@ set vifminfo+=tui
 
 " --- File Viewers ---
 " Use eza/ls for directories and bat for files.
-" We use sh -c to ensure the if/else logic is handled correctly by the shell.
-fileviewer * sh -c 'if [ -d "$1" ]; then (eza --tree --icons=always --color=always "$1" || ls -F --color=always "$1") | head -200; else bat --color=always --style=numbers "$1"; fi' -- %f
+if $OS == 'Windows_NT'
+    " Windows: Use cmd /c and check for directory with 'if exist %f\'
+    fileviewer * cmd /c "if exist %f\ (eza --tree --icons=always --color=always %f || dir %f) else (bat --color=always --style=numbers %f)"
+else
+    " Linux/macOS: Use sh -c and check for directory with '-d'
+    fileviewer * sh -c 'if [ -d "$1" ]; then (eza --tree --icons=always --color=always "$1" || ls -F --color=always "$1") | head -200; else bat --color=always --style=numbers "$1"; fi' -- %f
+endif
 
 " --- Keybindings ---
 " Toggle preview with 'w'
