@@ -7,6 +7,11 @@ is_container() {
     [ -f /.dockerenv ] || [ -f /.containerenv ] || grep -q "docker\|lxc" /proc/1/cgroup 2>/dev/null || [ -n "$CONTAINER" ]
 }
 
+# Fix for shared home dir: disable delta inside containers
+if is_container; then
+    export GIT_PAGER=less
+fi
+
 # PATH
 export PATH=$HOME/bin:$HOME/.local/share/forgit/bin:$PATH
 
