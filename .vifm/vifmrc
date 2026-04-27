@@ -4,17 +4,14 @@ set vifminfo+=tui
 
 " --- File Viewers ---
 " Preview directories with eza if available, otherwise fallback to ls
-" Specifically handle .. to avoid bat errors
-fileviewer ..
-    \ ls -F --color=always %c
+fileviewer .. ls -F --color=always %c
 fileviewer */,**/
     \ if [ -x "$(command -v eza)" ]; then eza --tree --icons=always --color=always %c;
     \ else ls -F --color=always %c; fi
 
-" Preview everything else with bat, but only if it's a regular file
-fileviewer *
-    \ if [ -f %c ]; then bat --color=always --style=numbers %c;
-    \ else ls -F --color=always %c; fi
+" Preview everything else with bat
+" We remove the 'if' block here and use bat's internal ability to handle binaries
+fileviewer * bat --color=always --style=numbers %c
 
 " --- Keybindings ---
 " Toggle preview with 'w'
