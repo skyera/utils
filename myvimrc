@@ -1,3 +1,6 @@
+" =============================================================================
+" 1. PREAMBLE & PLUGINS
+" =============================================================================
 set nocompatible
 filetype off
 
@@ -45,12 +48,6 @@ Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-unimpaired'
 Plug 'tpope/vim-fugitive'
 Plug 'christoomey/vim-tmux-navigator'
-let g:tmux_navigator_no_mappings = 1
-nnoremap <silent> <M-h> :TmuxNavigateLeft<cr>
-nnoremap <silent> <M-j> :TmuxNavigateDown<cr>
-nnoremap <silent> <M-k> :TmuxNavigateUp<cr>
-nnoremap <silent> <M-l> :TmuxNavigateRight<cr>
-"Plug 'unblevable/quick-scope'
 Plug 'dense-analysis/ale'
 Plug 'godlygeek/tabular'
 Plug 'tmhedberg/SimpylFold'
@@ -64,24 +61,41 @@ endif
 Plug 'psf/black'
 call plug#end()
 
-set backspace=indent,eol,start
+" =============================================================================
+" 2. CORE SYSTEM OPTIONS
+" =============================================================================
+set encoding=utf-8
 set history=10000
-set ruler
-set showcmd
-set incsearch
-set hlsearch
+set backspace=indent,eol,start
 set mouse=a
-set tabstop=4
-set shiftwidth=4
-set expandtab
-set nu
-set ai
-filetype plugin indent on
-syntax enable
 set nobackup
 set showmode
 set completeopt=menu
+set laststatus=2
+" Ensure centralized swap directory exists
+let s:swapdir = expand('$HOME/.vim/tmp')
+if !isdirectory(s:swapdir)
+    silent! call mkdir(s:swapdir, 'p', 0700)
+endif
+set directory^=$HOME/.vim/tmp//
+
+" --- Search ---
+set incsearch
+set hlsearch
 set ignorecase
+set smartcase
+set wrapscan
+
+" --- Indentation ---
+set tabstop=4
+set shiftwidth=4
+set expandtab
+set ai
+set shiftround
+set cindent
+set cinoptions=g-1
+
+" --- Clipboard Logic ---
 if has('clipboard')
     if has('unnamedplus')
         set clipboard=unnamedplus
@@ -90,7 +104,40 @@ if has('clipboard')
     endif
 endif
 
-"set guifont=Consolas:h10:cDEFAULT
+" --- Windows Python DLL Support ---
+if has('win32') && !has('nvim')
+    let s:python_exe = exepath('python.exe')
+    if !empty(s:python_exe)
+        let s:python_home = fnamemodify(s:python_exe, ':h')
+        let &pythonthreehome = s:python_home
+        let s:dlls = globpath(s:python_home, 'python3*.dll', 0, 1)
+        for s:dll in s:dlls
+            if s:dll !~? 'python3\.dll$'
+                let &pythonthreedll = s:dll
+                break
+            endif
+        endfor
+    endif
+endif
+
+" --- Filetype & Syntax Activation ---
+filetype plugin indent on
+syntax enable
+
+" =============================================================================
+" 3. UI & APPEARANCE
+" =============================================================================
+colorscheme gruvbox
+set background=dark
+set termguicolors
+set nu
+set ruler
+set showcmd
+set cursorline
+set colorcolumn=80
+runtime macros/matchit.vim
+
+" --- Font Settings ---
 if has('win32')
     set guifont=Hack\ Nerd\ Font\ Mono:h12
 elseif has('linux')
@@ -107,151 +154,56 @@ if !has('nvim')
     set go=a
     set browsedir=buffer
 endif
-if (!has('nvim') && !has('clipboard_working'))
-    " In the event that the clipboard isn't working, it's quite likely that
-    " the + and * registers will not be distinct from the unnamed register. In
-    " this case, a:event.regname will always be '' (empty string). However, it
-    " can be the case that `has('clipboard_working')` is false, yet `+` is
-    " still distinct, so we want to check them all.
-    let s:VimOSCYankPostRegisters = ['', '+', '*']
-    " copy text to clipboard on both (y)ank and (d)elete
-    let s:VimOSCYankOperators = ['y', 'd']
-    function! s:VimOSCYankPostCallback(event)
-        if index(s:VimOSCYankPostRegisters, a:event.regname) != -1
-            \ && index(s:VimOSCYankOperators, a:event.operator) != -1
-            call OSCYankRegister(a:event.regname)
-        endif
-    endfunction
-    augroup VimOSCYankPost
-        autocmd!
-        autocmd TextYankPost * call s:VimOSCYankPostCallback(v:event)
-    augroup END
-endif
 
-set cursorline
-set shiftround
-set smartcase
-set encoding=utf-8
-set colorcolumn=80
-if has('win32') && !has('nvim')
-    let s:python_exe = exepath('python.exe')
-    if !empty(s:python_exe)
-        let s:python_home = fnamemodify(s:python_exe, ':h')
-        let &pythonthreehome = s:python_home
-        " Find the version-specific DLL (e.g., python312.dll)
-        let s:dlls = globpath(s:python_home, 'python3*.dll', 0, 1)
-        for s:dll in s:dlls
-            if s:dll !~? 'python3\.dll$' " Skip the generic python3.dll
-                let &pythonthreedll = s:dll
-                break
-            endif
-        endfor
-    endif
-endif
-autocmd BufReadPost *
-    \ if line("'\"") > 1 && line("'\"") <= line("$") |
-    \   exe "normal! g`\"" |
-    \ endif
+" =============================================================================
+" 4. GENERAL MAPPINGS & AUTOCMDS
+" =============================================================================
 
-let g:winManagerWindowLayout='FileExplorer|TagList'
-let Tlist_Show_One_File=1
-map <F2> <Esc>:1,$!xmllint --format -<CR>
-nmap <silent> <leader>ll :LUBufs<cr>
-
-let g:LookupFile_MinPatLength = 3
-let g:LookupFile_PreserveLastPattern = 0
-let g:LookupFile_PreservePatternHistory = 1
-let g:LookupFile_AlwaysAcceptFirst = 1
-let g:LookupFile_AllowNewFiles = 0
-let g:LookupFile_smartcase = 1
-let g:LookupFile_EscCancelsPopup = 1
-let g:LookupFile_ignorecase = 1
-let g:LookupFile_EnableRemapCmd = 0
-
-"if filereadable("./filenametags")
-let g:LookupFile_TagExpr = '"filenametags"'
-"endif
-
+" --- Buffer/Tag Navigation ---
 nmap <F6> :cn<cr>
 nmap <F7> :cp<cr>
 nmap <F8> :bn<cr>
 nmap <F9> :bp<cr>
 nmap <F10> :tn<cr>
 nmap <C-F10> :tp<cr>
+nmap <C-F2> :browse edit<cr>
+nmap <silent> <leader>ll :LUBufs<cr>
 
+" --- Editing Helpers ---
+map <F2> <Esc>:1,$!xmllint --format -<CR>
 map <F4> :execute "vimgrep /" . expand("<cword>") . "/j **" <Bar> cw<CR>
 nmap <F11> :silent !start explorer /select,%:p<CR>
-
-nmap <C-F2> :browse edit<cr>
-set laststatus=2
-runtime macros/matchit.vim
-
-set wrapscan
-set cindent
-set cinoptions=g-1
-colorscheme gruvbox
-set background=dark
-set termguicolors
-
-" Ensure centralized swap directory exists
-let s:swapdir = expand('$HOME/.vim/tmp')
-if !isdirectory(s:swapdir)
-    silent! call mkdir(s:swapdir, 'p', 0700)
-endif
-set directory^=$HOME/.vim/tmp//
-
 noremap <F12> <Esc>:syntax sync fromstart<CR>
-autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
-autocmd FileType html setlocal shiftwidth=2 tabstop=2
-
-augroup sh_indent
-  autocmd!
-  autocmd FileType sh,bash setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
-  autocmd FileType python setlocal foldmethod=indent
-augroup END
-
-if !has('nvim')
-    set cscopequickfix=s-,c-,d-,i-,t-,e-
-    "set cscopequickfix=s-,g-,d-,c-,t-,e-,f-,i-,a-
-    set cscopetagorder=1
-    set ttymouse=sgr
-endif
-
-"set foldmethod=indent
 nnoremap <space> za
 vnoremap <space> zf
-
 nmap cp :let @* = expand("%:p") <cr>
 
-let g:tagbar_type_typescript = {
-  \ 'ctagstype': 'typescript',
-  \ 'kinds': [
-    \ 'c:classes',
-    \ 'n:modules',
-    \ 'f:functions',
-    \ 'v:variables',
-    \ 'v:varlambdas',
-    \ 'm:members',
-    \ 'i:interfaces',
-    \ 'e:enums',
-  \ ]
-\ }
+" --- Mouse Helpers ---
+map <MiddleMouse> <Nop>
+imap <MiddleMouse> <Nop>
 
-"set grepprg=grep\ -nH
-let g:startify_change_to_dir = 0
-let g:startify_disable_at_vimenter = 1
-let g:startify_vcs_number_of_files = 0
-let g:startify_use_env = 0
-let g:startify_enable_unsafe = 1
-let g:startify_lists = [
-      \ { 'type': 'files',     'header': ['   MRU']            },
-      \ { 'type': 'dir',       'header': ['   MRU '. getcwd()] },
-      \ { 'type': 'sessions',  'header': ['   Sessions']       },
-      \ { 'type': 'bookmarks', 'header': ['   Bookmarks']      },
-      \ ]
-command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview(), <bang>0)
+" --- Restore Cursor Position ---
+autocmd BufReadPost *
+    \ if line("'\"") > 1 && line("'\"") <= line("$") |
+    \   exe "normal! g`\"" |
+    \ endif
+
+" --- Tmux Navigator ---
+let g:tmux_navigator_no_mappings = 1
+nnoremap <silent> <M-h> :TmuxNavigateLeft<cr>
+nnoremap <silent> <M-j> :TmuxNavigateDown<cr>
+nnoremap <silent> <M-k> :TmuxNavigateUp<cr>
+nnoremap <silent> <M-l> :TmuxNavigateRight<cr>
+
+" =============================================================================
+" 5. PLUGIN CONFIGURATIONS
+" =============================================================================
+
+" --- FZF ---
 let g:fzf_command_prefix = 'Fzf'
+let g:fzf_layout = { 'down': '40%' }
 let $FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS . ' --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
+command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview(), <bang>0)
 
 nnoremap <silent> <leader>f :FzfFiles<CR>
 nnoremap <silent> <leader>g :FzfRg<CR>
@@ -260,9 +212,8 @@ nnoremap <silent> <leader>t :FzfTags<CR>
 nnoremap <silent> <leader>l :FzfLines<CR>
 nnoremap <silent> <leader>lb :FzfBLines<CR>
 nnoremap <silent> <leader>tb :FzfBTags<CR>
-let g:fzf_layout = { 'down': '40%' }
 
-"let g:ale_linters = {'python': ['flake8']}
+" --- ALE (Linting/Fixing) ---
 let g:ale_fixers = {
             \ 'python': ['black', 'isort', 'remove_trailing_lines', 'trim_whitespace'],
             \ }
@@ -277,18 +228,52 @@ let g:ale_lint_on_enter = 0
 let g:ale_fix_on_save = 0
 let g:ale_lint_on_save = 0
 let g:ale_virtualtext_cursor = 'current'
-
 noremap <silent> <leader>al :ALELint<CR>
+nnoremap <leader>tfix :call ToggleALEFixOnSave()<CR>
 
+function! ToggleALEFixOnSave()
+    if exists('g:ale_fix_on_save') && g:ale_fix_on_save == 1
+        let g:ale_fix_on_save = 0
+    else
+        let g:ale_fix_on_save = 1
+    endif
+    echo "g:ale_fix_on_save is now set to " . g:ale_fix_on_save
+endfunction
+
+" --- NERDTree ---
 map <leader>nn :NERDTreeToggle<cr>
 map <leader>nb :NERDTreeFromBookmark<Space>
 map <leader>nf :NERDTreeFind<cr>
 
-map <MiddleMouse> <Nop>
-imap <MiddleMouse> <Nop>
+" --- LookupFile ---
+let g:LookupFile_MinPatLength = 3
+let g:LookupFile_PreserveLastPattern = 0
+let g:LookupFile_PreservePatternHistory = 1
+let g:LookupFile_AlwaysAcceptFirst = 1
+let g:LookupFile_AllowNewFiles = 0
+let g:LookupFile_smartcase = 1
+let g:LookupFile_EscCancelsPopup = 1
+let g:LookupFile_ignorecase = 1
+let g:LookupFile_EnableRemapCmd = 0
+let g:LookupFile_TagExpr = '"filenametags"'
 
+" --- Classic Vim UI (WinManager/Startify) ---
+let g:winManagerWindowLayout='FileExplorer|TagList'
+let Tlist_Show_One_File=1
+let g:startify_change_to_dir = 0
+let g:startify_disable_at_vimenter = 1
+let g:startify_vcs_number_of_files = 0
+let g:startify_use_env = 0
+let g:startify_enable_unsafe = 1
+let g:startify_lists = [
+      \ { 'type': 'files',     'header': ['   MRU']            },
+      \ { 'type': 'dir',       'header': ['   MRU '. getcwd()] },
+      \ { 'type': 'sessions',  'header': ['   Sessions']       },
+      \ { 'type': 'bookmarks', 'header': ['   Bookmarks']      },
+      \ ]
+
+" --- Tabularize (Auto-align) ---
 inoremap <silent> <Bar>   <Bar><Esc>:call <SID>align()<CR>a
-
 function! s:align()
   let p = '^\s*|\s.*\s|\s*$'
   if exists(':Tabularize') && getline('.') =~# '^\s*|' && (getline(line('.')-1) =~# p || getline(line('.')+1) =~# p)
@@ -300,94 +285,104 @@ function! s:align()
   endif
 endfunction
 
-" Define a key mapping to toggle g:ale_fix_on_save variable
-nnoremap <leader>tfix :call ToggleALEFixOnSave()<CR>
+" --- Classic Vim OSCYank (SSH Support) ---
+if (!has('nvim') && !has('clipboard_working'))
+    let s:VimOSCYankPostRegisters = ['', '+', '*']
+    let s:VimOSCYankOperators = ['y', 'd']
+    function! s:VimOSCYankPostCallback(event)
+        if index(s:VimOSCYankPostRegisters, a:event.regname) != -1
+            \ && index(s:VimOSCYankOperators, a:event.operator) != -1
+            call OSCYankRegister(a:event.regname)
+        endif
+    endfunction
+    augroup VimOSCYankPost
+        autocmd!
+        autocmd TextYankPost * call s:VimOSCYankPostCallback(v:event)
+    augroup END
+endif
 
-" Function to toggle g:ale_fix_on_save variable
-function! ToggleALEFixOnSave()
-    if exists('g:ale_fix_on_save') && g:ale_fix_on_save == 1
-        let g:ale_fix_on_save = 0
-    else
-        let g:ale_fix_on_save = 1
-    endif
-    echo "g:ale_fix_on_save is now set to " . g:ale_fix_on_save
-endfunction
+" =============================================================================
+" 6. FILETYPE & LANGUAGE LOGIC
+" =============================================================================
 
+" --- Indentation Overrides ---
+autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
+autocmd FileType html setlocal shiftwidth=2 tabstop=2
+
+augroup sh_indent
+  autocmd!
+  autocmd FileType sh,bash setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+  autocmd FileType python setlocal foldmethod=indent
+augroup END
+
+" --- Tagbar TypeScript ---
+let g:tagbar_type_typescript = {
+  \ 'ctagstype': 'typescript',
+  \ 'kinds': [
+    \ 'c:classes', 'n:modules', 'f:functions', 'v:variables', 
+    \ 'v:varlambdas', 'm:members', 'i:interfaces', 'e:enums',
+  \ ]
+\ }
+
+" --- Classic Vim Cscope ---
+if !has('nvim')
+    set cscopequickfix=s-,c-,d-,i-,t-,e-
+    set cscopetagorder=1
+    set ttymouse=sgr
+endif
+
+" =============================================================================
+" 7. NEVOMIM / LUA CONFIGURATION
+" =============================================================================
 if has('nvim')
-    lua require('cscope_maps').setup({
-        \ prefix="<C-\\>",
-        \ skip_input_prompt=true,
-        \ })
+    " --- Cscope Maps ---
+    lua require('cscope_maps').setup({ prefix="<C-\\>", skip_input_prompt=true })
 
-lua << EOF
-require('telescope').setup({
-defaults = {
-    layout_strategy = 'bottom_pane',
-
-    layout_config = {
-      bottom_pane = {
-        height = 0.5,        -- 50% of the screen height
-        prompt_position = "bottom",
+    " --- Telescope ---
+    lua << EOF
+    require('telescope').setup({
+      defaults = {
+        layout_strategy = 'bottom_pane',
+        layout_config = {
+          bottom_pane = { height = 0.5, prompt_position = "bottom" },
+        },
       },
-    },
-  },
-})
+    })
 EOF
-
     nnoremap <leader>sf <cmd>Telescope find_files<cr>
     nnoremap <leader>sg <cmd>Telescope live_grep<cr>
     nnoremap <leader>sb <cmd>Telescope buffers<cr>
     nnoremap <leader>sh <cmd>Telescope help_tags<cr>
+
+    " --- Nvim-Tree ---
     lua vim.g.loaded_netrw = 1
     lua vim.g.loaded_netrwPlugin = 1
-    lua vim.opt.termguicolors = true
-lua << EOF
+    lua << EOF
     require("nvim-tree").setup({
-        view = {
-            width=30,
-            preserve_window_proportions=true,
-        },
-        actions = {
-            open_file = {
-                resize_window=false,
-            },
-        },
+        view = { width=30, preserve_window_proportions=true },
+        actions = { open_file = { resize_window=false } },
     })
 EOF
     nnoremap <leader>e :NvimTreeToggle<cr>
     nnoremap <leader>n :NvimTreeFindFile<cr>
-lua << EOF
-local fzf_lua = require('fzf-lua')
 
-fzf_lua.setup({
-    keymap = {
-        fzf = {
-            ["ctrl-q"] = "select-all+accept",
-        },
-    },
-})
+    " --- FZF-Lua ---
+    lua << EOF
+    require('fzf-lua').setup({ keymap = { fzf = { ["ctrl-q"] = "select-all+accept" } } })
 EOF
-    " Map <leader>ff to find files
     nnoremap <silent> <leader>pf :lua require('fzf-lua').files()<CR>
     nnoremap <silent> <leader>pg :lua require('fzf-lua').live_grep()<CR>
     nnoremap <silent> <leader>pb :lua require('fzf-lua').buffers()<CR>
 
-    lua << EOF
-    require'alpha'.setup(require'alpha.themes.startify'.config)
-EOF
+    " --- Dashboard (Alpha) ---
+    lua require'alpha'.setup(require'alpha.themes.startify'.config)
 endif
 
-au FileType vimwiki silent! iunmap <buffer> <Tab>
-"imap <C-Space> <Plug>VimwikiTableNextCell
+" =============================================================================
+" 8. TERMINAL UTILITIES & EXTRAS
+" =============================================================================
 
-if exists('g:loaded_webdevicons')
-    call webdevicons#refresh() 
-endif
-
-imap <C-;>   <Cmd>call codeium#CycleCompletions(1)<CR>
-imap <C-,>   <Cmd>call codeium#CycleCompletions(-1)<CR>
-imap <C-x>   <Cmd>call codeium#Clear()<CR>
-
+" --- Ranger / LF / Floaterm ---
 if !has('win32') && !has('gui_running')
     let g:ranger_map_keys = 0
     nnoremap <leader>r :Ranger<CR>
@@ -395,8 +390,18 @@ endif
 
 if !has('gui_running')
     let g:lf_map_keys = 0
-    nnoremap <leader>lf :Lf<CR>
     let g:lf_width = 1.0
     let g:lf_height = 1.0
+    nnoremap <leader>lf :Lf<CR>
 endif
 
+" --- External Tools (Codeium, Webdevicons) ---
+imap <C-;>   <Cmd>call codeium#CycleCompletions(1)<CR>
+imap <C-,>   <Cmd>call codeium#CycleCompletions(-1)<CR>
+imap <C-x>   <Cmd>call codeium#Clear()<CR>
+
+if exists('g:loaded_webdevicons')
+    call webdevicons#refresh() 
+endif
+
+au FileType vimwiki silent! iunmap <buffer> <Tab>
