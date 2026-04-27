@@ -5,6 +5,10 @@
 	editor = nvim
 	symlinks = true
 	longpaths = true
+	pager = delta
+
+[interactive]
+	diffFilter = delta --color-only
 
 [init]
 	defaultBranch = master
@@ -35,6 +39,12 @@
 
 [diff]
 	algorithm = histogram
+	colorMoved = default
+
+[delta]
+	navigate = true
+	side-by-side = true
+	line-numbers = true
 
 [pull]
 	rebase = false
