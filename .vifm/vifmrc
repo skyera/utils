@@ -3,15 +3,11 @@ view!
 set vifminfo+=tui
 
 " --- File Viewers ---
-" Preview directories with eza if available, otherwise fallback to ls
-fileviewer .. ls -F --color=always %c
-fileviewer */,**/
-    \ if [ -x "$(command -v eza)" ]; then eza --tree --icons=always --color=always %c;
-    \ else ls -F --color=always %c; fi
-
-" Preview everything else with bat
-" We remove the 'if' block here and use bat's internal ability to handle binaries
-fileviewer * bat --color=always --style=numbers %c
+" Use eza/ls for directories and bat for files.
+" We handle this in a single rule to ensure correct precedence and avoid bat errors on folders.
+fileviewer *
+    \ if [ -d %c ]; then (eza --tree --icons=always --color=always %c || ls -F --color=always %c) | head -200;
+    \ else bat --color=always --style=numbers %c; fi
 
 " --- Keybindings ---
 " Toggle preview with 'w'
