@@ -77,10 +77,8 @@ set expandtab
 set nu
 set ai
 filetype plugin indent on
-syntax on
 syntax enable
 set nobackup
-set noswapfile
 set showmode
 set completeopt=menu
 set ignorecase
@@ -131,7 +129,6 @@ if (!has('nvim') && !has('clipboard_working'))
 endif
 
 set cursorline
-set ci
 set shiftround
 set smartcase
 set encoding=utf-8
@@ -195,7 +192,14 @@ set cinoptions=g-1
 colorscheme gruvbox
 set background=dark
 set termguicolors
+
+" Ensure centralized swap directory exists
+let s:swapdir = expand('$HOME/.vim/tmp')
+if !isdirectory(s:swapdir)
+    silent! call mkdir(s:swapdir, 'p', 0700)
+endif
 set directory^=$HOME/.vim/tmp//
+
 noremap <F12> <Esc>:syntax sync fromstart<CR>
 autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
 autocmd FileType html setlocal shiftwidth=2 tabstop=2
@@ -210,7 +214,6 @@ if !has('nvim')
     set cscopequickfix=s-,c-,d-,i-,t-,e-
     "set cscopequickfix=s-,g-,d-,c-,t-,e-,f-,i-,a-
     set cscopetagorder=1
-    set nocst
     set ttymouse=sgr
 endif
 
