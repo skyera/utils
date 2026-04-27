@@ -161,7 +161,11 @@ Value:
 # Linux/macOS: ~/.gitconfig
 # Windows:     C:\Users\<User>\.gitconfig
 
-# Windows "Link" (Run this to include your repo config):
+# 1. Set your identity once on each machine:
+# git config --global user.name "Zhigang"
+# git config --global user.email "your-email@example.com"
+
+# 2. Link your repo config (aliases, settings):
 # git config --global include.path "C:/test/utils/.gitconfig"
 
 # generate a merge commit
