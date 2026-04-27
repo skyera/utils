@@ -62,10 +62,13 @@ setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc"
 setx FZF_DEFAULT_COMMAND "fd --follow --hidden --exclude .git --ignore-file \"%APPDATA%\fd\ignore\""
 setx FZF_DEFAULT_OPTS "--preview \"bat --color=always {}\""
 
+:: Add C:\app\bin to User PATH if not already present
+echo Adding C:\app\bin to PATH...
+powershell -Command "$p = [Environment]::GetEnvironmentVariable('PATH', 'User'); if ($p -notlike '*C:\app\bin*') { [Environment]::SetEnvironmentVariable('PATH', $p + ';C:\app\bin', 'User') }"
+
 echo.
 echo Deployment complete!
-echo Note: Environment variables will take effect in NEW terminal windows.
-echo Note: Ensure C:\app\bin is in your System PATH.
+echo Note: Environment variables (including PATH) will take effect in NEW terminal windows.
 pause
 goto :eof
 
