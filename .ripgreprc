@@ -2,20 +2,32 @@
 --follow
 --hidden
 
+# Limit column length to avoid terminal lag on huge lines
+--max-columns=150
+--max-columns-preview
+
 # Ignore cscope files and tags
---glob=!.git
 --glob=!cscope.*
 --glob=!tags
 --glob=!filenametags
 
+# Build and Binary artifacts
 --glob=!*.o
 --glob=!*.obj
+--glob=!*.exe
+--glob=!*.bin
 --glob=!*.swp
 --glob=!*.tmp
 --glob=!*.lck
---glob=!build/
---glob=!Debug/
---glob=!Release/
---glob=!dist/
---glob=!obj/
---glob=!ThirdParty/
+
+# Directories to skip
+--glob=!.git/*
+--glob=!.vs/*
+--glob=!.vscode/*
+--glob=!node_modules/*
+--glob=!build/*
+--glob=!Debug/*
+--glob=!Release/*
+--glob=!dist/*
+--glob=!obj/*
+--glob=!ThirdParty/*
