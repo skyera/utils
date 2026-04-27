@@ -3,14 +3,14 @@ view!
 set vifminfo+=tui
 
 " --- File Viewers ---
-" Use eza/ls for directories and bat for files.
-if $OS == 'Windows_NT'
-    " Windows: Use cmd /c and check for directory with 'if exist %f\'
-    fileviewer * cmd /c "if exist %f\ (eza --tree --icons=always --color=always %f || dir %f) else (bat --color=always --style=numbers %f)"
-else
-    " Linux/macOS: Use sh -c and check for directory with '-d'
-    fileviewer * sh -c 'if [ -d "$1" ]; then (eza --tree --icons=always --color=always "$1" || ls -F --color=always "$1") | head -200; else bat --color=always --style=numbers "$1"; fi' -- %f
-endif
+" Separate directory handling (reliable on both platforms)
+fileviewer */,**/
+    \ if [ -x "$(command -v eza)" ]; then eza --tree --icons=always --color=always %c;
+    \ elif [ "$OS" = "Windows_NT" ]; then dir %c;
+    \ else ls -F --color=always %c; fi
+
+" Catch-all for files (will only be reached if the above didn't match)
+fileviewer * bat --color=always --style=numbers %c
 
 " --- Keybindings ---
 " Toggle preview with 'w'
