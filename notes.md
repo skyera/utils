@@ -48,10 +48,17 @@ alias reload='source ~/.bashrc'
 ```
 
 ### Nerd fonts
-```
+```bash
+# Linux
 mkdir -p ~/.local/share/fonts
 cd ~/.local/share/fonts
 curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack/Regular/HackNerdFont-Regular.ttf
+
+# macOS (Homebrew)
+brew tap homebrew/cask-fonts
+brew install --cask font-jetbrains-mono-nerd-font
+
+# Windows
 choco install nerd-fonts-hack
 ```
 
