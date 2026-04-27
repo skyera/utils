@@ -5,6 +5,9 @@ setlocal enabledelayedexpansion
 set "REPO_DIR=%~dp0"
 set "REPO_DIR=%REPO_DIR:~0,-1%"
 
+:: Destination for binaries
+set "BIN_DIR=C:\app\bin"
+
 :: Default choice
 set "NVIM_CHOICE=lua"
 
@@ -24,10 +27,10 @@ goto :parse_args
 
 echo Deploying for Windows...
 
-:: 1. Deploy binaries to C:\app\bin
+:: 1. Deploy binaries to %BIN_DIR%
 echo [1/2] Deploying binaries...
-if not exist "C:\app\bin" mkdir "C:\app\bin"
-xcopy /Y /S /E "%REPO_DIR%\bin\*" "C:\app\bin\"
+if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
+xcopy /Y /S /E "%REPO_DIR%\bin\*" "%BIN_DIR%\"
 
 :: 2. Deploy application configurations
 echo [2/2] Deploying configurations...
@@ -62,9 +65,9 @@ setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc"
 setx FZF_DEFAULT_COMMAND "fd --follow --hidden --exclude .git --ignore-file \"%APPDATA%\fd\ignore\""
 setx FZF_DEFAULT_OPTS "--preview \"bat --color=always {}\""
 
-:: Add C:\app\bin to User PATH if not already present
-echo Adding C:\app\bin to PATH...
-powershell -Command "$p = [Environment]::GetEnvironmentVariable('PATH', 'User'); if ($p -notlike '*C:\app\bin*') { [Environment]::SetEnvironmentVariable('PATH', $p + ';C:\app\bin', 'User') }"
+:: Add %BIN_DIR% to User PATH if not already present
+echo Adding %BIN_DIR% to PATH...
+powershell -Command "$d = '%BIN_DIR%'; $p = [Environment]::GetEnvironmentVariable('PATH', 'User'); if ($p -notlike \"*$d*\") { [Environment]::SetEnvironmentVariable('PATH', $p + ';' + $d, 'User') }"
 
 echo.
 echo Deployment complete!
