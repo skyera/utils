@@ -4,13 +4,17 @@ set vifminfo+=tui
 
 " --- File Viewers ---
 " Preview directories with eza if available, otherwise fallback to ls
+" Specifically handle .. to avoid bat errors
+fileviewer ..
+    \ ls -F --color=always %c
 fileviewer */,**/
     \ if [ -x "$(command -v eza)" ]; then eza --tree --icons=always --color=always %c;
     \ else ls -F --color=always %c; fi
 
-" Preview everything else with bat
-" bat handles binary files and unknown extensions gracefully
-fileviewer * bat --color=always --style=numbers %c
+" Preview everything else with bat, but only if it's a regular file
+fileviewer *
+    \ if [ -f %c ]; then bat --color=always --style=numbers %c;
+    \ else ls -F --color=always %c; fi
 
 " --- Keybindings ---
 " Toggle preview with 'w'
@@ -26,6 +30,6 @@ if $OS == 'Windows_NT'
     " Windows: Expects vifm_fzf_find.bat to be in PATH (installed via deploy.sh)
     command! FZFfind :execute '!vifm_fzf_find.bat %u'
 else
-    " Linux/macOS: Run inline fzf with a preview window
-    command! FZFfind :let $FZF_PICK = term('fd --follow --hidden --exclude .git | fzf --preview "bat --color=always --style=numbers {}" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
+    " Linux/macOS: Run inline fzf with a robust preview window
+    command! FZFfind :let $FZF_PICK = term('fd --follow --hidden --exclude .git | fzf --preview "if [ -d {} ]; then eza --tree --color=always {} | head -200; else bat --color=always --style=numbers {}; fi" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
 endif
