@@ -7,6 +7,7 @@
 	eol = lf
 	excludesfile = ~/.config/git/ignore
 	editor = nvim
+	symlinks = true
 
 [init]
 	defaultBranch = master

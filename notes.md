@@ -161,6 +161,9 @@ Value:
 # Linux/macOS: ~/.gitconfig
 # Windows:     C:\Users\<User>\.gitconfig
 
+# Windows "Link" (Run this to include your repo config):
+# git config --global include.path "C:/test/utils/.gitconfig"
+
 # generate a merge commit
 git merge --no-ff branch
 
