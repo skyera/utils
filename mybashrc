@@ -7,9 +7,12 @@ is_container() {
     [ -f /.dockerenv ] || [ -f /.containerenv ] || grep -q "docker\|lxc" /proc/1/cgroup 2>/dev/null || [ -n "$CONTAINER" ]
 }
 
-# Fix for shared home dir: disable delta inside containers
-if is_container; then
-    export GIT_PAGER=less
+# Git Pager (delta) detection
+# Use delta if available and functional, otherwise fallback to less
+if command -v delta >/dev/null 2>&1 && delta --version >/dev/null 2>&1; then
+    export GIT_PAGER="delta"
+else
+    export GIT_PAGER="less"
 fi
 
 # PATH
