@@ -7,7 +7,7 @@ set vifminfo+=tui
 if $OS == 'Windows_NT'
     " Windows: Use native patterns and cmd-compatible commands
     fileviewer */,**/,../ eza --tree --icons=always --color=always %f || dir %f
-    fileviewer * bat --color=always --style=numbers %f
+    fileviewer * bat --color=never --style=numbers %f
 else
     " Linux/macOS: Use sh -c for a robust single-rule check
     fileviewer * sh -c 'if [ -d "$1" ]; then (eza --tree --icons=always --color=always "$1" || ls -F --color=always "$1") | head -200; else bat --color=always --style=numbers "$1"; fi' -- %f
