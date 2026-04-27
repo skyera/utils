@@ -3,14 +3,15 @@ view!
 set vifminfo+=tui
 
 " --- File Viewers ---
-" Separate directory handling (reliable on both platforms)
-fileviewer */,**/
-    \ if [ -x "$(command -v eza)" ]; then eza --tree --icons=always --color=always %c;
-    \ elif [ "$OS" = "Windows_NT" ]; then dir %c;
-    \ else ls -F --color=always %c; fi
-
-" Catch-all for files (will only be reached if the above didn't match)
-fileviewer * bat --color=always --style=numbers %c
+" Separate directory handling and file handling using OS-specific logic.
+if $OS == 'Windows_NT'
+    " Windows: Use native patterns and cmd-compatible commands
+    fileviewer */,**/,../ eza --tree --icons=always --color=always %f || dir %f
+    fileviewer * bat --color=always --style=numbers %f
+else
+    " Linux/macOS: Use sh -c for a robust single-rule check
+    fileviewer * sh -c 'if [ -d "$1" ]; then (eza --tree --icons=always --color=always "$1" || ls -F --color=always "$1") | head -200; else bat --color=always --style=numbers "$1"; fi' -- %f
+endif
 
 " --- Keybindings ---
 " Toggle preview with 'w'
