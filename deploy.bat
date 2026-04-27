@@ -69,7 +69,6 @@ powershell -Command "$p = [Environment]::GetEnvironmentVariable('PATH', 'User');
 echo.
 echo Deployment complete!
 echo Note: Environment variables (including PATH) will take effect in NEW terminal windows.
-pause
 goto :eof
 
 :show_help
