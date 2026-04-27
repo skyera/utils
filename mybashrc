@@ -213,6 +213,10 @@ if [[ -n "$BASH_VERSION" ]]; then
     eval "$(zoxide init bash)"
     eval "$(fzf --bash)"
 elif [[ -n "$ZSH_VERSION" ]]; then
+    # Initialize Zsh completion system if not already done
+    if ! type _git >/dev/null 2>&1; then
+        autoload -Uz compinit && compinit
+    fi
     eval "$(zoxide init zsh)"
     eval "$(fzf --zsh)"
 fi
