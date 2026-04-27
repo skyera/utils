@@ -8,6 +8,7 @@
 	excludesfile = ~/.config/git/ignore
 	editor = nvim
 	symlinks = true
+	longpaths = true
 
 [init]
 	defaultBranch = master
@@ -21,6 +22,22 @@
 	unstage = reset HEAD --
 	last = log -1 HEAD
 	amend = commit --amend --no-edit
+	d = diff
+	dt = difftool
+	mt = mergetool
+
+[rerere]
+	enabled = true
+	autoupdate = true
+
+[column]
+	ui = auto
+
+[branch]
+	sort = -committerdate
+
+[diff]
+	algorithm = histogram
 
 [pull]
 	rebase = false
