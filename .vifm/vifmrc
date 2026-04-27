@@ -4,10 +4,8 @@ set vifminfo+=tui
 
 " --- File Viewers ---
 " Use eza/ls for directories and bat for files.
-" We handle this in a single rule to ensure correct precedence and avoid bat errors on folders.
-fileviewer *
-    \ if [ -d %c ]; then (eza --tree --icons=always --color=always %c || ls -F --color=always %c) | head -200;
-    \ else bat --color=always --style=numbers %c; fi
+" We use sh -c to ensure the if/else logic is handled correctly by the shell.
+fileviewer * sh -c 'if [ -d "$1" ]; then (eza --tree --icons=always --color=always "$1" || ls -F --color=always "$1") | head -200; else bat --color=always --style=numbers "$1"; fi' -- %f
 
 " --- Keybindings ---
 " Toggle preview with 'w'
