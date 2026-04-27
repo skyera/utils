@@ -265,7 +265,7 @@ def py_find_files():
 
 def log_cpu(msg, start):
     elapsed = time.time() - start
-    print(msg, "elapsed", elapsed, "seconds")
+    print(f"{msg} elapsed {elapsed:.3f} seconds")
 
 
 def collect_files(find_method, no_ignore=False):
