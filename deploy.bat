@@ -1,6 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: Get the directory where the script is located (Capture early because shift affects %0)
+set "REPO_DIR=%~dp0"
+set "REPO_DIR=%REPO_DIR:~0,-1%"
+
 :: Default choice
 set "NVIM_CHOICE=lua"
 
@@ -17,10 +21,6 @@ if /i "%~1"=="--lua" set "NVIM_CHOICE=lua"
 shift
 goto :parse_args
 :end_parse
-
-:: Get the directory where the script is located
-set "REPO_DIR=%~dp0"
-set "REPO_DIR=%REPO_DIR:~0,-1%"
 
 echo Deploying for Windows...
 
