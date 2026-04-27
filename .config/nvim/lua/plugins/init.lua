@@ -106,6 +106,7 @@ return {
   -- Treesitter
   {
     "nvim-treesitter/nvim-treesitter",
+    enabled = false,
     build = ":TSUpdate",
     config = function()
       require("nvim-treesitter").setup({
