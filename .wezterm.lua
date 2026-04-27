@@ -18,7 +18,7 @@ config.launch_menu = {
 local os = wezterm.target_triple
 
 if os:find("windows") then
-    config.default_prog = { "cmd" }
+    config.default_prog = { "powershell.exe" }
 elseif os:find("darwin") then
     config.default_prog = { "/bin/zsh" }
 else
@@ -89,14 +89,20 @@ wezterm.on("update-status", function(window, pane)
     end
   
   local bg = window:effective_config().resolved_palette.background
+  local leader = ""
+  if window:leader_is_active() then
+    leader = " LEAD "
+  end
+
   window:set_right_status(wezterm.format {
     { Background = { Color = bg } },
-    { Foreground = { Color = '#ffffff' } },
-    { Text = ' ' .. hostname .. ' | ' .. wezterm.strftime('%H:%M') .. ' ' },
+    { Foreground = { Color = "#fabd2f" } }, -- Gruvbox Yellow
+    { Attribute = { Intensity = "Bold" } },
+    { Text = leader },
+    { Foreground = { Color = "#ffffff" } },
+    { Attribute = { Intensity = "Normal" } },
+    { Text = " " .. hostname .. " | " .. wezterm.strftime("%H:%M") .. " " },
   })
 end)
 
 return config
-
-
-
