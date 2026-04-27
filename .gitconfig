@@ -14,13 +14,14 @@
 	co = checkout
 	br = branch
 	ci = commit
-	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %C(cyan)%cd %Cgreen(%cr)%Creset %C(bold blue)<%an>%Creset' --abbrev-commit --date=format:'%Y-%m-%d %H:%M'
 	unstage = reset HEAD --
 	last = log -1 HEAD
 	amend = commit --amend --no-edit
 	d = diff
 	dt = difftool
 	mt = mergetool
+	lo = log --pretty=format:'%C(yellow)%h %C(cyan)%ad %Creset%s' --date=short
 
 [rerere]
 	enabled = true
