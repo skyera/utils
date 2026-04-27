@@ -3,8 +3,10 @@ view!
 set vifminfo+=tui
 
 " --- File Viewers ---
-" Preview directories with ls
-fileviewer */,**/ ls --color=always %c
+" Preview directories with eza if available, otherwise fallback to ls
+fileviewer */,**/
+    \ if [ -x "$(command -v eza)" ]; then eza --tree --icons=always --color=always %c;
+    \ else ls -F --color=always %c; fi
 
 " Preview everything else with bat
 " bat handles binary files and unknown extensions gracefully
@@ -25,5 +27,5 @@ if $OS == 'Windows_NT'
     command! FZFfind :execute '!vifm_fzf_find.bat %u'
 else
     " Linux/macOS: Run inline fzf with a preview window
-    command! FZFfind :let $FZF_PICK = term('fd . --type f | fzf --preview "bat --color=always --style=numbers {}" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
+    command! FZFfind :let $FZF_PICK = term('fd --follow --hidden --exclude .git | fzf --preview "bat --color=always --style=numbers {}" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
 endif
