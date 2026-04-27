@@ -98,6 +98,7 @@ deploy_file "$REPO_DIR/.tigrc"      "$HOME/.tigrc"
 deploy_file "$REPO_DIR/.vifm/vifmrc" "$HOME/.vifm/vifmrc"
 deploy_file "$REPO_DIR/.tmux.conf" "$HOME/.tmux.conf"
 deploy_file "$REPO_DIR/.ripgreprc" "$HOME/.ripgreprc"
+deploy_file "$REPO_DIR/.gitconfig" "$HOME/.gitconfig"
 
 # Config directories
 deploy_file "$REPO_DIR/.config/ranger/rc.conf"      "$HOME/.config/ranger/rc.conf"
