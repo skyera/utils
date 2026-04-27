@@ -31,10 +31,7 @@ FILE_EXTS = (
     ".sh",
     ".lua",
     ".toml",
-    ".json",
-    ".md",
     ".bat",
-    ".html",
     ".sdl",
     ".cu",
     ".cuh",
@@ -80,7 +77,6 @@ EXCLUDED_DIRS = [
 
 CSCOPE_FILE_NAME = "cscope.files"
 FILENAMETAG_FILE_NAME = "filenametags"
-
 
 
 def parse():
@@ -196,8 +192,12 @@ def get_files():
     for root, dirs, file_names in os.walk("."):
         # Prune excluded directories in-place to prevent os.walk from descending
         # Use substring matching for consistency with the 'find' method
-        dirs[:] = [d for d in dirs if not any(excl.lower() in d.lower() for excl in EXCLUDED_DIRS)]
-        
+        dirs[:] = [
+            d
+            for d in dirs
+            if not any(excl.lower() in d.lower() for excl in EXCLUDED_DIRS)
+        ]
+
         for file_name in file_names:
             path = os.path.join(root, file_name)
             if not os.path.islink(path):
@@ -221,7 +221,10 @@ def gnu_find_files():
                 check=False,
             )
             if "GNU findutils" not in result.stdout:
-                print("Error: 'find' is not GNU find. On Windows, ensure Git Bash or Cygwin is in your PATH.", file=sys.stderr)
+                print(
+                    "Error: 'find' is not GNU find. On Windows, ensure Git Bash or Cygwin is in your PATH.",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
         except Exception as e:
             print(f"Error checking 'find' version: {e}", file=sys.stderr)
@@ -229,7 +232,7 @@ def gnu_find_files():
 
     cmd = FindCmd(EXCLUDED_DIRS, FILE_EXTS)
     cmd.create(find_executable)
-    
+
     # For logging, we can use shlex.join (Python 3.8+) or subprocess.list2cmdline
     if hasattr(shlex, "join"):
         print(shlex.join(cmd.args))
@@ -242,7 +245,9 @@ def gnu_find_files():
     env["CYGWIN"] = "noglob"
     env["MSYS"] = "noglob"
 
-    result = subprocess.run(cmd.args, check=True, stdout=subprocess.PIPE, text=True, env=env)
+    result = subprocess.run(
+        cmd.args, check=True, stdout=subprocess.PIPE, text=True, env=env
+    )
     files = result.stdout.splitlines()
     return write_cscope_files(files)
 
@@ -292,7 +297,10 @@ def create_filenametags(use_external_sort=False, sort_executable="sort"):
         print("creating filenametags (in-memory sort)...")
 
     if not os.path.exists(CSCOPE_FILE_NAME):
-        print(f"[ERROR] {CSCOPE_FILE_NAME} not found. Cannot create filenametags.", file=sys.stderr)
+        print(
+            f"[ERROR] {CSCOPE_FILE_NAME} not found. Cannot create filenametags.",
+            file=sys.stderr,
+        )
         return
 
     if use_external_sort:
@@ -305,17 +313,17 @@ def create_filenametags(use_external_sort=False, sort_executable="sort"):
                     path = line.strip().strip('"')
                     name = Path(path).name
                     tag_entries.append(f"{name}\t{path}\t1\n")
-            
+
             input_data = "".join(tag_entries).encode("utf-8")
-            
+
             # Run sort -f and capture output
             result = subprocess.run(
                 [sort_executable, "-f"],
                 input=input_data,
                 stdout=subprocess.PIPE,
-                check=True
+                check=True,
             )
-            
+
             with open(FILENAMETAG_FILE_NAME, "w", encoding="utf-8") as f:
                 f.write("!_TAG_FILE_SORTED\t2\t/2=foldcase/\n")
                 f.write(result.stdout.decode("utf-8"))
@@ -329,13 +337,13 @@ def create_filenametags(use_external_sort=False, sort_executable="sort"):
                 path = line.strip().strip('"')
                 name = Path(path).name
                 lines.append(f"{name}\t{path}\t1\n")
-        
+
         lines.sort(key=str.lower)
-        
+
         with open(FILENAMETAG_FILE_NAME, "w", encoding="utf-8") as f:
             f.write("!_TAG_FILE_SORTED\t2\t/2=foldcase/\n")
             f.writelines(lines)
-        
+
     log_cpu("filenametags", start)
 
 
@@ -364,11 +372,14 @@ def check_dependencies(find_method):
         if shutil.which(tool) is None:
             # Special check for find on Windows to avoid the built-in Windows find.exe
             if tool == "find" and os.name == "nt":
-                continue # gnu_find_files already has a robust check
+                continue  # gnu_find_files already has a robust check
             missing.append(tool)
-    
+
     if missing:
-        print(f"[ERROR] Missing required dependencies: {', '.join(missing)}", file=sys.stderr)
+        print(
+            f"[ERROR] Missing required dependencies: {', '.join(missing)}",
+            file=sys.stderr,
+        )
         print("Please install them and ensure they are in your PATH.", file=sys.stderr)
         sys.exit(1)
 
@@ -380,7 +391,7 @@ def check_sort_version():
     executable = shutil.which(sort_cmd)
     if not executable:
         return None
-    
+
     try:
         result = subprocess.run(
             [executable, "--version"],
@@ -413,7 +424,7 @@ def try_apply_setpath():
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            check=False
+            check=False,
         )
         if result.returncode == 0:
             for line in result.stdout.splitlines():
@@ -434,14 +445,20 @@ def main():
 
     sort_executable = check_sort_version()
     if os.name == "nt" and not sort_executable:
-        print("[INFO] GNU sort not found. Attempting to run setpath.bat...", file=sys.stderr)
+        print(
+            "[INFO] GNU sort not found. Attempting to run setpath.bat...",
+            file=sys.stderr,
+        )
         try_apply_setpath()
         sort_executable = check_sort_version()
         if not sort_executable:
-            print("[ERROR] GNU sort not found even after running setpath.bat. Quitting.", file=sys.stderr)
+            print(
+                "[ERROR] GNU sort not found even after running setpath.bat. Quitting.",
+                file=sys.stderr,
+            )
             sys.exit(1)
         print("[INFO] GNU sort detected after environment update.")
-    
+
     # Default to "sort" if not on NT or if check_sort_version failed but we didn't exit
     if not sort_executable:
         sort_executable = "sort"
@@ -451,7 +468,14 @@ def main():
     # Cleanup old database files to prevent tool-level state conflicts
     if clean:
         print("Cleaning old database files...")
-        for f in [CSCOPE_FILE_NAME, "cscope.out", "cscope.in.out", "cscope.po.out", "tags", FILENAMETAG_FILE_NAME]:
+        for f in [
+            CSCOPE_FILE_NAME,
+            "cscope.out",
+            "cscope.in.out",
+            "cscope.po.out",
+            "tags",
+            FILENAMETAG_FILE_NAME,
+        ]:
             if os.path.exists(f):
                 try:
                     os.remove(f)
@@ -459,10 +483,10 @@ def main():
                     pass
 
     start = time.time()
-    
+
     # 1. Collect files (Sequential, as it creates the base file)
     collect_files(find_method, no_ignore)
-    
+
     # 2. Run post-processing tasks in parallel
     print("Starting post-processing (parallel)...")
     with ThreadPoolExecutor() as executor:
