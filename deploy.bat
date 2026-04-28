@@ -44,6 +44,7 @@ call :deploy_file "%REPO_DIR%\.ripgreprc"             "%USERPROFILE%\.ripgreprc"
 call :deploy_file "%REPO_DIR%\.gitconfig"             "%USERPROFILE%\.gitconfig"
 call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
 call :deploy_file "%REPO_DIR%\.vifm\vifmrc"           "%APPDATA%\vifm\vifmrc"
+call :deploy_file "%REPO_DIR%\.gdbinit"               "%USERPROFILE%\.gdbinit"
 
 :: Ranger configuration
 call :deploy_file "%REPO_DIR%\.config\ranger\rc.conf"      "%APPDATA%\ranger\rc.conf"
@@ -75,6 +76,27 @@ if "%NVIM_CHOICE%"=="lua" (
     if exist "%LOCALAPPDATA%\nvim\init.lua" del /Q "%LOCALAPPDATA%\nvim\init.lua"
     call :deploy_file "%REPO_DIR%\myvimrc" "%LOCALAPPDATA%\nvim\init.vim"
 )
+
+:: 3. Zoxide & FZF Setup
+echo.
+echo [3/3] Setting up Zoxide and FZF...
+where zoxide >nul 2>nul
+if %ERRORLEVEL% neq 0 (
+    echo [INFO] Zoxide not found. Install with: winget install ajeetdsouza.zoxide
+) else (
+    echo [OK] Zoxide is installed.
+)
+
+where fzf >nul 2>nul
+if %ERRORLEVEL% neq 0 (
+    echo [INFO] FZF not found (required for 'zi'). Install with: winget install junegunn.fzf
+) else (
+    echo [OK] FZF is installed.
+)
+
+:: Configure PowerShell Profile
+echo Configuring PowerShell profile for Zoxide...
+powershell -Command "$p = $PROFILE; if (-not (Test-Path $p)) { New-Item -Path $p -Type File -Force }; $c = Get-Content $p; if ($c -notlike '*zoxide init powershell*') { Add-Content $p \"`nInvoke-Expression (& { (zoxide init powershell | Out-String) })\" }"
 
 :: Set Environment Variables
 echo Setting Environment Variables...
