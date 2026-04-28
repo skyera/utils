@@ -1,76 +1,26 @@
-# .config/lf/lfrc - Unified Configuration for Linux and Windows
+# .config/lf/lfrc
 
-# --- 1. Shell Setup ---
-# We use 'sh' as the common denominator for configuration logic
-set shell sh
+set shell bash
+map e $$EDITOR $f
+map <enter> $$EDITOR $f
 
-# --- 2. Basic Settings ---
-set incsearch true
-set number true
-set preview true
-set drawbox true
-set icons true
-map <m-1> select
-
-# --- 3. Platform-Specific Initialization ---
-# This block runs once at startup to set paths and OS-specific settings
-%{{
-    if [ "$OS" = "Windows_NT" ]; then
-        # Windows specific settings
-        lf -remote "send $id set previewer 'C:\app\bin\lf-preview.bat'"
-        lf -remote "send $id set promptfmt '\033[32;1m%u@%h\033[0m:\033[36;1m%d 📁 \033[0m\033[1m%f\033[0m'"
-        # Navigation sync for Windows
-        lf -remote "send $id cmd go_origin cd '$PWD'"
-    else
-        # Linux / Unix specific settings
-        lf -remote "send $id set previewer ~/bin/lf-preview.sh"
-        # Navigation sync for Unix
-        lf -remote "send $id cmd go_origin cd '$(pwd)'"
-    fi
-}}
-
-# --- 4. Mappings and Commands ---
-
-# Smart Edit: Use nvim if available, else vim
-cmd edit ${{
-    if [ "$OS" = "Windows_NT" ]; then
-        # Use powershell for the detection logic on Windows
-        powershell -Command "if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim $env:f } else { vim $env:f }"
-    else
-        ${EDITOR:-vi} "$f"
-    fi
-}}
-map e :edit
-map <enter> :edit
-
-# Pager: Use bat
 map i $bat --paging=always $f
 cmd doc $lf -doc | bat -p
 
-# FZF Search
-cmd fzf_find ${{
-    if [ "$OS" = "Windows_NT" ]; then
-        C:/app/bin/fzf_find.bat
-    else
-        ~/bin/fzf_find.sh
-    fi
-}}
+set incsearch true
+set number true
+set preview true
+set previewer ~/bin/lf-preview.sh
+set drawbox true
+map <m-1> select
+cmd fzf_find $~/bin/fzf_find.sh
 map zz :fzf_find
 
-# Navigation Shortcut
+# --- Navigation ---
+# Freeze the starting directory at load time using a sync shell call
+$lf -remote "send $id cmd go_origin cd '$(pwd)'"
 map go :go_origin
 
-# Windows-only bindings (ignored on Linux)
-map V ${{
-    if [ "$OS" = "Windows_NT" ]; then
-        powershell -Command "& \"$env:LOCALAPPDATA\Programs\QuickLook\QuickLook.exe\" \"$env:f\""
-    fi
-}}
+# https://github.com/gokcehan/lf/blob/master/etc/icons.example->~/.config/lf/icons
+set icons true
 
-map <c-c> ${{
-    if [ "$OS" = "Windows_NT" ]; then
-        echo -n "$f" | clip
-    else
-        echo -n "$f" | xclip -selection clipboard
-    fi
-}}
