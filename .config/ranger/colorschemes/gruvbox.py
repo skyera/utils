@@ -25,15 +25,15 @@ class Default(ColorScheme):
                 else:
                     fg = magenta
             if context.container:
-                attr |= bold
+                attr |= normal
                 fg = cyan
             if context.directory:
-                attr |= bold
+                attr |= normal
                 fg = cyan
             elif context.executable and not \
                     any((context.media, context.container,
                         context.fifo, context.socket)):
-                attr |= bold
+                attr |= normal
                 fg = green
             if context.socket:
                 fg = magenta
