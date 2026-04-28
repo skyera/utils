@@ -81,32 +81,38 @@ if "%NVIM_CHOICE%"=="lua" (
 echo.
 echo [3/3] Setting up Zoxide and FZF...
 where zoxide >nul 2>nul
-if %ERRORLEVEL% neq 0 (
-    echo [INFO] Zoxide not found. Install with: winget install ajeetdsouza.zoxide
-) else (
-    echo [OK] Zoxide is installed.
-)
+if errorlevel 1 goto :no_zoxide
+echo [OK] Zoxide is installed.
+goto :check_fzf
 
+:no_zoxide
+echo [INFO] Zoxide not found. Install with: winget install ajeetdsouza.zoxide
+
+:check_fzf
 where fzf >nul 2>nul
-if %ERRORLEVEL% neq 0 (
-    echo [INFO] FZF not found (required for 'zi'). Install with: winget install junegunn.fzf
-) else (
-    echo [OK] FZF is installed.
-)
+if errorlevel 1 goto :no_fzf
+echo [OK] FZF is installed.
+goto :config_ps
 
+:no_fzf
+echo [INFO] FZF not found (required for 'zi'). Install with: winget install junegunn.fzf
+
+:config_ps
 :: Configure PowerShell Profile
 echo Configuring PowerShell profile for Zoxide...
-powershell -NoProfile -Command "$p = $PROFILE; if (!(Test-Path $p)) { New-Item -Type File -Path $p -Force }; $c = Get-Content $p; if ($c -notlike '*zoxide init powershell*') { '@{n}Invoke-Expression (& { (zoxide init powershell | Out-String) })' -replace '@{n}', [Environment]::NewLine | Add-Content $p }"
+set "PS_CMD=$p=$PROFILE;if(!(Test-Path $p)){New-Item -Type File -Path $p -Force};$c=Get-Content $p;if($c -notlike '*zoxide init powershell*'){$c+=[Environment]::NewLine+'Invoke-Expression (& { (zoxide init powershell | Out-String) })';$c|Set-Content $p}"
+powershell -NoProfile -Command "%PS_CMD%"
 
 :: Set Environment Variables
 echo Setting Environment Variables...
-setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc"
-setx FZF_DEFAULT_COMMAND "fd --follow --hidden --exclude .git --ignore-file \"%APPDATA%\fd\ignore\""
-setx FZF_DEFAULT_OPTS "--preview \"bat --color=always {}\""
+setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc" >nul
+setx FZF_DEFAULT_COMMAND "fd --follow --hidden --exclude .git --ignore-file \"%APPDATA%\fd\ignore\"" >nul
+setx FZF_DEFAULT_OPTS "--preview \"bat --color=always {}\"" >nul
 
 :: Add %BIN_DIR% to User PATH if not already present
 echo Adding %BIN_DIR% to PATH...
-powershell -Command "$d = '%BIN_DIR%'; $p = [Environment]::GetEnvironmentVariable('PATH', 'User'); if ($p -notlike \"*$d*\") { [Environment]::SetEnvironmentVariable('PATH', $p + ';' + $d, 'User') }"
+set "PATH_CMD=$d='%BIN_DIR%';$p=[Environment]::GetEnvironmentVariable('PATH','User');if($p -notlike '*'+$d+'*'){[Environment]::SetEnvironmentVariable('PATH',$p+';'+$d,'User')}"
+powershell -NoProfile -Command "%PATH_CMD%"
 
 echo.
 echo Deployment complete!
