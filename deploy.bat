@@ -44,6 +44,15 @@ call :deploy_file "%REPO_DIR%\.gitconfig"             "%USERPROFILE%\.gitconfig"
 call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
 call :deploy_file "%REPO_DIR%\.vifm\vifmrc"           "%APPDATA%\vifm\vifmrc"
 
+:: Ranger configuration
+call :deploy_file "%REPO_DIR%\.config\ranger\rc.conf"      "%APPDATA%\ranger\rc.conf"
+call :deploy_file "%REPO_DIR%\.config\ranger\commands.py"  "%APPDATA%\ranger\commands.py"
+call :deploy_file "%REPO_DIR%\.config\ranger\scope.sh"     "%APPDATA%\ranger\scope.sh"
+if exist "%REPO_DIR%\.config\ranger\colorschemes" (
+    if not exist "%APPDATA%\ranger\colorschemes" mkdir "%APPDATA%\ranger\colorschemes"
+    xcopy /Y /S /E "%REPO_DIR%\.config\ranger\colorschemes\*" "%APPDATA%\ranger\colorschemes\"
+)
+
 :: Yazi configuration
 call :deploy_file "%REPO_DIR%\.config\yazi\theme.toml"  "%APPDATA%\yazi\config\theme.toml"
 call :deploy_file "%REPO_DIR%\.config\yazi\keymap.toml" "%APPDATA%\yazi\config\keymap.toml"

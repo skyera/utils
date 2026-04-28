@@ -104,6 +104,10 @@ deploy_file "$REPO_DIR/.gitconfig" "$HOME/.gitconfig"
 deploy_file "$REPO_DIR/.config/ranger/rc.conf"      "$HOME/.config/ranger/rc.conf"
 deploy_file "$REPO_DIR/.config/ranger/commands.py"  "$HOME/.config/ranger/commands.py"
 deploy_file "$REPO_DIR/.config/ranger/scope.sh"     "$HOME/.config/ranger/scope.sh"
+if [ -d "$REPO_DIR/.config/ranger/colorschemes" ]; then
+    mkdir -p "$HOME/.config/ranger/colorschemes"
+    cp -r "$REPO_DIR/.config/ranger/colorschemes/"* "$HOME/.config/ranger/colorschemes/"
+fi
 chmod +x "$HOME/.config/ranger/scope.sh" 2>/dev/null
 deploy_file "$REPO_DIR/.config/lf/lfrc"             "$HOME/.config/lf/lfrc"
 deploy_file "$REPO_DIR/.config/lf/icons"            "$HOME/.config/lf/icons"
