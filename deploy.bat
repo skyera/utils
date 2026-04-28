@@ -96,7 +96,7 @@ if %ERRORLEVEL% neq 0 (
 
 :: Configure PowerShell Profile
 echo Configuring PowerShell profile for Zoxide...
-powershell -Command "$p = $PROFILE; if (-not (Test-Path $p)) { New-Item -Path $p -Type File -Force }; $c = Get-Content $p; if ($c -notlike '*zoxide init powershell*') { Add-Content $p \"`nInvoke-Expression (& { (zoxide init powershell | Out-String) })\" }"
+powershell -NoProfile -Command "$p = $PROFILE; if (!(Test-Path $p)) { New-Item -Type File -Path $p -Force }; $c = Get-Content $p; if ($c -notlike '*zoxide init powershell*') { '@{n}Invoke-Expression (& { (zoxide init powershell | Out-String) })' -replace '@{n}', [Environment]::NewLine | Add-Content $p }"
 
 :: Set Environment Variables
 echo Setting Environment Variables...
