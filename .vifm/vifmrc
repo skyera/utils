@@ -3,15 +3,12 @@ view!
 set vifminfo+=tui
 
 " --- File Viewers ---
-" Separate directory handling and file handling using OS-specific logic.
-if $OS == 'Windows_NT'
-    " Windows: Use native patterns and cmd-compatible commands
-    fileviewer */,**/,../ eza --tree --icons=always --color=always %f || dir %f
-    fileviewer * bat --color=never --style=numbers %f
-else
-    " Linux/macOS: Use sh -c for a robust single-rule check
-    fileviewer * sh -c 'if [ -d "$1" ]; then (eza --tree --icons=always --color=always "$1" || ls -F --color=always "$1") | head -200; else bat --color=always --style=numbers "$1"; fi' -- %f
-endif
+" Preview directories with ls
+fileviewer */,**/ ls --color=always %c
+
+" Preview everything else with bat
+" bat handles binary files and unknown extensions gracefully
+fileviewer * bat --color=always --style=numbers %c
 
 " --- Keybindings ---
 " Toggle preview with 'w'
@@ -24,9 +21,9 @@ nnoremap q :q<cr>
 " --- Commands ---
 " Cross-platform FZFfind
 if $OS == 'Windows_NT'
-    " Windows: Run inline fzf, strip newlines, and jump to result
-    command! FZFfind :let $FZF_PICK = term('fd --type f --follow --hidden --exclude .git | fzf --preview "bat --color=never --style=numbers {}" 2>CON') | if $FZF_PICK != '' | execute 'goto' fnameescape(substitute($FZF_PICK, '[\r\n]', '', 'g')) | endif
+    " Windows: Expects vifm_fzf_find.bat to be in PATH (installed via deploy.sh)
+    command! FZFfind :execute '!vifm_fzf_find.bat %u'
 else
-    " Linux/macOS: Run inline fzf, strip newlines, and jump to result
-    command! FZFfind :let $FZF_PICK = term('fd --follow --hidden --exclude .git | fzf --preview "if [ -d {} ]; then eza --tree --color=always {} | head -200; else bat --color=always --style=numbers {}; fi" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape(substitute($FZF_PICK, '[\r\n]', '', 'g')) | endif
+    " Linux/macOS: Run inline fzf with a preview window
+    command! FZFfind :let $FZF_PICK = term('fd . --type f | fzf --preview "bat --color=always --style=numbers {}" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
 endif
