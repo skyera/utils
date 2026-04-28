@@ -36,7 +36,7 @@ xcopy /Y /S /E "%REPO_DIR%\bin\*" "%BIN_DIR%\"
 echo [2/2] Deploying configurations...
 
 :: Helper to deploy a file (creates directory and copies)
-call :deploy_file "%REPO_DIR%\.config\lf\lfrc_windows" "%LOCALAPPDATA%\lf\lfrc"
+call :deploy_file "%REPO_DIR%\.config\lf\lfrc"         "%LOCALAPPDATA%\lf\lfrc"
 call :deploy_file "%REPO_DIR%\.config\lf\icons"        "%LOCALAPPDATA%\lf\icons"
 call :deploy_file "%REPO_DIR%\.config\lf\colors"       "%LOCALAPPDATA%\lf\colors"
 call :deploy_file "%REPO_DIR%\.config\fd\ignore"      "%APPDATA%\fd\ignore"
