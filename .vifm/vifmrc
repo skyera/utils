@@ -24,9 +24,9 @@ nnoremap q :q<cr>
 " --- Commands ---
 " Cross-platform FZFfind
 if $OS == 'Windows_NT'
-    " Windows: Run inline fzf and jump to result
-    command! FZFfind :let $FZF_PICK = term('fd --type f | fzf --preview "bat --color=never --style=numbers {}" 2>CON') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
+    " Windows: Run inline fzf, strip newlines, and jump to result
+    command! FZFfind :let $FZF_PICK = term('fd --type f --follow --hidden --exclude .git | fzf --preview "bat --color=never --style=numbers {}" 2>CON') | if $FZF_PICK != '' | execute 'goto' fnameescape(substitute($FZF_PICK, '[\r\n]', '', 'g')) | endif
 else
-    " Linux/macOS: Run inline fzf with a robust preview window
-    command! FZFfind :let $FZF_PICK = term('fd --follow --hidden --exclude .git | fzf --preview "if [ -d {} ]; then eza --tree --color=always {} | head -200; else bat --color=always --style=numbers {}; fi" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape($FZF_PICK) | endif
+    " Linux/macOS: Run inline fzf, strip newlines, and jump to result
+    command! FZFfind :let $FZF_PICK = term('fd --follow --hidden --exclude .git | fzf --preview "if [ -d {} ]; then eza --tree --color=always {} | head -200; else bat --color=always --style=numbers {}; fi" 2>/dev/tty') | if $FZF_PICK != '' | execute 'goto' fnameescape(substitute($FZF_PICK, '[\r\n]', '', 'g')) | endif
 endif
