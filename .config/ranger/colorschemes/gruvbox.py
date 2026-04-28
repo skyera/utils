@@ -10,7 +10,7 @@ class Default(ColorScheme):
 
         elif context.in_browser:
             if context.selected:
-                attr = reverse
+                attr = reverse | bold
             else:
                 attr = normal
             if context.empty or context.error:
@@ -28,12 +28,12 @@ class Default(ColorScheme):
                 attr |= bold
                 fg = cyan
             if context.directory:
-                attr |= normal
-                fg = blue
+                attr |= bold
+                fg = cyan
             elif context.executable and not \
                     any((context.media, context.container,
                         context.fifo, context.socket)):
-                attr |= normal
+                attr |= bold
                 fg = green
             if context.socket:
                 fg = magenta
