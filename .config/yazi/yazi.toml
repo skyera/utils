@@ -23,11 +23,10 @@ edit = [
     # Windows: Try nvim first, then fall back to vim
     { run = 'cmd /c "where nvim >nul 2>nul && nvim %* || vim %*"', block = true, for = "windows" },
     # Unix: Use $EDITOR or fall back to vi
-    { run = '${EDITOR:-vi} "$@"', block = true, for = "unix" }
+    { run = '${EDITOR:-vi} "$@"', block = true, for = "unix" },
 ]
 
 [open]
-# Opening rules
-rules = [
-    { name = "*", use = "edit" }
+prepend_rules = [
+    { name = "*", use = "edit" },
 ]
