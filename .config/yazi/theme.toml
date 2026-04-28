@@ -8,7 +8,7 @@ selection       = { bg = "#504945", bold = true } # Grey
 
 [filetype]
 rules = [
-    { name = "*/",                       fg = "#8ec07c", bold = true }, # Aqua for directories
+    { mime = "inode/directory",          fg = "#8ec07c", bold = true }, # Aqua for directories
     { mime = "application/x-executable", fg = "#b8bb26" },              # Green
     { mime = "image/*",                  fg = "#d3869b" },              # Purple
     { mime = "video/*",                  fg = "#d3869b" },              # Purple
