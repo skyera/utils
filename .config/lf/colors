@@ -1,0 +1,108 @@
+# lf colors (similar to LS_COLORS)
+# 36 = Cyan, 32 = Green, 35 = Magenta, 33 = Yellow, 31 = Red
+# 1 = Bold
+
+# Directory: Bright Cyan Bold
+di=1;36
+# Executable: Bright Green Bold
+ex=1;32
+# Symbolic Link: Magenta
+ln=35
+# Socket: Magenta
+so=35
+# Pipe: Yellow
+pi=33
+# Device: Bright Yellow Bold
+cd=1;33
+bd=1;33
+# Orphan/Broken Link: Bright Red Bold
+or=1;31
+# Regular File: Default
+fi=0
+# Archives: Green
+*.tar=32
+*.tgz=32
+*.arc=32
+*.arj=32
+*.taz=32
+*.lha=32
+*.lz4=32
+*.lzh=32
+*.lzma=32
+*.tlz=32
+*.txz=32
+*.tzo=32
+*.t7z=32
+*.zip=32
+*.z=32
+*.Z=32
+*.dz=32
+*.gz=32
+*.lrz=32
+*.lz=32
+*.lzo=32
+*.xz=32
+*.bz2=32
+*.bz=32
+*.tbz=32
+*.tbz2=32
+*.tz=32
+*.deb=32
+*.rpm=32
+*.jar=32
+*.war=32
+*.ear=32
+*.sar=32
+*.rar=32
+*.alz=32
+*.ace=32
+*.7z=32
+*.apk=32
+# Images: Purple/Magenta
+*.jpg=35
+*.jpeg=35
+*.gif=35
+*.bmp=35
+*.pbm=35
+*.pgm=35
+*.ppm=35
+*.tga=35
+*.xbm=35
+*.xpm=35
+*.tif=35
+*.tiff=35
+*.png=35
+*.svg=35
+*.svgz=35
+*.mng=35
+*.pcx=35
+*.mov=35
+*.mpg=35
+*.mpeg=35
+*.m2v=35
+*.mkv=35
+*.webm=35
+*.ogm=35
+*.mp4=35
+*.m4v=35
+*.mp4v=35
+*.vob=35
+*.qt=35
+*.nuv=35
+*.wmv=35
+*.asf=35
+*.rm=35
+*.rmvb=35
+*.flc=35
+*.avi=35
+*.fli=35
+*.flv=35
+*.gl=35
+*.dl=35
+*.xcf=35
+*.xwd=35
+*.yuv=35
+*.cgm=35
+*.emf=35
+*.ogv=35
+*.ogx=35
