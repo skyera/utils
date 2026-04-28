@@ -7,6 +7,9 @@ sort_dir_first = true
 show_hidden = false
 show_symlink = true
 
+[tasks]
+suppress_preload = true
+
 [plugin]
 append_preloaders = [
     { mime = "text/*", run = "bat" },
