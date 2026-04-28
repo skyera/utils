@@ -22,5 +22,5 @@ edit = [
 
 [open]
 rules = [
-    { name = "*", use = "edit" }
+    { url = "*", use = "edit" }
 ]
