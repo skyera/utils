@@ -77,42 +77,15 @@ if "%NVIM_CHOICE%"=="lua" (
     call :deploy_file "%REPO_DIR%\myvimrc" "%LOCALAPPDATA%\nvim\init.vim"
 )
 
-:: 3. Zoxide & FZF Setup
-echo.
-echo [3/3] Setting up Zoxide and FZF...
-where zoxide >nul 2>nul
-if errorlevel 1 goto :no_zoxide
-echo [OK] Zoxide is installed.
-goto :check_fzf
-
-:no_zoxide
-echo [INFO] Zoxide not found. Install with: winget install ajeetdsouza.zoxide
-
-:check_fzf
-where fzf >nul 2>nul
-if errorlevel 1 goto :no_fzf
-echo [OK] FZF is installed.
-goto :config_ps
-
-:no_fzf
-echo [INFO] FZF not found (required for 'zi'). Install with: winget install junegunn.fzf
-
-:config_ps
-:: Configure PowerShell Profile
-echo Configuring PowerShell profile for Zoxide...
-set "PS_CMD=$p=$PROFILE;if(!(Test-Path $p)){New-Item -Type File -Path $p -Force};$c=Get-Content $p;if($c -notlike '*zoxide init powershell*'){$c+=[Environment]::NewLine+'Invoke-Expression (& { (zoxide init powershell | Out-String) })';$c|Set-Content $p}"
-powershell -NoProfile -Command "%PS_CMD%"
-
 :: Set Environment Variables
 echo Setting Environment Variables...
-setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc" >nul
-setx FZF_DEFAULT_COMMAND "fd --follow --hidden --exclude .git --ignore-file \"%APPDATA%\fd\ignore\"" >nul
-setx FZF_DEFAULT_OPTS "--preview \"bat --color=always {}\"" >nul
+setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc"
+setx FZF_DEFAULT_COMMAND "fd --follow --hidden --exclude .git --ignore-file \"%APPDATA%\fd\ignore\""
+setx FZF_DEFAULT_OPTS "--preview \"bat --color=always {}\""
 
 :: Add %BIN_DIR% to User PATH if not already present
 echo Adding %BIN_DIR% to PATH...
-set "PATH_CMD=$d='%BIN_DIR%';$p=[Environment]::GetEnvironmentVariable('PATH','User');if($p -notlike '*'+$d+'*'){[Environment]::SetEnvironmentVariable('PATH',$p+';'+$d,'User')}"
-powershell -NoProfile -Command "%PATH_CMD%"
+powershell -Command "$d = '%BIN_DIR%'; $p = [Environment]::GetEnvironmentVariable('PATH', 'User'); if ($p -notlike \"*$d*\") { [Environment]::SetEnvironmentVariable('PATH', $p + ';' + $d, 'User') }"
 
 echo.
 echo Deployment complete!
