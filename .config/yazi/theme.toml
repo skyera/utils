@@ -1,24 +1,28 @@
+# Yazi Theme - Gruvbox-inspired colors
+
 [manager]
-cwd = { fg = "#ebdbb2" }
-hovered         = { fg = "#282828", bg = "#fabd2f", bold = true }
+cwd             = { fg = "#ebdbb2" } # Gruvbox light4
+hovered         = { fg = "#282828", bg = "#fabd2f", bold = true } # Yellow
 preview_hovered = { underline = true }
-selection       = { bg = "#504945", bold = true }
+selection       = { bg = "#504945", bold = true } # Grey
 
 [filetype]
 rules = [
-    { name = "*/", fg = "#8ec07c", bold = true },
-    { mime = "application/x-executable", fg = "#b8bb26" },
-    { mime = "image/*", fg = "#d3869b" },
-    { mime = "video/*", fg = "#d3869b" },
-    { mime = "application/zip", fg = "#8ec07c" },
-    { mime = "application/x-tar", fg = "#8ec07c" },
-    { mime = "text/*", fg = "#ebdbb2" },
+    { name = "*/",                       fg = "#8ec07c", bold = true }, # Aqua for directories
+    { mime = "application/x-executable", fg = "#b8bb26" },              # Green
+    { mime = "image/*",                  fg = "#d3869b" },              # Purple
+    { mime = "video/*",                  fg = "#d3869b" },              # Purple
+    { mime = "application/zip",          fg = "#8ec07c" },              # Aqua
+    { mime = "application/x-tar",        fg = "#8ec07c" },              # Aqua
+    { mime = "text/*",                   fg = "#ebdbb2" },              # Light4
 ]
 
 [status]
 separator_open  = ""
 separator_close = ""
 separator_style = { fg = "#3c3836", bg = "#3c3836" }
+
+# Mode indicators
 mode_normal = { fg = "#282828", bg = "#a89984", bold = true }
 mode_select = { fg = "#282828", bg = "#fe8019", bold = true }
 mode_unset  = { fg = "#282828", bg = "#fb4934", bold = true }

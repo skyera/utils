@@ -1,20 +1,33 @@
 # Yazi Configuration (Cross-platform)
-# Linux: ~/.config/yazi/yazi.toml
-# Windows: %APPDATA%\yazi\config\yazi.toml
+# Documentation: https://yazi-rs.github.io/docs/configuration/overview
+
+[manager]
+ratio          = [ 1, 4, 3 ]
+sort_by        = "alphabetical"
+sort_sensitive = false
+sort_reverse   = false
+sort_dir_first = true
+show_hidden    = false
+show_symlink   = true
 
 [plugin]
+# Preloaders for file previews
 append_preloaders = [
     { mime = "text/*", run = "bat" },
     { mime = "application/json", run = "bat" },
 ]
 
 [opener]
+# Default editor configuration
 edit = [
+    # Windows: Try nvim first, then fall back to vim
     { run = 'cmd /c "where nvim >nul 2>nul && nvim %* || vim %*"', block = true, for = "windows" },
+    # Unix: Use $EDITOR or fall back to vi
     { run = '${EDITOR:-vi} "$@"', block = true, for = "unix" }
 ]
 
 [open]
+# Opening rules
 rules = [
     { name = "*", use = "edit" }
 ]
