@@ -45,8 +45,9 @@ call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
 call :deploy_file "%REPO_DIR%\.vifm\vifmrc"           "%APPDATA%\vifm\vifmrc"
 
 :: Yazi configuration
-call :deploy_file "%REPO_DIR%\.config\yazi\theme.toml" "%APPDATA%\yazi\config\theme.toml"
-call :deploy_file "%REPO_DIR%\.config\yazi\yazi.toml"  "%APPDATA%\yazi\config\yazi.toml"
+call :deploy_file "%REPO_DIR%\.config\yazi\theme.toml"  "%APPDATA%\yazi\config\theme.toml"
+call :deploy_file "%REPO_DIR%\.config\yazi\keymap.toml" "%APPDATA%\yazi\config\keymap.toml"
+call :deploy_file "%REPO_DIR%\.config\yazi\yazi.toml"   "%APPDATA%\yazi\config\yazi.toml"
 
 :: Neovim configuration selection
 if "%NVIM_CHOICE%"=="lua" (

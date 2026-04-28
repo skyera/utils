@@ -113,6 +113,7 @@ deploy_file "$REPO_DIR/.config/fd/ignore"           "$HOME/.config/fd/ignore"
 # Yazi configuration
 echo "Deploying Yazi configuration..."
 deploy_file "$REPO_DIR/.config/yazi/theme.toml"             "$HOME/.config/yazi/theme.toml"
+deploy_file "$REPO_DIR/.config/yazi/keymap.toml"            "$HOME/.config/yazi/keymap.toml"
 # Note: yazi_windows.toml is present but usually yazi expects yazi.toml on Linux
 if [ -f "$REPO_DIR/.config/yazi/yazi.toml" ]; then
     deploy_file "$REPO_DIR/.config/yazi/yazi.toml"          "$HOME/.config/yazi/yazi.toml"
