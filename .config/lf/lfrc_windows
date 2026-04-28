@@ -35,7 +35,7 @@ map <m-1> select
 # default, but with some separation before final %f, and after cwd
 # otherwise I kept on interpreting cwd+file as cwd
 # 💾 📁
-set promptfmt "\033[32;1m%u@%h\033[0m:\033[34;1m%d 📁 \033[0m\033[1m%f\033[0m"
+set promptfmt "\033[32;1m%u@%h\033[0m:\033[36;1m%d 📁 \033[0m\033[1m%f\033[0m"
  
 # https://github.com/gokcehan/lf/wiki/Integrations#quicklook
 # winget install QL-Win.QuickLook

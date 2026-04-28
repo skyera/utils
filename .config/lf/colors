@@ -2,8 +2,8 @@
 # 36 = Cyan, 32 = Green, 35 = Magenta, 33 = Yellow, 31 = Red
 # 1 = Bold
 
-# Directory: Bright Cyan Bold
-di=1;36
+# Directory: Bright White Bold
+di=1;37
 # Executable: Bright Green Bold
 ex=1;32
 # Symbolic Link: Magenta
