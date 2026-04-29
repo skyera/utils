@@ -413,3 +413,8 @@ let g:vimwiki_list = [{
 let g:vimwiki_hl_headers = 1
 let g:vimwiki_hl_cb_checked = 1
 au FileType vimwiki silent! iunmap <buffer> <Tab>
+
+" Vimwiki Shortcuts
+nmap <leader>wt <Plug>VimwikiMakeDiaryNote
+nmap <leader>x <Plug>VimwikiToggleListItem
+vmap <leader>x <Plug>VimwikiToggleListItem
