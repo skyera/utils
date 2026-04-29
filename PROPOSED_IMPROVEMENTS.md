@@ -12,9 +12,9 @@ Based on the codebase review, here are the suggested enhancements categorized by
 - [ ] **Directory History**: Integrate `zoxide` more deeply with an interactive `zi` command.
 
 ## 3. Neovim Modernization (`.config/nvim`)
-- [x] **Enable Treesitter**: Fix and enable the `nvim-treesitter` configuration for superior syntax highlighting.
-- [x] **Add LSP Support**: Integrate `nvim-lspconfig` and `mason.nvim` for IDE-like features (autocompletion, go-to-definition) for C++, Python, and Lua.
-- [x] **Telescope Extensions**: Add `telescope-fzf-native` for significantly faster searching performance.
+- [ ] **Enable Treesitter**: Fix and enable the `nvim-treesitter` configuration for superior syntax highlighting.
+- [ ] **Add LSP Support**: Integrate `nvim-lspconfig` and `mason.nvim` for IDE-like features (autocompletion, go-to-definition) for C++, Python, and Lua.
+- [ ] **Telescope Extensions**: Add `telescope-fzf-native` for significantly faster searching performance.
 
 ## 4. Debugging & Git
 - [x] **GDB Dashboard**: Enhance `.gdbinit` by integrating [gdb-dashboard](https://github.com/cyrus-and/gdb-dashboard) for a visual debugging interface.
