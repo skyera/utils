@@ -18,3 +18,17 @@ set width 0
 set height 0
 set listsize 10
 
+# GDB Dashboard
+source ~/bin/gdb-dashboard.py
+
+# Dashboard Configuration
+dashboard -layout source assembly registers stack variables expressions threads
+dashboard -style syntax_highlighting 'monokai'
+dashboard source -style context 5
+dashboard registers -style compact True
+
+# Auto-open dashboard on start
+define hook-stop
+  dashboard
+end
+

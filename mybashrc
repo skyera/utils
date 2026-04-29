@@ -214,6 +214,9 @@ if command -v eza >/dev/null 2>&1; then
 fi
 
 alias git-branch-gone='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'''
+alias fzlog='git-fuzzy log'
+alias fzstash='git-fuzzy stash'
+alias fzbranch='git-fuzzy branch'
 alias git-clean-branches='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -d'
 alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -D'
 

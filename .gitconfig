@@ -29,6 +29,7 @@
 	du = diff @{u}
 	stat = show --stat --oneline
 	ba = branch -a
+	fuzzy = !git-fuzzy
 
 [rerere]
 	enabled = true

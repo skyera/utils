@@ -17,8 +17,8 @@ Based on the codebase review, here are the suggested enhancements categorized by
 - [ ] **Telescope Extensions**: Add `telescope-fzf-native` for significantly faster searching performance.
 
 ## 4. Debugging & Git
-- [ ] **GDB Dashboard**: Enhance `.gdbinit` by integrating [gdb-dashboard](https://github.com/cyrus-and/gdb-dashboard) for a visual debugging interface.
-- [ ] **Git-Fuzzy Script**: Add a `bin/git-fuzzy` script that uses FZF to browse branches, commits, and stashes interactively.
+- [x] **GDB Dashboard**: Enhance `.gdbinit` by integrating [gdb-dashboard](https://github.com/cyrus-and/gdb-dashboard) for a visual debugging interface.
+- [x] **Git-Fuzzy Script**: Add a `bin/git-fuzzy` script that uses FZF to browse branches, commits, and stashes interactively.
 
 ## 5. Terminal (`.wezterm.lua`)
 - [ ] **Performance & UI Tweaks**: Add keybindings for workspace switching and automatic theme switching based on system dark/light mode.
