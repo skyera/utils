@@ -26,6 +26,9 @@
 	dt = difftool
 	mt = mergetool
 	lo = log --pretty=format:'%C(yellow)%h %C(cyan)%ad %Creset%s' --date=short
+	du = diff @{u}
+	stat = show --stat --oneline
+	ba = branch -a
 
 [rerere]
 	enabled = true
