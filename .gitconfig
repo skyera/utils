@@ -71,6 +71,7 @@
 
 [difftool]
 	prompt = false
+	tool = vimdiff
 
 [mergetool "vimdiff"]
 	layout = "(LOCAL,BASE,REMOTE)/MERGED"
