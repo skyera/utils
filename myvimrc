@@ -404,4 +404,12 @@ if exists('g:loaded_webdevicons')
     call webdevicons#refresh() 
 endif
 
+" --- Vimwiki ---
+let g:vimwiki_list = [{
+  \ 'path': '~/vimwiki/',
+  \ 'syntax': 'markdown',
+  \ 'ext': '.md'
+  \ }]
+let g:vimwiki_hl_headers = 1
+let g:vimwiki_hl_cb_checked = 1
 au FileType vimwiki silent! iunmap <buffer> <Tab>

@@ -109,10 +109,23 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+-- Vimwiki Configuration
+vim.g.vimwiki_list = {
+  {
+    path = "~/vimwiki/",
+    syntax = "markdown",
+    ext = ".md",
+  },
+}
+vim.g.vimwiki_hl_headers = 1
+vim.g.vimwiki_hl_cb_checked = 1
+
 -- Vimwiki Tab fix
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "vimwiki",
   callback = function()
     vim.keymap.set("i", "<Tab>", "<Tab>", { buffer = true })
+    -- Also ensure we can jump out of the mapping if needed
+    pcall(vim.api.nvim_buf_del_keymap, 0, "i", "<Tab>")
   end,
 })
