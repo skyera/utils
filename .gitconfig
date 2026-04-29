@@ -24,12 +24,12 @@
 	amend = commit --amend --no-edit
 	d = diff
 	dt = difftool
+	dtd = difftool --dir-diff
 	mt = mergetool
 	lo = log --pretty=format:'%C(yellow)%h %C(cyan)%ad %Creset%s' --date=short
 	du = diff @{u}
 	stat = show --stat --oneline
 	ba = branch -a
-	fuzzy = !git-fuzzy
 
 [rerere]
 	enabled = true
@@ -68,6 +68,9 @@
 
 [mergetool]
 	prompt = true
+
+[difftool]
+	prompt = false
 
 [mergetool "vimdiff"]
 	layout = "(LOCAL,BASE,REMOTE)/MERGED"
