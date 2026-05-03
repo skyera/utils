@@ -79,9 +79,7 @@ if "%NVIM_CHOICE%"=="lua" (
 
 :: Install vim-plug for standard Vim
 echo Installing vim-plug for Vim...
-set "VIM_PLUG_DIR=%USERPROFILE%\vimfiles\autoload"
-if not exist "%VIM_PLUG_DIR%" mkdir "%VIM_PLUG_DIR%"
-powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $p = \"$env:USERPROFILE\vimfiles\autoload\plug.vim\"; if (-not (Test-Path $p)) { iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim -OutFile $p }"
+powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $p = \"$env:USERPROFILE\vimfiles\autoload\plug.vim\"; if (-not (Test-Path $p)) { iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim | ni $p -Force }"
 
 :: Set Environment Variables
 echo Setting Environment Variables...
