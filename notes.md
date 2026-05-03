@@ -208,7 +208,7 @@ Tips:
 * press z, s keys
 * mA, 'A
 * copy files: y, p
-* :filter .c
+* :filter , press ENTER, then inpyt .c
 * :setfilter clean filter
 * man lf
 * copy: y
