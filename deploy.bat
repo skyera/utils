@@ -68,6 +68,10 @@ if "%NVIM_CHOICE%"=="lua" (
         if exist "%LOCALAPPDATA%\nvim\init.vim" del /Q "%LOCALAPPDATA%\nvim\init.vim"
         xcopy /Y /S /E "%REPO_DIR%\.config\nvim\*" "%LOCALAPPDATA%\nvim\"
         echo Deployed Neovim configuration to %LOCALAPPDATA%\nvim
+
+        :: Install vim-plug for Neovim
+        echo Installing vim-plug for Neovim...
+        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $p = \"$(@($env:XDG_DATA_HOME, $env:LOCALAPPDATA)[$null -eq $env:XDG_DATA_HOME])\nvim-data\site\autoload\plug.vim\"; if (-not (Test-Path $p)) { iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim | ni $p -Force }"
     )
 ) else (
     echo Deploying Neovim Vimscript configuration...
