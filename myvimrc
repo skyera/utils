@@ -4,42 +4,7 @@
 set nocompatible
 filetype off
 
-" --- Auto-install vim-plug ---
-let s:need_install = 0
-if has('nvim')
-    let s:plug_path = stdpath('data') . '/site/autoload/plug.vim'
-else
-    let s:plug_path = has('win32') ? '~/vimfiles/autoload/plug.vim' : '~/.vim/autoload/plug.vim'
-endif
-let s:plug_path = expand(s:plug_path)
-
-if empty(glob(s:plug_path))
-    let s:need_install = 1
-    echo "Installing vim-plug..."
-    let s:plug_url = 'https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
-    let s:dir = fnamemodify(s:plug_path, ':h')
-    if !isdirectory(s:dir) | silent! call mkdir(s:dir, 'p') | endif
-    if executable('curl')
-        execute '!curl -fLo ' . shellescape(s:plug_path) . ' --create-dirs ' . s:plug_url
-    elseif has('win32')
-        execute '!powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri ' . s:plug_url . ' -OutFile ' . shellescape(s:plug_path) . '"'
-    endif
-endif
-
-" Explicitly source plug.vim if it exists to ensure commands are available
-if filereadable(s:plug_path)
-    execute 'source ' . shellescape(s:plug_path)
-endif
-
-if s:need_install && exists('*plug#begin')
-    autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
-endif
-
-if exists('*plug#begin')
-    call plug#begin()
-else
-    echoerr "vim-plug could not be loaded. Please install it manually."
-endif
+call plug#begin()
 Plug 'flazz/vim-colorschemes'
 Plug 'tiagofumo/vim-nerdtree-syntax-highlight'
 Plug 'scrooloose/nerdtree'
