@@ -75,12 +75,6 @@ if "%NVIM_CHOICE%"=="lua" (
     if exist "%LOCALAPPDATA%\nvim\lua" rd /S /Q "%LOCALAPPDATA%\nvim\lua"
     if exist "%LOCALAPPDATA%\nvim\init.lua" del /Q "%LOCALAPPDATA%\nvim\init.lua"
     call :deploy_file "%REPO_DIR%\myvimrc" "%LOCALAPPDATA%\nvim\init.vim"
-    
-    :: Install vim-plug for Neovim (Vimscript mode)
-    echo Installing vim-plug for Neovim...
-    set "NVIM_PLUG_DIR=%LOCALAPPDATA%\nvim-data\site\autoload"
-    if not exist "!NVIM_PLUG_DIR!" mkdir "!NVIM_PLUG_DIR!"
-    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; if (!(Test-Path '!NVIM_PLUG_DIR!\plug.vim')) { iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim -OutFile '!NVIM_PLUG_DIR!\plug.vim' }"
 )
 
 :: Install vim-plug for standard Vim
