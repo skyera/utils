@@ -51,6 +51,11 @@ end
 
 vim.keymap.set("n", "<leader>sc", ":Telescope colorscheme<CR>", { silent = true })
 
+-- Vimwiki Shortcuts
+vim.keymap.set("n", "<leader>wt", "<Plug>VimwikiMakeDiaryNote", { desc = "Vimwiki Today" })
+vim.keymap.set("n", "<leader>x", "<Plug>VimwikiToggleListItem", { desc = "Vimwiki Toggle Checkbox" })
+vim.keymap.set("v", "<leader>x", "<Plug>VimwikiToggleListItem", { desc = "Vimwiki Toggle Checkbox" })
+
 -- Functions
 vim.cmd([[
 function! s:align()

@@ -29,7 +29,6 @@
 	du = diff @{u}
 	stat = show --stat --oneline
 	ba = branch -a
-	fuzzy = !git-fuzzy
 
 [rerere]
 	enabled = true
@@ -68,6 +67,10 @@
 
 [mergetool]
 	prompt = true
+
+[difftool]
+	prompt = false
+	tool = vimdiff
 
 [mergetool "vimdiff"]
 	layout = "(LOCAL,BASE,REMOTE)/MERGED"
