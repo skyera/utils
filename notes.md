@@ -497,7 +497,7 @@ reverse-continue
 ### gdb Server / Remote
 
 #### .gdbinit
-```gdb
+```text
 set substitute-path /build/project ~/dev/project
 
 define connect-target
@@ -522,7 +522,7 @@ gdbserver --multi :1234
 ```
 
 #### Host
-```gdb
+```text
 target remote <target-ip>:1234
 target extended-remote <target-ip>:1234
 set substitute-path /build/project ~/dev/project
@@ -591,7 +591,7 @@ gdb ./exe
 ```
 
 #### Launch Valgrind Inside gdb
-```gdb
+```text
 1. set remote exec-file ./ex
 2. set sysroot /
 3. target extended-remote | vgdb --multi --vargs -q
