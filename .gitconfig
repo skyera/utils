@@ -5,10 +5,10 @@
 	editor = nvim
 	symlinks = true
 	longpaths = true
-	pager = delta
+	pager = sh -c 'command -v delta >/dev/null && delta || less'
 
 [interactive]
-	diffFilter = delta --color-only
+	diffFilter = sh -c 'command -v delta >/dev/null && delta --color-only || cat'
 
 [init]
 	defaultBranch = master
