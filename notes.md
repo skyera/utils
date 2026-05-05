@@ -364,20 +364,35 @@ find . -type f -empty        # find empty files
 ```
 
 ### grep
-```
+```bash
+# Options
 -e (extended regex)
 grep -e "http.*xxx" **/*.c -C 5 -n
--C (context)
+-C (context), -A (After), -B (Before)
 -n (line number)
-```
+-w (whole word)
+-v (invert match)
+-o (only matching part)
+-F (fixed strings, faster)
+-I (ignore binary files)
 
-Extended regex:
-```bash
+# Recursive with filters
+grep -rI --exclude-dir={.git,node_modules} --include="*.c" "pattern" .
+
+# Advanced logic
+grep "foo" file | grep "bar"          # AND logic
+grep -E "foo|bar" file                # OR logic
+grep -r -L "Copyright" **/*.c         # find files WITHOUT match
+
+# Examples
 grep -r -E "foo|bar" **/*.c
 find . -name "*.c" | xargs grep "TODO"
 grep -rn --include="*.c" "TODO"
-grep -r -L "Copyright" **/*.c              # find files without copyright header
 grep -rE "(TODO|FIXME|BUG)" --include="*.c"  # find TODOs in C files
+
+# Pro Tip: Standard vs Pro
+# Standard: grep -r "TODO" .
+# Pro:      grep -rI --exclude-dir=.git --include="*.c" -w "TODO" .
 ```
 
 ### xargs
