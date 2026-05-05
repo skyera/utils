@@ -366,15 +366,17 @@ find . -type f -empty        # find empty files
 ### grep
 ```bash
 # Options
--e (extended regex)
-grep -e "http.*xxx" **/*.c -C 5 -n
--C (context), -A (After), -B (Before)
--n (line number)
--w (whole word)
--v (invert match)
--o (only matching part)
--F (fixed strings, faster)
--I (ignore binary files)
+-E, -e        # -E: extended regex; -e: specify pattern (useful for multiple or starting with -)
+-i            # ignore case
+-C, -A, -B    # -C: Context, -A: After, -B: Before (show lines around the match)
+-n            # show line number
+-w            # whole word (match only exact word)
+-v            # invert match (show lines that do NOT match)
+-o            # only matching part (show only the matched string, not the whole line)
+-F            # fixed strings (faster, no regex parsing)
+-I            # ignore binary files
+-r, -R        # recursive search (-R follows symlinks)
+-l, -L        # -l: files WITH matches; -L: files WITHOUT matches
 
 # Recursive with filters
 grep -rI --exclude-dir={.git,node_modules} --include="*.c" "pattern" .
