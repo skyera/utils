@@ -347,20 +347,32 @@ web:*.{html,css,js}*
 ```
 
 ### find
-```
--exec <cmd> {} +       run command in batches
--exec <cmd> {} \;      run command on each file
+```bash
+# Arguments
+-type [f|d|l]      # f: file, d: directory, l: symlink
+-name, -iname      # match filename (-i: case-insensitive). ALWAYS quote wildcards!
+-path              # match full path pattern
+-maxdepth N        # limit search depth
+-size [+-]N        # match size (e.g. +10M, -1k)
+-mtime [+-]N       # match modification time in days (e.g. -7: last 7 days)
+-empty             # match empty files/directories
+-delete            # delete matching items (CAUTION: runs immediately)
+-exec <cmd> {} \;  # run command once per file ({} is placeholder)
+-exec <cmd> {} +   # run command in batches (faster)
+-print0            # print null-terminated (use with xargs -0)
+-prune             # skip a directory entirely (used with -path)
 
--use -print0 with xargs -0 to handle filenames with spaces
--use \(...\) to combine OR filters
--combine with grep for content search inside found files
+# Examples
+find . -type f -name "*.py"                   # Standard search
+find . -maxdepth 1 -type f                    # Search current dir only
+find . \( -name "*.py" -o -name "*.sh" \)     # OR filter
+find . -type f ! -name "*.git*"               # NOT filter
+find . -type d -empty -delete                 # Delete empty directories
+find . -path "./.git" -prune -o -print        # Prune (skip) .git folder
+find . -type f -name "*.txt" -print0 | xargs -0 rm   # Handle spaces safely
 
+# Content search inside found files
 find . -type f -name "*.py" -exec grep -H "TODO" {} \;
-find . -type f -empty        # find empty files
--delete                       # delete found files
--size +10M                    # find files larger than 10M
--size -1k                     # find files smaller than 1k
--mtime -7                     # find files modified in last 7 days
 ```
 
 ### grep
