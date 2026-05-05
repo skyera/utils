@@ -380,6 +380,33 @@ grep -r -L "Copyright" **/*.c              # find files without copyright header
 grep -rE "(TODO|FIXME|BUG)" --include="*.c"  # find TODOs in C files
 ```
 
+### xargs
+```bash
+# Parallel Processing (use 4 cores)
+find . -name "*.log" | xargs -P 4 -I {} gzip {}
+
+# Interactive Confirmation
+find . -name "*.tmp" | xargs -p rm
+
+# Search content in specific files only
+find . -type f \( -name "*.env" -o -name "*.config" \) | xargs grep "API_KEY"
+
+# Kill processes by keyword
+pgrep -f python | xargs kill -9
+
+# Run multiple commands per item
+find . -name "*.sh" | xargs -I {} sh -c 'chmod +x {}; cp {} ~/bin/'
+
+# Download from a list
+cat urls.txt | xargs -n 1 curl -O
+
+# Safe handling of spaces (with find -print0)
+find . -type f -name "*.txt" -print0 | xargs -0 rm
+
+# Batch copy using target flag (fastest)
+find . -name "*.jpg" | xargs cp -t /backup/
+```
+
 ---
 
 ## Version Control
