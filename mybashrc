@@ -190,6 +190,20 @@ git_tag() {
     echo "Tag '$tag' created and pushed."
 }
 
+# Interactively select local branches to delete (local only)
+fbrd() {
+    local branches
+    # Use fzf to select multiple local branches
+    # %(refname:short) ensures we get just the branch name
+    branches=$(git branch --format="%(refname:short)" | fzf --multi --header="[Git Delete Local Branch] TAB to multi-select, ENTER to delete")
+    
+    if [[ -n "$branches" ]]; then
+        # -d is safe delete (checks for merge)
+        # Use -D if you want to force delete unmerged branches
+        echo "$branches" | xargs git branch -d
+    fi
+}
+
 # =============================================================================
 # ALIASES
 # =============================================================================
