@@ -19,7 +19,8 @@ fi
 if is_container; then
     # Git < 2.35 (e.g. Git 2.25 in Ubuntu 20.04) does not support zdiff3
     # Git < 2.37 does not support push.autoSetupRemote
-    export GIT_CONFIG_PARAMETERS="'merge.conflictstyle=diff3' 'push.autoSetupRemote=false'"
+    # Use an alias because GIT_CONFIG_PARAMETERS format changed between Git versions
+    alias git='git -c merge.conflictstyle=diff3 -c push.autoSetupRemote=false'
 fi
 
 # PATH
