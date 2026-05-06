@@ -204,6 +204,18 @@ fbrd() {
     fi
 }
 
+# Interactively select local branches to FORCE delete (local only)
+fbrD() {
+    local branches
+    # Use fzf to select multiple local branches
+    branches=$(git branch --format="%(refname:short)" | fzf --multi --header="[Git FORCE Delete Local Branch] TAB to multi-select, ENTER to force delete")
+    
+    if [[ -n "$branches" ]]; then
+        # -D is force delete (ignores merge status)
+        echo "$branches" | xargs git branch -D
+    fi
+}
+
 # =============================================================================
 # ALIASES
 # =============================================================================
