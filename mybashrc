@@ -216,6 +216,32 @@ fbrD() {
     fi
 }
 
+# Interactively select and manage git stashes
+fstash() {
+    local out q k sha
+    while out=$(
+        git stash list --pretty="%C(yellow)%h %C(magenta)%ad %C(reset)%s" --date=short |
+        fzf --ansi --no-sort --query="$q" --print-query \
+            --expect=ctrl-d,ctrl-b --header="[Stash] Enter:apply, Ctrl-d:drop, Ctrl-b:pop" \
+            --preview="git stash show -p {1} | delta"
+    ); do
+        mapfile -t out <<< "$out"
+        q="${out[0]}"
+        k="${out[1]}"
+        sha="${out[2]%% *}"
+        [[ -z "$sha" ]] && continue
+        if [[ "$k" == 'ctrl-d' ]]; then
+            git stash drop "$sha"
+        elif [[ "$k" == 'ctrl-b' ]]; then
+            git stash pop "$sha"
+            break
+        else
+            git stash apply "$sha"
+            break
+        fi
+    done
+}
+
 # =============================================================================
 # ALIASES
 # =============================================================================

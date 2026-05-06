@@ -29,6 +29,7 @@
 	du = diff @{u}
 	stat = show --stat --oneline
 	ba = branch -a
+	undo = reset --soft HEAD~1
 
 [rerere]
 	enabled = true
