@@ -30,6 +30,11 @@
 	stat = show --stat --oneline
 	ba = branch -a
 	undo = reset --soft HEAD~1
+	files = ls-files
+	grep = grep --line-number
+	bd = branch -d
+	tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit
+	recent = for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'
 
 [rerere]
 	enabled = true
