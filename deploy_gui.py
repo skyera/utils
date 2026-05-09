@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-deploy_split_gui.py - Split-pane file manager style deployment GUI
+deploy_gui.py - Cross-platform dotfiles deployment GUI
 """
 
 import tkinter as tk
@@ -8,449 +8,495 @@ from tkinter import ttk, messagebox
 import os
 import shutil
 import filecmp
+import platform
 from datetime import datetime
 
 
-class SplitPaneDeployGUI:
+class DotfilesDeployGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Dotfiles Deployer - Split View")
-        self.root.geometry("1000x700")
+        self.root.title("Dotfiles Deployer")
+        self.root.geometry("1100x750")
         
         self.repo_dir = os.path.dirname(os.path.abspath(__file__))
-        self.home_dir = os.path.expanduser("~")
+        self.system = platform.system()
         
-        # File mapping: source -> destination
-        self.file_mapping = self._build_file_mapping()
+        # UI State
+        self.backup_var = tk.BooleanVar(value=True)
+        self.nvim_choice = tk.StringVar(value="lua")
         
         # Store metadata for tree items
         self.source_metadata = {}
         self.dest_metadata = {}
         
+        # File configurations
+        self.file_configs = self._get_file_configs()
+        
         self.setup_ui()
         self.refresh_file_lists()
     
-    def _build_file_mapping(self):
-        """Build mapping of source files to their destination paths"""
-        mapping = {}
+    def _get_file_configs(self):
+        """Unified configuration for all files and directories"""
+        configs = [
+            {
+                "category": "Shell Configs",
+                "items": [
+                    {"src": "mybashrc", "dest": {"Unix": "~/.mybashrc", "Windows": "%USERPROFILE%/.mybashrc"}},
+                ]
+            },
+            {
+                "category": "Editor Configs",
+                "items": [
+                    {"src": "myvimrc", "dest": {"Unix": "~/.vimrc", "Windows": "%USERPROFILE%/_vimrc"}},
+                    {"src": ".config/nvim", "dest": {"Unix": "~/.config/nvim", "Windows": "%LOCALAPPDATA%/nvim"}, "is_dir": True, "condition": "lua"},
+                    {"src": "myvimrc", "dest": {"Unix": "~/.config/nvim/init.vim", "Windows": "%LOCALAPPDATA%/nvim/init.vim"}, "condition": "vim"},
+                ]
+            },
+            {
+                "category": "Dotfiles",
+                "items": [
+                    {"src": ".gitconfig", "dest": {"Unix": "~/.gitconfig", "Windows": "%USERPROFILE%/.gitconfig"}},
+                    {"src": ".tmux.conf", "dest": {"Unix": "~/.tmux.conf"}},
+                    {"src": ".tigrc", "dest": {"Unix": "~/.tigrc"}},
+                    {"src": ".ripgreprc", "dest": {"Unix": "~/.ripgreprc", "Windows": "%USERPROFILE%/.ripgreprc"}},
+                    {"src": ".gdbinit", "dest": {"Unix": "~/.gdbinit", "Windows": "%USERPROFILE%/.gdbinit"}},
+                    {"src": ".wezterm.lua", "dest": {"Unix": "~/.wezterm.lua", "Windows": "%USERPROFILE%/.wezterm.lua"}},
+                ]
+            },
+            {
+                "category": "Tool Configs",
+                "items": [
+                    {"src": ".config/lf/lfrc", "dest": {"Unix": "~/.config/lf/lfrc"}},
+                    {"src": ".config/lf/lfrc_windows", "dest": {"Windows": "%LOCALAPPDATA%/lf/lfrc"}},
+                    {"src": ".config/lf/icons", "dest": {"Unix": "~/.config/lf/icons", "Windows": "%LOCALAPPDATA%/lf/icons"}},
+                    {"src": ".config/lf/colors", "dest": {"Unix": "~/.config/lf/colors", "Windows": "%LOCALAPPDATA%/lf/colors"}},
+                    {"src": ".config/fd/ignore", "dest": {"Unix": "~/.config/fd/ignore", "Windows": "%APPDATA%/fd/ignore"}},
+                    {"src": ".config/git/ignore", "dest": {"Unix": "~/.config/git/ignore", "Windows": "%USERPROFILE%/.config/git/ignore"}},
+                    {"src": ".vifm/vifmrc", "dest": {"Unix": "~/.vifm/vifmrc", "Windows": "%APPDATA%/vifm/vifmrc"}},
+                    {"src": ".config/yazi/theme.toml", "dest": {"Unix": "~/.config/yazi/theme.toml", "Windows": "%APPDATA%/yazi/config/theme.toml"}},
+                    {"src": ".config/yazi/keymap.toml", "dest": {"Unix": "~/.config/yazi/keymap.toml", "Windows": "%APPDATA%/yazi/config/keymap.toml"}},
+                    {"src": ".config/yazi/yazi.toml", "dest": {"Unix": "~/.config/yazi/yazi.toml", "Windows": "%APPDATA%/yazi/config/yazi.toml"}},
+                    {"src": ".config/ranger/rc.conf", "dest": {"Unix": "~/.config/ranger/rc.conf", "Windows": "%APPDATA%/ranger/rc.conf"}},
+                    {"src": ".config/ranger/commands.py", "dest": {"Unix": "~/.config/ranger/commands.py", "Windows": "%APPDATA%/ranger/commands.py"}},
+                    {"src": ".config/ranger/scope.sh", "dest": {"Unix": "~/.config/ranger/scope.sh", "Windows": "%APPDATA%/ranger/scope.sh"}},
+                    {"src": ".config/ranger/colorschemes", "dest": {"Unix": "~/.config/ranger/colorschemes", "Windows": "%APPDATA%/ranger/colorschemes"}, "is_dir": True},
+                ]
+            }
+        ]
         
-        # Shell configs
-        mapping["mybashrc"] = os.path.join(self.home_dir, ".mybashrc")
-        mapping["myvimrc"] = os.path.join(self.home_dir, ".vimrc")
+        # Add bin directory scripts dynamically
+        bin_items = []
+        bin_path = os.path.join(self.repo_dir, "bin")
+        if os.path.exists(bin_path):
+            for f in sorted(os.listdir(bin_path)):
+                if os.path.isfile(os.path.join(bin_path, f)):
+                    bin_items.append({
+                        "src": f"bin/{f}",
+                        "dest": {
+                            "Unix": f"~/bin/{f}",
+                            "Windows": f"C:/app/bin/{f}"
+                        }
+                    })
         
-        # Dotfiles
-        mapping[".gitconfig"] = os.path.join(self.home_dir, ".gitconfig")
-        mapping[".tmux.conf"] = os.path.join(self.home_dir, ".tmux.conf")
-        mapping[".tigrc"] = os.path.join(self.home_dir, ".tigrc")
-        mapping[".ripgreprc"] = os.path.join(self.home_dir, ".ripgreprc")
-        mapping[".gdbinit"] = os.path.join(self.home_dir, ".gdbinit")
+        if bin_items:
+            configs.append({"category": "Binaries", "items": bin_items})
+            
+        return configs
+
+    def resolve_path(self, path_config):
+        """Resolve destination path based on OS and environment variables"""
+        if isinstance(path_config, str):
+            path = path_config
+        else:
+            # Check for specific OS first, then fallback to Unix/Windows categories
+            os_name = self.system
+            if os_name in path_config:
+                path = path_config[os_name]
+            elif os_name in ["Linux", "Darwin"] and "Unix" in path_config:
+                path = path_config["Unix"]
+            elif os_name == "Windows" and "Windows" in path_config:
+                path = path_config["Windows"]
+            else:
+                return None
         
-        # Config directories
-        mapping[".config/lf/lfrc"] = os.path.join(self.home_dir, ".config", "lf", "lfrc")
-        mapping[".config/lf/icons"] = os.path.join(self.home_dir, ".config", "lf", "icons")
-        mapping[".config/lf/colors"] = os.path.join(self.home_dir, ".config", "lf", "colors")
-        mapping[".config/fd/ignore"] = os.path.join(self.home_dir, ".config", "fd", "ignore")
-        mapping[".config/git/ignore"] = os.path.join(self.home_dir, ".config", "git", "ignore")
-        mapping[".vifm/vifmrc"] = os.path.join(self.home_dir, ".vifm", "vifmrc")
-        
-        # Yazi
-        mapping[".config/yazi/theme.toml"] = os.path.join(self.home_dir, ".config", "yazi", "theme.toml")
-        mapping[".config/yazi/keymap.toml"] = os.path.join(self.home_dir, ".config", "yazi", "keymap.toml")
-        
-        # Ranger
-        mapping[".config/ranger/rc.conf"] = os.path.join(self.home_dir, ".config", "ranger", "rc.conf")
-        mapping[".config/ranger/commands.py"] = os.path.join(self.home_dir, ".config", "ranger", "commands.py")
-        mapping[".config/ranger/scope.sh"] = os.path.join(self.home_dir, ".config", "ranger", "scope.sh")
-        
-        return mapping
-    
+        # Expand ~ and environment variables
+        path = os.path.expanduser(path)
+        if self.system == "Windows":
+            # Expand %VAR% style
+            path = os.path.expandvars(path)
+        else:
+            # Expand $VAR style (os.path.expandvars handles this on Unix too)
+            path = os.path.expandvars(path)
+            
+        return os.path.abspath(path)
+
     def setup_ui(self):
+        # Configure overall style
+        style = ttk.Style()
+        # Use a more modern theme if available
+        if "clam" in style.theme_names():
+            style.theme_use("clam")
+            
+        # Define colors
+        bg_color = "#f0f0f0"
+        header_bg = "#2c3e50"
+        header_fg = "#ecf0f1"
+        
+        self.root.configure(bg=bg_color)
+        
+        # Header section
+        header_frame = tk.Frame(self.root, bg=header_bg, height=60)
+        header_frame.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
+        
+        tk.Label(header_frame, text="🛡️ Dotfiles Deployer", font=("Arial", 16, "bold"), 
+                 bg=header_bg, fg=header_fg).pack(side=tk.LEFT, padx=20)
+        
+        system_info = f"💻 {self.system} | 🏠 {os.path.expanduser('~')}"
+        tk.Label(header_frame, text=system_info, font=("Arial", 10), 
+                 bg=header_bg, fg=header_fg).pack(side=tk.RIGHT, padx=20)
+        
         # Top toolbar
-        toolbar = ttk.Frame(self.root, padding="5")
+        toolbar = ttk.Frame(self.root, padding="10")
         toolbar.pack(fill=tk.X)
         
-        ttk.Button(toolbar, text="Refresh", command=self.refresh_file_lists).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Deploy Selected", command=self.deploy_selected).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Deploy All", command=self.deploy_all).pack(side=tk.LEFT, padx=5)
-        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
+        btn_refresh = ttk.Button(toolbar, text="🔄 Refresh", command=self.refresh_file_lists)
+        btn_refresh.pack(side=tk.LEFT, padx=5)
         
-        self.backup_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(toolbar, text="Backup files", variable=self.backup_var).pack(side=tk.LEFT, padx=5)
+        btn_sel = ttk.Button(toolbar, text="🚀 Deploy Selected", command=self.deploy_selected)
+        btn_sel.pack(side=tk.LEFT, padx=5)
         
-        # Legend
-        legend_frame = ttk.Frame(toolbar)
-        legend_frame.pack(side=tk.RIGHT, padx=5)
-        ttk.Label(legend_frame, text="Status: ", font=("Arial", 9, "bold")).pack(side=tk.LEFT)
-        ttk.Label(legend_frame, text="✓ Synced", foreground="green").pack(side=tk.LEFT, padx=5)
-        ttk.Label(legend_frame, text="⚠ Outdated", foreground="orange").pack(side=tk.LEFT, padx=5)
-        ttk.Label(legend_frame, text="✗ Missing", foreground="red").pack(side=tk.LEFT, padx=5)
+        btn_all = ttk.Button(toolbar, text="🔥 Deploy All", command=self.deploy_all)
+        btn_all.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
+        
+        chk_bak = ttk.Checkbutton(toolbar, text="💾 Auto Backup (.bak)", variable=self.backup_var)
+        chk_bak.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
+        
+        ttk.Label(toolbar, text="⚙️ Neovim: ", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(toolbar, text="Lua", variable=self.nvim_choice, value="lua", command=self.refresh_file_lists).pack(side=tk.LEFT)
+        ttk.Radiobutton(toolbar, text="Vimscript", variable=self.nvim_choice, value="vim", command=self.refresh_file_lists).pack(side=tk.LEFT)
+        
+        # Main content area
+        main_content = ttk.Frame(self.root, padding="5")
+        main_content.pack(fill=tk.BOTH, expand=True)
         
         # Main paned window
-        self.paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
-        self.paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.paned = ttk.PanedWindow(main_content, orient=tk.HORIZONTAL)
+        self.paned.pack(fill=tk.BOTH, expand=True)
         
-        # Left pane - Source files
-        left_frame = ttk.LabelFrame(self.paned, text="Source (Repository)", padding="5")
+        # Left pane - Source
+        left_frame = ttk.LabelFrame(self.paned, text=" 📂 Source (Repository) ", padding="5")
         self.paned.add(left_frame, weight=1)
         
-        # Source treeview
-        self.source_tree = ttk.Treeview(left_frame, columns=("status",), show="tree headings")
-        self.source_tree.heading("#0", text="File")
+        self.source_tree = ttk.Treeview(left_frame, columns=("status", "dest"), show="tree headings")
+        self.source_tree.heading("#0", text="File/Directory")
         self.source_tree.heading("status", text="Status")
-        self.source_tree.column("#0", width=300)
-        self.source_tree.column("status", width=80)
+        self.source_tree.heading("dest", text="Destination Path")
+        self.source_tree.column("#0", width=220)
+        self.source_tree.column("status", width=110, anchor=tk.CENTER)
+        self.source_tree.column("dest", width=380)
         self.source_tree.pack(fill=tk.BOTH, expand=True)
         
-        # Source scrollbar
-        source_scroll = ttk.Scrollbar(left_frame, orient=tk.VERTICAL, command=self.source_tree.yview)
-        source_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.source_tree.configure(yscrollcommand=source_scroll.set)
+        # Scrollbars
+        s_scroll = ttk.Scrollbar(left_frame, orient=tk.VERTICAL, command=self.source_tree.yview)
+        s_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.source_tree.configure(yscrollcommand=s_scroll.set)
         
-        # Right pane - Destination files
-        right_frame = ttk.LabelFrame(self.paned, text="Destination (Home)", padding="5")
+        # Right pane - Destination
+        right_frame = ttk.LabelFrame(self.paned, text=" 🏠 Destination (System) ", padding="5")
         self.paned.add(right_frame, weight=1)
         
-        # Destination treeview
-        self.dest_tree = ttk.Treeview(right_frame, columns=("status",), show="tree headings")
-        self.dest_tree.heading("#0", text="File")
+        self.dest_tree = ttk.Treeview(right_frame, columns=("status", "src"), show="tree headings")
+        self.dest_tree.heading("#0", text="File/Directory")
         self.dest_tree.heading("status", text="Status")
-        self.dest_tree.column("#0", width=300)
-        self.dest_tree.column("status", width=80)
+        self.dest_tree.heading("src", text="Source Path")
+        self.dest_tree.column("#0", width=220)
+        self.dest_tree.column("status", width=110, anchor=tk.CENTER)
+        self.dest_tree.column("src", width=380)
         self.dest_tree.pack(fill=tk.BOTH, expand=True)
         
-        # Destination scrollbar
-        dest_scroll = ttk.Scrollbar(right_frame, orient=tk.VERTICAL, command=self.dest_tree.yview)
-        dest_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.dest_tree.configure(yscrollcommand=dest_scroll.set)
+        d_scroll = ttk.Scrollbar(right_frame, orient=tk.VERTICAL, command=self.dest_tree.yview)
+        d_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.dest_tree.configure(yscrollcommand=d_scroll.set)
         
         # Status bar
-        self.status_bar = ttk.Label(self.root, text="Ready", relief=tk.SUNKEN, padding="5")
+        self.status_bar = tk.Label(self.root, text="Ready", relief=tk.SUNKEN, anchor=tk.W, 
+                                   padx=10, pady=5, bg="#ddd", font=("Arial", 9))
         self.status_bar.pack(fill=tk.X)
         
         # Bind events
         self.source_tree.bind("<Double-1>", self.on_source_double_click)
-        self.dest_tree.bind("<Double-1>", self.on_dest_double_click)
         self.source_tree.bind("<Button-3>", self.on_source_right_click)
         self.dest_tree.bind("<Button-3>", self.on_dest_right_click)
-    
-    def get_file_status(self, src, dest):
-        """Get sync status of a file"""
+        
+        # Tags for status colors and zebra striping
+        for tree in [self.source_tree, self.dest_tree]:
+            tree.tag_configure("green", foreground="#27ae60", font=("Arial", 9, "bold"))
+            tree.tag_configure("orange", foreground="#d35400", font=("Arial", 9, "bold"))
+            tree.tag_configure("red", foreground="#c0392b", font=("Arial", 9, "bold"))
+            tree.tag_configure("gray", foreground="#7f8c8d")
+            tree.tag_configure("odd", background="#ffffff")
+            tree.tag_configure("even", background="#f9f9f9")
+
+    def get_sync_status(self, src, dest, is_dir=False):
+        """Compare src and dest to get status with icons"""
         if not os.path.exists(src):
-            return "✗ Source missing", "red"
+            return "❔ Missing Src", "gray"
         
         if not os.path.exists(dest):
-            return "✗ Missing", "red"
+            return "❌ Missing", "red"
         
-        if filecmp.cmp(src, dest, shallow=False):
-            return "✓ Synced", "green"
-        else:
-            return "⚠ Outdated", "orange"
-    
+        try:
+            if is_dir:
+                return "✅ Exists", "green"
+            else:
+                if filecmp.cmp(src, dest, shallow=False):
+                    return "✅ Synced", "green"
+                else:
+                    return "⚠️ Outdated", "orange"
+        except Exception:
+            return "🚫 Error", "red"
+
     def refresh_file_lists(self):
-        """Refresh both file lists"""
-        # Clear existing items and metadata
-        for item in self.source_tree.get_children():
-            self.source_tree.delete(item)
-        for item in self.dest_tree.get_children():
-            self.dest_tree.delete(item)
+        """Refresh both treeviews based on current config and nvim choice"""
+        for tree in [self.source_tree, self.dest_tree]:
+            for item in tree.get_children():
+                tree.delete(item)
+        
         self.source_metadata.clear()
         self.dest_metadata.clear()
         
-        # Group files by category
-        categories = {
-            "Shell Configs": ["mybashrc"],
-            "Editor Configs": ["myvimrc"],
-            "Dotfiles": [".gitconfig", ".tmux.conf", ".tigrc", ".ripgreprc", ".gdbinit"],
-            "Config Files": [
-                ".config/lf/lfrc", ".config/lf/icons", ".config/lf/colors",
-                ".config/fd/ignore", ".config/git/ignore",
-                ".config/yazi/theme.toml", ".config/yazi/keymap.toml",
-                ".config/ranger/rc.conf", ".config/ranger/commands.py", ".config/ranger/scope.sh",
-                ".vifm/vifmrc"
-            ]
-        }
+        total_items = 0
         
-        # Populate source tree
-        for category, files in categories.items():
-            cat_id = self.source_tree.insert("", tk.END, text=category, open=True)
-            for file in files:
-                src = os.path.join(self.repo_dir, file)
-                dest = self.file_mapping.get(file, "")
-                status, color = self.get_file_status(src, dest)
+        for cat_config in self.file_configs:
+            category = cat_config["category"]
+            src_cat_id = self.source_tree.insert("", tk.END, text=category, open=True)
+            dest_cat_id = self.dest_tree.insert("", tk.END, text=category, open=True)
+            
+            row_idx = 0
+            for item in cat_config["items"]:
+                # Check condition (e.g., nvim choice)
+                if "condition" in item:
+                    if item["condition"] != self.nvim_choice.get():
+                        continue
                 
-                # Store metadata in dictionary
-                item_id = self.source_tree.insert(
-                    cat_id,
-                    tk.END,
-                    text=os.path.basename(file),
-                    values=(status,),
-                    tags=(color,)
-                )
-                self.source_metadata[item_id] = {
-                    "full_path": src,
-                    "dest_path": dest,
-                    "relative_path": file
-                }
-        
-        # Populate destination tree
-        for category, files in categories.items():
-            cat_id = self.dest_tree.insert("", tk.END, text=category, open=True)
-            for file in files:
-                src = os.path.join(self.repo_dir, file)
-                dest = self.file_mapping.get(file, "")
-                status, color = self.get_file_status(src, dest)
+                src_path = os.path.join(self.repo_dir, item["src"])
+                dest_path = self.resolve_path(item["dest"])
                 
-                item_id = self.dest_tree.insert(
-                    cat_id,
-                    tk.END,
-                    text=os.path.basename(file),
-                    values=(status,),
-                    tags=(color,)
+                if not dest_path:
+                    continue
+                
+                is_dir = item.get("is_dir", False)
+                status, color = self.get_sync_status(src_path, dest_path, is_dir)
+                
+                # Zebra stripe tag
+                stripe_tag = "even" if row_idx % 2 == 0 else "odd"
+                
+                # Source Tree
+                sid = self.source_tree.insert(
+                    src_cat_id, tk.END,
+                    text=item["src"],
+                    values=(status, dest_path),
+                    tags=(color, stripe_tag)
                 )
-                self.dest_metadata[item_id] = {
-                    "full_path": dest,
-                    "src_path": src,
-                    "relative_path": file
-                }
+                self.source_metadata[sid] = {"src": src_path, "dest": dest_path, "is_dir": is_dir}
+                
+                # Dest Tree
+                did = self.dest_tree.insert(
+                    dest_cat_id, tk.END,
+                    text=os.path.basename(dest_path),
+                    values=(status, item["src"]),
+                    tags=(color, stripe_tag)
+                )
+                self.dest_metadata[did] = {"src": src_path, "dest": dest_path, "is_dir": is_dir}
+                
+                total_items += 1
+                row_idx += 1
         
-        # Configure tags for colors
-        self.source_tree.tag_configure("green", foreground="green")
-        self.source_tree.tag_configure("orange", foreground="orange")
-        self.source_tree.tag_configure("red", foreground="red")
-        self.dest_tree.tag_configure("green", foreground="green")
-        self.dest_tree.tag_configure("orange", foreground="orange")
-        self.dest_tree.tag_configure("red", foreground="red")
-        
-        self.status_bar.config(text=f"Loaded {len(self.file_mapping)} files")
-    
-    def on_source_double_click(self, event):
-        """Deploy file when double-clicked in source"""
-        selection = self.source_tree.selection()
-        if selection:
-            item = selection[0]
-            # Check if it's a category (parent)
-            if self.source_tree.parent(item):
-                metadata = self.source_metadata.get(item, {})
-                src = metadata.get("full_path")
-                dest = metadata.get("dest_path")
-                if src and dest:
-                    self.deploy_file(src, dest)
-    
-    def on_dest_double_click(self, event):
-        """View file info when double-clicked in destination"""
-        selection = self.dest_tree.selection()
-        if selection:
-            item = selection[0]
-            if self.dest_tree.parent(item):
-                metadata = self.dest_metadata.get(item, {})
-                dest = metadata.get("full_path")
-                src = metadata.get("src_path")
-                if dest and os.path.exists(dest):
-                    self.show_file_info(src, dest)
-    
-    def on_source_right_click(self, event):
-        """Show context menu for source tree"""
-        selection = self.source_tree.selection()
-        if selection:
-            item = selection[0]
-            if self.source_tree.parent(item):
-                metadata = self.source_metadata.get(item, {})
-                menu = tk.Menu(self.root, tearoff=0)
-                menu.add_command(label="Deploy this file", command=lambda: self.deploy_source_item(item))
-                menu.add_command(label="View source", command=lambda: self.view_file(metadata.get("full_path")))
-                menu.add_separator()
-                menu.add_command(label="Deploy all in category", command=lambda: self.deploy_category(item, "source"))
-                menu.post(event.x_root, event.y_root)
-    
-    def on_dest_right_click(self, event):
-        """Show context menu for destination tree"""
-        selection = self.dest_tree.selection()
-        if selection:
-            item = selection[0]
-            if self.dest_tree.parent(item):
-                metadata = self.dest_metadata.get(item, {})
-                menu = tk.Menu(self.root, tearoff=0)
-                menu.add_command(label="View file info", command=lambda: self.show_file_info(
-                    metadata.get("src_path"),
-                    metadata.get("full_path")
-                ))
-                menu.add_command(label="View destination", command=lambda: self.view_file(metadata.get("full_path")))
-                menu.add_separator()
-                if os.path.exists(metadata.get("full_path", "") + ".bak"):
-                    menu.add_command(label="Restore from backup", command=lambda: self.restore_backup(item))
-                menu.post(event.x_root, event.y_root)
-    
-    def deploy_source_item(self, item):
-        """Deploy a single item from source tree"""
-        metadata = self.source_metadata.get(item, {})
-        src = metadata.get("full_path")
-        dest = metadata.get("dest_path")
-        if src and dest:
-            self.deploy_file(src, dest)
-    
-    def deploy_category(self, item, tree_type):
-        """Deploy all files in a category"""
-        if tree_type == "source":
-            tree = self.source_tree
-            metadata_dict = self.source_metadata
-            get_path = lambda i: (metadata_dict.get(i, {}).get("full_path"), metadata_dict.get(i, {}).get("dest_path"))
-        else:
-            tree = self.dest_tree
-            metadata_dict = self.dest_metadata
-            get_path = lambda i: (metadata_dict.get(i, {}).get("src_path"), metadata_dict.get(i, {}).get("full_path"))
-        
-        # Get all children of the category
-        parent = tree.parent(item)
-        if parent:
-            # Item is a file, get its category
-            category_id = parent
-        else:
-            # Item is a category
-            category_id = item
-        
-        children = tree.get_children(category_id)
-        for child in children:
-            src, dest = get_path(child)
-            if src and dest:
-                self.deploy_file(src, dest)
-        
-        self.refresh_file_lists()
-    
-    def deploy_file(self, src, dest):
-        """Deploy a single file"""
+        self.status_bar.config(text=f" 📋 Total items: {total_items} | System: {self.system} ")
+
+
+    def deploy_file(self, src, dest, is_dir=False):
+        """Core deployment logic for single file or directory"""
         if not os.path.exists(src):
-            messagebox.showerror("Error", f"Source file not found: {src}")
-            return False
+            return False, f"Source not found: {src}"
         
         try:
-            # Create destination directory if needed
+            # Create parent directory
             dest_dir = os.path.dirname(dest)
-            if dest_dir and not os.path.exists(dest_dir):
+            if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
             
-            # Backup if requested and file exists
-            if os.path.exists(dest) and self.backup_var.get():
-                backup_path = dest + ".bak"
-                shutil.copy2(dest, backup_path)
-                self.status_bar.config(text=f"Backed up {dest} to {backup_path}")
+            # Backup
+            if self.backup_var.get() and os.path.exists(dest):
+                bak_path = dest + ".bak"
+                if os.path.isdir(dest):
+                    if os.path.exists(bak_path):
+                        shutil.rmtree(bak_path)
+                    shutil.copytree(dest, bak_path)
+                else:
+                    shutil.copy2(dest, bak_path)
             
-            # Copy file
-            shutil.copy2(src, dest)
-            self.status_bar.config(text=f"Deployed {dest}")
-            
-            # Make executable if it's a script
-            if dest.endswith(".sh") or "/bin/" in dest:
-                os.chmod(dest, 0o755)
-            
-            self.refresh_file_lists()
-            return True
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to deploy {dest}: {str(e)}")
-            return False
-    
-    def deploy_selected(self):
-        """Deploy all selected files from source tree"""
-        selection = self.source_tree.selection()
-        if not selection:
-            messagebox.showinfo("Info", "No files selected")
-            return
-        
-        count = 0
-        for item in selection:
-            if self.source_tree.parent(item):  # Only files, not categories
-                metadata = self.source_metadata.get(item, {})
-                src = metadata.get("full_path")
-                dest = metadata.get("dest_path")
-                if src and dest:
-                    if self.deploy_file(src, dest):
-                        count += 1
-        
-        messagebox.showinfo("Success", f"Deployed {count} file(s)")
-    
-    def deploy_all(self):
-        """Deploy all files"""
-        if not messagebox.askyesno("Confirm", "Deploy all files?"):
-            return
-        
-        count = 0
-        for src, dest in self.file_mapping.items():
-            src_path = os.path.join(self.repo_dir, src)
-            if src_path and dest:
-                if self.deploy_file(src_path, dest):
-                    count += 1
-        
-        messagebox.showinfo("Success", f"Deployed {count} file(s)")
-    
-    def show_file_info(self, src, dest):
-        """Show information about a file"""
-        info = f"Source: {src}\n"
-        info += f"Destination: {dest}\n\n"
-        
-        if os.path.exists(src):
-            info += f"Source size: {os.path.getsize(src)} bytes\n"
-            info += f"Source modified: {datetime.fromtimestamp(os.path.getmtime(src))}\n"
-        else:
-            info += "Source: Not found\n"
-        
-        if os.path.exists(dest):
-            info += f"Dest size: {os.path.getsize(dest)} bytes\n"
-            info += f"Dest modified: {datetime.fromtimestamp(os.path.getmtime(dest))}\n"
-            
-            if os.path.exists(src) and filecmp.cmp(src, dest, shallow=False):
-                info += "\nFiles are identical"
+            # Deploy
+            if is_dir:
+                if os.path.exists(dest):
+                    if os.path.islink(dest):
+                        os.unlink(dest)
+                    elif os.path.isdir(dest):
+                        shutil.rmtree(dest)
+                    else:
+                        os.remove(dest)
+                shutil.copytree(src, dest)
             else:
-                info += "\nFiles differ"
-        else:
-            info += "Destination: Not found\n"
+                shutil.copy2(src, dest)
+                # Permissions
+                if self.system != "Windows":
+                    if "/bin/" in src or src.endswith(".sh"):
+                        os.chmod(dest, 0o755)
+            
+            return True, f"Deployed to {dest}"
+        except Exception as e:
+            return False, str(e)
+
+    def on_source_double_click(self, event):
+        selection = self.source_tree.selection()
+        if selection:
+            item_id = selection[0]
+            if item_id in self.source_metadata:
+                m = self.source_metadata[item_id]
+                success, msg = self.deploy_file(m["src"], m["dest"], m["is_dir"])
+                if success:
+                    self.refresh_file_lists()
+                    self.status_bar.config(text=msg)
+                else:
+                    messagebox.showerror("Error", msg)
+
+    def on_source_right_click(self, event):
+        selection = self.source_tree.selection()
+        if not selection: return
         
-        messagebox.showinfo("File Info", info)
-    
-    def view_file(self, filepath):
-        """View file contents (simple text viewer)"""
-        if not os.path.exists(filepath):
-            messagebox.showerror("Error", f"File not found: {filepath}")
+        item_id = selection[0]
+        menu = tk.Menu(self.root, tearoff=0)
+        
+        if item_id in self.source_metadata:
+            m = self.source_metadata[item_id]
+            menu.add_command(label="Deploy Selected", command=lambda: self.deploy_source_item(item_id))
+            menu.add_command(label="Open Source", command=lambda: self.open_path(m["src"]))
+            menu.add_command(label="Open Destination", command=lambda: self.open_path(os.path.dirname(m["dest"])))
+        else:
+            # Category
+            menu.add_command(label="Deploy Category", command=lambda: self.deploy_category(item_id))
+            
+        menu.post(event.x_root, event.y_root)
+
+    def on_dest_right_click(self, event):
+        selection = self.dest_tree.selection()
+        if not selection: return
+        
+        item_id = selection[0]
+        if item_id not in self.dest_metadata: return
+        
+        m = self.dest_metadata[item_id]
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label="Open File", command=lambda: self.open_path(m["dest"]))
+        menu.add_command(label="Open Location", command=lambda: self.open_path(os.path.dirname(m["dest"])))
+        
+        bak_path = m["dest"] + ".bak"
+        if os.path.exists(bak_path):
+            menu.add_separator()
+            menu.add_command(label="Restore from .bak", command=lambda: self.restore_bak(m))
+            
+        menu.post(event.x_root, event.y_root)
+
+    def deploy_source_item(self, item_id):
+        m = self.source_metadata[item_id]
+        success, msg = self.deploy_file(m["src"], m["dest"], m["is_dir"])
+        self.refresh_file_lists()
+        if not success: messagebox.showerror("Error", msg)
+
+    def deploy_category(self, cat_id):
+        children = self.source_tree.get_children(cat_id)
+        count = 0
+        for child in children:
+            if child in self.source_metadata:
+                m = self.source_metadata[child]
+                success, _ = self.deploy_file(m["src"], m["dest"], m["is_dir"])
+                if success: count += 1
+        self.refresh_file_lists()
+        self.status_bar.config(text=f"Deployed {count} items in category")
+
+    def deploy_selected(self):
+        selection = self.source_tree.selection()
+        count = 0
+        for item_id in selection:
+            if item_id in self.source_metadata:
+                m = self.source_metadata[item_id]
+                success, _ = self.deploy_file(m["src"], m["dest"], m["is_dir"])
+                if success: count += 1
+        self.refresh_file_lists()
+        messagebox.showinfo("Done", f"Deployed {count} items")
+
+    def deploy_all(self):
+        if not messagebox.askyesno("Confirm", "Deploy all items in the current view?"):
+            return
+        
+        count = 0
+        for cat_id in self.source_tree.get_children(""):
+            for child in self.source_tree.get_children(cat_id):
+                if child in self.source_metadata:
+                    m = self.source_metadata[child]
+                    success, _ = self.deploy_file(m["src"], m["dest"], m["is_dir"])
+                    if success: count += 1
+        self.refresh_file_lists()
+        messagebox.showinfo("Done", f"Deployed {count} items")
+
+    def restore_bak(self, m):
+        bak_path = m["dest"] + ".bak"
+        if not messagebox.askyesno("Confirm", f"Restore {m['dest']} from backup?"):
             return
         
         try:
-            with open(filepath, 'r', errors='ignore') as f:
-                content = f.read()
-            
-            # Create simple viewer window
-            viewer = tk.Toplevel(self.root)
-            viewer.title(f"View: {os.path.basename(filepath)}")
-            viewer.geometry("800x600")
-            
-            text = tk.Text(viewer, wrap=tk.WORD)
-            text.pack(fill=tk.BOTH, expand=True)
-            text.insert(tk.END, content)
-            text.config(state=tk.DISABLED)
-            
+            if m["is_dir"]:
+                if os.path.exists(m["dest"]): shutil.rmtree(m["dest"])
+                shutil.copytree(bak_path, m["dest"])
+            else:
+                shutil.copy2(bak_path, m["dest"])
+            self.refresh_file_lists()
+            self.status_bar.config(text="Restored from backup")
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to read file: {str(e)}")
-    
-    def restore_backup(self, item):
-        """Restore file from backup"""
-        metadata = self.dest_metadata.get(item, {})
-        dest = metadata.get("full_path")
-        backup = dest + ".bak"
-        
-        if not os.path.exists(backup):
-            messagebox.showerror("Error", "No backup found")
+            messagebox.showerror("Error", str(e))
+
+    def open_path(self, path):
+        """Open file or folder in system explorer/editor"""
+        if not os.path.exists(path):
+            messagebox.showerror("Error", f"Path does not exist: {path}")
             return
-        
-        if messagebox.askyesno("Confirm", f"Restore {dest} from backup?"):
-            try:
-                shutil.copy2(backup, dest)
-                self.status_bar.config(text=f"Restored {dest} from backup")
-                self.refresh_file_lists()
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to restore: {str(e)}")
+            
+        try:
+            if self.system == "Windows":
+                os.startfile(path)
+            elif self.system == "Darwin":
+                import subprocess
+                subprocess.run(["open", path])
+            else:
+                import subprocess
+                subprocess.run(["xdg-open", path])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open: {str(e)}")
 
 
 def main():
     root = tk.Tk()
-    app = SplitPaneDeployGUI(root)
+    # Simple styling
+    style = ttk.Style()
+    style.configure("Treeview", font=("Segoe UI" if platform.system() == "Windows" else "Sans", 10))
+    style.configure("Treeview.Heading", font=("Segoe UI" if platform.system() == "Windows" else "Sans", 10, "bold"))
+    
+    app = DotfilesDeployGUI(root)
     root.mainloop()
 
 
