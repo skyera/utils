@@ -691,14 +691,29 @@ g++ a.cpp /path/liblua.a -ldl
 ```
 
 ### Python on Windows
-Fix for .py file associations not passing command-line arguments. Ensure registry keys include `%*` at the end of the command string.
+To run Python scripts directly (e.g., `myscript.py` or `myscript`) using the version of Python currently in your `PATH`.
 
-Registry Keys:
-- `HKEY_CLASSES_ROOT\Applications\python.exe\shell\open\command`
-- `HKEY_CLASSES_ROOT\py_auto_file\shell\open\command`
+#### File Association (assoc and ftype)
+Run in Command Prompt as **Administrator**:
+```cmd
+:: Link .py extension to a file type name
+assoc .py=Python.File
 
-Value:
-`"C:\app\miniforge3\python.exe" "%1" %*`
+:: Use 'python' from PATH to open these files
+:: "%1" is the script path, "%*" passes all arguments
+ftype Python.File=python "%1" %*
+```
+
+#### Registry Settings
+Key for file type: `HKEY_CLASSES_ROOT\.py` -> `@="Python.File"`
+
+Key for execution command: `HKEY_CLASSES_ROOT\Python.File\shell\open\command`
+Value: `python "%1" %*`
+
+*Note: Using `python` instead of a full path ensures it uses whatever `python` is first in your `PATH`.*
+
+#### PATHEXT (for extension-less execution)
+Add `; .PY; .PYW` to the `PATHEXT` system environment variable to run scripts by just typing their name (e.g., `myscript`).
 
 ### Python
 ```bash
