@@ -9,6 +9,7 @@ import os
 import shutil
 import filecmp
 import platform
+import difflib
 from datetime import datetime
 
 
@@ -56,6 +57,7 @@ class DotfilesDeployGUI:
                 "category": "Dotfiles",
                 "items": [
                     {"src": ".gitconfig", "dest": {"Unix": "~/.gitconfig", "Windows": "%USERPROFILE%/.gitconfig"}},
+                    {"src": ".gitmessage", "dest": {"Unix": "~/.gitmessage", "Windows": "%USERPROFILE%/.gitmessage"}},
                     {"src": ".tmux.conf", "dest": {"Unix": "~/.tmux.conf"}},
                     {"src": ".tigrc", "dest": {"Unix": "~/.tigrc"}},
                     {"src": ".ripgreprc", "dest": {"Unix": "~/.ripgreprc", "Windows": "%USERPROFILE%/.ripgreprc"}},
@@ -184,9 +186,13 @@ class DotfilesDeployGUI:
         main_content = ttk.Frame(self.root, padding="5")
         main_content.pack(fill=tk.BOTH, expand=True)
         
-        # Main paned window
-        self.paned = ttk.PanedWindow(main_content, orient=tk.HORIZONTAL)
-        self.paned.pack(fill=tk.BOTH, expand=True)
+        # Outer vertical paned window
+        self.v_paned = ttk.PanedWindow(main_content, orient=tk.VERTICAL)
+        self.v_paned.pack(fill=tk.BOTH, expand=True)
+        
+        # Top paned window (Horizontal)
+        self.paned = ttk.PanedWindow(self.v_paned, orient=tk.HORIZONTAL)
+        self.v_paned.add(self.paned, weight=3)
         
         # Left pane - Source
         left_frame = ttk.LabelFrame(self.paned, text=" 📂 Source (Repository) ", padding="5")
@@ -222,6 +228,23 @@ class DotfilesDeployGUI:
         d_scroll = ttk.Scrollbar(right_frame, orient=tk.VERTICAL, command=self.dest_tree.yview)
         d_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.dest_tree.configure(yscrollcommand=d_scroll.set)
+
+        # Bottom pane - Diff View
+        diff_frame = ttk.LabelFrame(self.v_paned, text=" 🔍 Difference (Source vs Destination) ", padding="5")
+        self.v_paned.add(diff_frame, weight=2)
+        
+        # Text widget for diff with both scrollbars
+        self.diff_text = tk.Text(diff_frame, wrap=tk.NONE, height=10,
+                                font=("Consolas" if self.system == "Windows" else "Monospace", 10),
+                                bg="#fdfdfd")
+        
+        d_scroll_y = ttk.Scrollbar(diff_frame, orient=tk.VERTICAL, command=self.diff_text.yview)
+        d_scroll_x = ttk.Scrollbar(diff_frame, orient=tk.HORIZONTAL, command=self.diff_text.xview)
+        self.diff_text.configure(yscrollcommand=d_scroll_y.set, xscrollcommand=d_scroll_x.set)
+        
+        d_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        d_scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+        self.diff_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         # Status bar
         self.status_bar = tk.Label(self.root, text="Ready", relief=tk.SUNKEN, anchor=tk.W, 
@@ -231,7 +254,10 @@ class DotfilesDeployGUI:
         # Bind events
         self.source_tree.bind("<Double-1>", self.on_source_double_click)
         self.source_tree.bind("<Button-3>", self.on_source_right_click)
+        self.source_tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+        
         self.dest_tree.bind("<Button-3>", self.on_dest_right_click)
+        self.dest_tree.bind("<<TreeviewSelect>>", self.on_tree_select)
         
         # Tags for status colors and zebra striping
         for tree in [self.source_tree, self.dest_tree]:
@@ -241,6 +267,12 @@ class DotfilesDeployGUI:
             tree.tag_configure("gray", foreground="#7f8c8d")
             tree.tag_configure("odd", background="#ffffff")
             tree.tag_configure("even", background="#f9f9f9")
+
+        # Diff tags
+        self.diff_text.tag_configure("diff_add", foreground="#27ae60", background="#e8f8f5")
+        self.diff_text.tag_configure("diff_sub", foreground="#c0392b", background="#f9ebeb")
+        self.diff_text.tag_configure("diff_header", foreground="#2980b9", font=("Arial", 10, "bold"))
+        self.diff_text.config(state=tk.DISABLED)
 
     def get_sync_status(self, src, dest, is_dir=False):
         """Compare src and dest to get status with icons"""
@@ -260,6 +292,73 @@ class DotfilesDeployGUI:
                     return "⚠️ Outdated", "orange"
         except Exception:
             return "🚫 Error", "red"
+
+    def on_tree_select(self, event):
+        """Handle selection in either tree to show diff"""
+        tree = event.widget
+        selection = tree.selection()
+        if not selection:
+            return
+            
+        item_id = selection[0]
+        metadata = self.source_metadata if tree == self.source_tree else self.dest_metadata
+        
+        if item_id in metadata:
+            m = metadata[item_id]
+            self.show_diff(m["src"], m["dest"], m["is_dir"])
+        else:
+            # Category selected
+            self.diff_text.config(state=tk.NORMAL)
+            self.diff_text.delete(1.0, tk.END)
+            self.diff_text.config(state=tk.DISABLED)
+
+    def show_diff(self, src, dest, is_dir=False):
+        """Generate and display unified diff in the text widget"""
+        self.diff_text.config(state=tk.NORMAL)
+        self.diff_text.delete(1.0, tk.END)
+        
+        if is_dir:
+            self.diff_text.insert(tk.END, f"Directory comparison not supported in diff view.\nSource: {src}\nDestination: {dest}")
+        elif not os.path.exists(src):
+            self.diff_text.insert(tk.END, f"Source file missing: {src}")
+        elif not os.path.exists(dest):
+            self.diff_text.insert(tk.END, f"Destination file missing (New file):\n\n")
+            try:
+                with open(src, 'r', encoding='utf-8', errors='replace') as f:
+                    self.diff_text.insert(tk.END, f.read())
+            except Exception as e:
+                self.diff_text.insert(tk.END, f"Error reading source: {e}")
+        else:
+            try:
+                with open(src, 'r', encoding='utf-8', errors='replace') as f1:
+                    src_lines = f1.readlines()
+                with open(dest, 'r', encoding='utf-8', errors='replace') as f2:
+                    dest_lines = f2.readlines()
+                
+                diff = difflib.unified_diff(
+                    dest_lines, src_lines, 
+                    fromfile=f"System: {os.path.basename(dest)}", 
+                    tofile=f"Repo: {os.path.basename(src)}",
+                    lineterm=''
+                )
+                
+                has_diff = False
+                for line in diff:
+                    has_diff = True
+                    tag = None
+                    if line.startswith('+'): tag = "diff_add"
+                    elif line.startswith('-'): tag = "diff_sub"
+                    elif line.startswith('@'): tag = "diff_header"
+                    
+                    self.diff_text.insert(tk.END, line + '\n', tag)
+                
+                if not has_diff:
+                    self.diff_text.insert(tk.END, "✨ Files are identical.")
+                    
+            except Exception as e:
+                self.diff_text.insert(tk.END, f"Error generating diff: {e}")
+        
+        self.diff_text.config(state=tk.DISABLED)
 
     def refresh_file_lists(self):
         """Refresh both treeviews based on current config and nvim choice"""
