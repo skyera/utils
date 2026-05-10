@@ -37,25 +37,63 @@ def convert_zim_to_obsidian(content):
     # 5. Images
     def replace_image(match):
         path = match.group(1)
-        path = re.sub(r'^\.\\|^\.\/', '', path).split('?')[0]
-        return f"![[{path}]]"
+        # Zim root links start with :
+        is_root = path.startswith(':')
+        if is_root:
+            path = path[1:]
+        
+        # Detect if it's a relative link (./ or .\)
+        is_relative = path.startswith('./') or path.startswith('.\\')
+        
+        # Clean path: remove .\ or ./
+        path = re.sub(r'^\.\\|^\.\/', '', path)
+        # Handle width/params
+        path = path.split('?')[0]
+        # Replace backslashes with forward slashes
+        path = path.replace('\\', '/')
+        
+        # ZIM LOGIC: In Zim, a relative link in 'Page.txt' to './img.png' 
+        # actually points to 'Page/img.png'.
+        if is_relative and 'current_page_stem' in globals() and current_page_stem:
+            path = f"{current_page_stem}/{path}"
+            
+        return f"![]({path})"
+
     content = re.sub(r'\{\{(.*?)\}\}', replace_image, content)
 
     # 6. Links
     def replace_link(match):
         link_part = match.group(1)
+        # Zim uses : for namespaces, Obsidian uses /
+        # But we only want to change it if it looks like an internal link
         if '|' in link_part:
             parts = link_part.split('|', 1)
             url = parts[0]
             text = parts[1] if len(parts) > 1 else url
-            return f"[{text}]({url})" if url.startswith('http') else f"[[{url}|{text}]]"
+            if url.startswith('http'):
+                return f"[{text}]({url})"
+            else:
+                url = url.replace(':', '/').replace('\\', '/')
+                return f"[[{url}|{text}]]"
+        
+        # Internal link without display text
+        link_part = link_part.replace(':', '/').replace('\\', '/')
         return f"[[{link_part}]]"
+
     content = re.sub(r'\[\[(.*?)\]\]', replace_link, content)
 
     return content
 
-def main(src_folder, dest_folder):
-    src_path, dest_path = Path(src_folder), Path(dest_folder)
+def main(src_folder, dest_folder, force=False):
+    src_path, dest_path = Path(src_folder).resolve(), Path(dest_folder).resolve()
+    
+    # SAFETY CHECK: Ensure we aren't trying to overwrite the source directory
+    if src_path == dest_path:
+        print(f"Error: Source and Destination folders cannot be the same!")
+        print(f"Source: {src_path}")
+        print(f"Destination: {dest_path}")
+        return
+
     if not src_path.exists():
         print(f"Error: Source folder '{src_folder}' does not exist.")
         return
@@ -76,7 +114,7 @@ def main(src_folder, dest_folder):
     if not dest_path.exists():
         dest_path.mkdir(parents=True)
 
-    print(f"Starting conversion of {total_files} files: {src_path} -> {dest_path}")
+    print(f"Starting conversion of {total_files} files (Force: {force}): {src_path} -> {dest_path}")
     
     start_time = time.time()
     processed_count = 0
@@ -92,16 +130,18 @@ def main(src_folder, dest_folder):
             skip = False
             if src_file.suffix == '.txt':
                 dest_file = dest_file_path.with_suffix('.md')
-                if dest_file.exists() and dest_file.stat().st_mtime >= src_file.stat().st_mtime:
+                if not force and dest_file.exists() and dest_file.stat().st_mtime >= src_file.stat().st_mtime:
                     skip = True
                 else:
+                    global current_page_stem
+                    current_page_stem = src_file.stem
                     with open(src_file, 'r', encoding='utf-8') as f:
                         content = f.read()
                     with open(dest_file, 'w', encoding='utf-8') as f:
                         f.write(convert_zim_to_obsidian(content))
             else:
                 # For attachments
-                if dest_file_path.exists() and dest_file_path.stat().st_mtime >= src_file.stat().st_mtime:
+                if not force and dest_file_path.exists() and dest_file_path.stat().st_mtime >= src_file.stat().st_mtime:
                     skip = True
                 else:
                     shutil.copy2(src_file, dest_file_path)
@@ -134,6 +174,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert Zim Wiki to Obsidian Markdown.")
     parser.add_argument("-i", "--input", required=True, help="Path to the Zim Wiki 'Notes' folder.")
     parser.add_argument("-o", "--output", required=True, help="Path to the desired Obsidian vault output folder.")
+    parser.add_argument("-f", "--force", action="store_true", help="Force overwrite existing files.")
     
     args = parser.parse_args()
-    main(args.input, args.output)
+    main(args.input, args.output, args.force)
