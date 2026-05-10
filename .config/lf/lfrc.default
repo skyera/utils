@@ -1,0 +1,51 @@
+# Default lf configuration
+
+# Default commands
+cmd open &$OPENER "$f"
+map e $$EDITOR "$f"
+map i $$PAGER "$f"
+map w $$SHELL
+cmd doc $$lf -doc | $PAGER
+map <f-1> doc
+cmd maps $lf -remote "query $id maps" | $PAGER
+cmd cmaps $lf -remote "query $id cmaps" | $PAGER
+cmd cmds $lf -remote "query $id cmds" | $PAGER
+
+# Default keybindings
+map zh set hidden!
+map zr set reverse!
+map zn set info
+map zs set info size
+map zt set info time
+map za set info size:time
+map sn :set sortby natural; set info
+map ss :set sortby size; set info size
+map st :set sortby time; set info time
+map sa :set sortby atime; set info time
+map sc :set sortby ctime; set info time
+map sx :set sortby ext; set info
+map sf :set sortby name; set info
+
+# Default filter command
+map f filter
+cmd filter %{{
+    lf -remote "send $id set filter \"$*\""
+}}
+
+# Default selection commands
+map u clear-selection
+map v toggle
+map <space> toggle
+
+# Default search commands
+map / search
+map ? search-back
+map n search-next
+map N search-prev
+
+# Default file operations
+map y copy
+map d cut
+map p paste
+map r rename
+map delete delete

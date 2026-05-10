@@ -1,5 +1,8 @@
 # .config/lf/lfrc
 
+# Include default configuration
+source ~/.config/lf/lfrc.default
+
 set shell bash
 map e $$EDITOR $f
 map <enter> $$EDITOR $f
