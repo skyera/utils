@@ -18,7 +18,7 @@ config.launch_menu = {
 local os = wezterm.target_triple
 
 if os:find("windows") then
-    config.default_prog = { "powershell.exe" }
+    config.default_prog = { "cmd.exe" }
 elseif os:find("darwin") then
     config.default_prog = { "/bin/zsh" }
 else
