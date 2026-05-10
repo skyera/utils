@@ -2,6 +2,7 @@
 
 # Default commands
 cmd open &$OPENER "$f"
+map l open
 map e $$EDITOR "$f"
 map i $$PAGER "$f"
 map w $$SHELL
