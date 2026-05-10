@@ -2,20 +2,20 @@
 # 36 = Cyan, 32 = Green, 35 = Magenta, 33 = Yellow, 31 = Red
 # 1 = Bold
 
-# Directory: Bright White Bold
-di=1;37
-# Executable: Bright Green Bold
-ex=1;32
-# Symbolic Link: Magenta
-ln=35
-# Socket: Magenta
+# Directory: Cyan (like Ranger Gruvbox)
+di=36
+# Executable: Green (like Ranger)
+ex=32
+# Symbolic Link: Cyan (good link) or Magenta (broken link)
+ln=36
+# Socket: Magenta (like Ranger)
 so=35
-# Pipe: Yellow
+# Pipe: Yellow (like Ranger)
 pi=33
-# Device: Bright Yellow Bold
+# Device: Yellow Bold (like Ranger)
 cd=1;33
 bd=1;33
-# Orphan/Broken Link: Bright Red Bold
+# Orphan/Broken Link: Red Bold
 or=1;31
 # Regular File: Default
 fi=0
@@ -58,24 +58,25 @@ fi=0
 *.ace=32
 *.7z=32
 *.apk=32
-# Images: Purple/Magenta
-*.jpg=35
-*.jpeg=35
-*.gif=35
-*.bmp=35
-*.pbm=35
-*.pgm=35
-*.ppm=35
-*.tga=35
-*.xbm=35
-*.xpm=35
-*.tif=35
-*.tiff=35
-*.png=35
-*.svg=35
-*.svgz=35
-*.mng=35
-*.pcx=35
+# Images: Cyan (like Ranger)
+*.jpg=36
+*.jpeg=36
+*.gif=36
+*.bmp=36
+*.pbm=36
+*.pgm=36
+*.ppm=36
+*.tga=36
+*.xbm=36
+*.xpm=36
+*.tif=36
+*.tiff=36
+*.png=36
+*.svg=36
+*.svgz=36
+*.mng=36
+*.pcx=36
+# Videos: Magenta (like Ranger)
 *.mov=35
 *.mpg=35
 *.mpeg=35
