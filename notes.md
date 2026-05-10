@@ -215,6 +215,12 @@ Tips:
 * cut: d
 * paste: p
 * rename: r
+* jump-next: ]
+* jump-prev: [
+* invert: v
+* unselect: u
+* 
+]
 ```
 
 #### lfrc snippets
