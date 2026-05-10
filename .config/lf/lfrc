@@ -16,13 +16,24 @@ set preview true
 set previewer ~/bin/lf-preview.sh
 set drawbox true
 
+# Enhanced shell settings for better UX
+set shellopts '-eu'          # Safer shell execution
+set scrolloff 10            # Keep cursor centered
+set smartcase true          # Smart case sensitivity
+
 # Window layout and appearance
 set ratios 1:3:4          # Larger preview area (left:preview:right)
 set info size:time         # Show file size and modification time
 set dircounts true         # Show file counts in directories
 set hidden false           # Hidden files off by default (toggle with zh)
 map <m-1> select
-cmd fzf_find $~/bin/fzf_find.sh
+cmd fzf_find %{{
+    if [ -f ~/bin/fzf_find.sh ]; then
+        ~/bin/fzf_find.sh
+    else
+        lf -remote "send $id echo 'fzf_find script not found'"
+    fi
+}}
 map zz :fzf_find
 
 # --- Navigation ---
@@ -32,4 +43,22 @@ map go :go_origin
 
 # https://github.com/gokcehan/lf/blob/master/etc/icons.example->~/.config/lf/icons
 set icons true
+
+# Enhanced utility commands
+cmd mkdir %{{
+    mkdir -p "$1"
+    lf -remote "send $id reload"
+}}
+
+cmd touch %{{
+    touch "$1"
+    lf -remote "send $id reload"
+}}
+
+# Safe delete with confirmation
+cmd delete %{{
+    lf -remote "send $id echo 'Delete $fx? (y/n)'"
+    read -r ans
+    [ "$ans" = "y" ] && rm -rf $fx
+}}
 
