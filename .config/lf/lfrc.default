@@ -29,6 +29,7 @@ map sf :set sortby name; set info
 
 # Default filter command
 map f filter
+map <esc> setfilter
 cmd filter %{{
     lf -remote "send $id set filter \"$*\""
 }}
