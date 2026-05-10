@@ -34,7 +34,7 @@ cmd fzf_find %{{
         lf -remote "send $id echo 'fzf_find script not found'"
     fi
 }}
-map zz :fzf_find
+map zz fzf_find
 
 # --- Navigation ---
 # Freeze the starting directory at load time using a sync shell call
