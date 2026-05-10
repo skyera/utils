@@ -33,21 +33,3 @@ map <esc> setfilter
 cmd filter %{{
     lf -remote "send $id set filter \"$*\""
 }}
-
-# Default selection commands
-map u clear-selection
-map v toggle
-map <space> toggle
-
-# Default search commands
-map / search
-map ? search-back
-map n search-next
-map N search-prev
-
-# Default file operations
-map y copy
-map d cut
-map p paste
-map r rename
-map delete delete
