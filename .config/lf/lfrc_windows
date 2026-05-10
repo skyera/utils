@@ -28,8 +28,14 @@ cmd doc $lf -doc | bat -p
 set incsearch true
 set number true
 set preview true
-set previewer "c:\\app\\bin\\lf-preview.bat"
+set previewer 'c:\app\bin\lf-preview.bat'
 set drawbox true
+
+# Window layout and appearance
+set ratios 1:3:4          # Larger preview area (left:preview:right)
+set info size:time         # Show file size and modification time
+set dircounts true         # Show file counts in directories
+set hidden false           # Hidden files off by default (toggle with zh)
 map <m-1> select
  
 # default, but with some separation before final %f, and after cwd
@@ -50,7 +56,17 @@ map zz :fzf_find
 $lf -remote "send $env:id cmd go_origin cd '$PWD'"
 map go :go_origin
 
+# Include default configuration (add this for consistency)
+source %LOCALAPPDATA%\lf\lfrc.default
+
 set icons true
 # https://github.com/gokcehan/lf/blob/master/etc/icons.example -> %LOCALAPPDATA%\lf\icons
 map <c-c> $echo -n $env:f | clip
+
+# Filter commands (missing from Windows config)
+map f filter
+cmd filter %{{
+    lf -remote "send $env:id set filter `$*`"
+    lf -remote "send $env:id echo Filter: `$*`"
+}}
 
