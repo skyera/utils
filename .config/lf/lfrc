@@ -27,14 +27,7 @@ set info size:time         # Show file size and modification time
 set dircounts true         # Show file counts in directories
 set hidden false           # Hidden files off by default (toggle with zh)
 map <m-1> select
-cmd fzf_find %{{
-    if [ -f ~/bin/fzf_find.sh ]; then
-        ~/bin/fzf_find.sh
-    else
-        lf -remote "send $id echo 'fzf_find script not found'"
-    fi
-}}
-map zz fzf_find
+
 
 # --- Navigation ---
 # Freeze the starting directory at load time using a sync shell call
