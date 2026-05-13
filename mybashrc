@@ -23,6 +23,14 @@ if is_container; then
     alias git='git -c merge.conflictstyle=diff3 -c push.autoSetupRemote=false'
 fi
 
+# Windows-specific overrides
+if [[ "$(uname)" == MINGW* ]]; then
+    # Use Windows-installed Neovim/Vim if available
+    command -v nvim.exe >/dev/null 2>&1 && alias nvim='nvim.exe'
+    command -v vim.exe >/dev/null 2>&1 && alias vim='vim.exe'
+    alias vi='nvim'
+fi
+
 # PATH
 export PATH=$HOME/bin:$HOME/.local/share/forgit/bin:$PATH
 
