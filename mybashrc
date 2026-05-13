@@ -2,21 +2,32 @@
 # ENVIRONMENT
 # =============================================================================
 
+# System detection
+_UNAME=$(uname)
+_IS_WINDOWS=false
+[[ "$_UNAME" == MINGW* ]] && _IS_WINDOWS=true
+
 # Container detection
 is_container() {
+    # On Windows, we're likely not in a container of interest for this script
+    $_IS_WINDOWS && return 1
     [ -f /.dockerenv ] || [ -f /.containerenv ] || grep -q "docker\|lxc" /proc/1/cgroup 2>/dev/null || [ -n "$CONTAINER" ]
 }
 
+# Cache container status
+_IS_CONTAINER=false
+is_container && _IS_CONTAINER=true
+
 # Git Pager (delta) detection
-# Use delta if available and functional, otherwise fallback to less
-if command -v delta >/dev/null 2>&1 && delta --version >/dev/null 2>&1; then
+# Avoid running delta --version if possible, or only do it once
+if ! $_IS_CONTAINER && command -v delta >/dev/null 2>&1; then
     export GIT_PAGER="delta"
 else
     export GIT_PAGER="less"
 fi
 
 # Git configuration overrides for containers
-if is_container; then
+if $_IS_CONTAINER; then
     # Git < 2.35 (e.g. Git 2.25 in Ubuntu 20.04) does not support zdiff3
     # Git < 2.37 does not support push.autoSetupRemote
     # Use an alias because GIT_CONFIG_PARAMETERS format changed between Git versions
@@ -24,7 +35,7 @@ if is_container; then
 fi
 
 # Windows-specific overrides
-if [[ "$(uname)" == MINGW* ]]; then
+if $_IS_WINDOWS; then
     # Use Windows-installed Neovim/Vim if available
     command -v nvim.exe >/dev/null 2>&1 && alias nvim='nvim.exe'
     command -v vim.exe >/dev/null 2>&1 && alias vim='vim.exe'
@@ -39,10 +50,20 @@ fi
 # PATH
 export PATH=$HOME/bin:$HOME/.local/share/forgit/bin:$PATH
 
-# Editor
-export EDITOR=$(command -v nvim || command -v vim || echo vi)
+# Editor & Tool detection (cached)
+if [[ -z "$_EDITOR" ]]; then
+    if command -v nvim >/dev/null 2>&1; then
+        _EDITOR="nvim"
+        _NEOVIM_BIN=$(command -v nvim)
+    elif command -v vim >/dev/null 2>&1; then
+        _EDITOR="vim"
+    else
+        _EDITOR="vi"
+    fi
+fi
+export EDITOR="$_EDITOR"
 export VISUAL="$EDITOR"
-export NEOVIM_BIN=$(command -v nvim)
+export NEOVIM_BIN="$_NEOVIM_BIN"
 
 # Tool configs
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
@@ -303,17 +324,45 @@ alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/:
 # =============================================================================
 export FORGIT_INSTALL_DIR="$HOME/.local/share/forgit"
 
-if ! is_container; then
+if ! $_IS_CONTAINER; then
+    # Cache directory for generated init scripts
+    CACHE_DIR="$HOME/.cache/bash"
+    mkdir -p "$CACHE_DIR"
+
     if [[ -n "$BASH_VERSION" ]]; then
-        command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init bash)"
-        command -v fzf >/dev/null 2>&1 && eval "$(fzf --bash)"
+        # Zoxide caching
+        if command -v zoxide >/dev/null 2>&1; then
+            if [ ! -f "$CACHE_DIR/zoxide.bash" ]; then
+                zoxide init bash > "$CACHE_DIR/zoxide.bash"
+            fi
+            source "$CACHE_DIR/zoxide.bash"
+        fi
+        # FZF caching
+        if command -v fzf >/dev/null 2>&1; then
+            if [ ! -f "$CACHE_DIR/fzf.bash" ]; then
+                fzf --bash > "$CACHE_DIR/fzf.bash"
+            fi
+            source "$CACHE_DIR/fzf.bash"
+        fi
     elif [[ -n "$ZSH_VERSION" ]]; then
         # Initialize Zsh completion system if not already done
         if ! type _git >/dev/null 2>&1; then
             autoload -Uz compinit && compinit
         fi
-        command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh)"
-        command -v fzf >/dev/null 2>&1 && eval "$(fzf --zsh)"
+        # Zoxide caching
+        if command -v zoxide >/dev/null 2>&1; then
+            if [ ! -f "$CACHE_DIR/zoxide.zsh" ]; then
+                zoxide init zsh > "$CACHE_DIR/zoxide.zsh"
+            fi
+            source "$CACHE_DIR/zoxide.zsh"
+        fi
+        # FZF caching
+        if command -v fzf >/dev/null 2>&1; then
+            if [ ! -f "$CACHE_DIR/fzf.zsh" ]; then
+                fzf --zsh > "$CACHE_DIR/fzf.zsh"
+            fi
+            source "$CACHE_DIR/fzf.zsh"
+        fi
     fi
 fi
 
@@ -321,93 +370,92 @@ fi
 # PLUGINS
 # =============================================================================
 
-if ! is_container; then
-    # Install vim-plug if missing
-    if [ ! -f "$HOME/.vim/autoload/plug.vim" ]; then
-        echo "Installing vim-plug for Vim..."
-        curl -fLo "$HOME/.vim/autoload/plug.vim" --create-dirs \
-            https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-    fi
+if ! $_IS_CONTAINER; then
+    # Function to check and install missing tools (moved out of hot path)
+    check_install_plugins() {
+        # Install vim-plug if missing
+        if [ ! -f "$HOME/.vim/autoload/plug.vim" ]; then
+            echo "Installing vim-plug for Vim..."
+            curl -fLo "$HOME/.vim/autoload/plug.vim" --create-dirs \
+                https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+        fi
 
-    if [ ! -f "$HOME/.local/share/nvim/site/autoload/plug.vim" ]; then
-        echo "Installing vim-plug for Neovim..."
-        curl -fLo "$HOME/.local/share/nvim/site/autoload/plug.vim" --create-dirs \
-            https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-    fi
+        if [ ! -f "$HOME/.local/share/nvim/site/autoload/plug.vim" ]; then
+            echo "Installing vim-plug for Neovim..."
+            curl -fLo "$HOME/.local/share/nvim/site/autoload/plug.vim" --create-dirs \
+                https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+        fi
 
-    # Install TPM (Tmux Plugin Manager) if missing
-    if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
-        echo "Installing TPM for Tmux..."
-        git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-    fi
+        # Install TPM (Tmux Plugin Manager) if missing
+        if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
+            echo "Installing TPM for Tmux..."
+            git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+        fi
 
-    # Install Hack Nerd Font variations if missing
-    if [ "$(uname)" = "Darwin" ]; then
-        # macOS: Fast file-based check instead of slow 'brew list'
-        if [ ! -f "$HOME/Library/Fonts/HackNerdFont-Regular.ttf" ] && \
-           [ ! -f "$HOME/Library/Fonts/Hack Nerd Font Complete.ttf" ]; then
-            if command -v brew >/dev/null 2>&1; then
-                echo "Installing Hack Nerd Font via Homebrew..."
-                brew install --cask font-hack-nerd-font
-            else
-                echo "[Warning] Homebrew not found. Please install Homebrew to enable automatic font deployment."
+        # Install Hack Nerd Font variations if missing
+        if [[ "$_UNAME" == "Darwin" ]]; then
+            if [ ! -f "$HOME/Library/Fonts/HackNerdFont-Regular.ttf" ] && \
+               [ ! -f "$HOME/Library/Fonts/Hack Nerd Font Complete.ttf" ]; then
+                if command -v brew >/dev/null 2>&1; then
+                    echo "Installing Hack Nerd Font via Homebrew..."
+                    brew install --cask font-hack-nerd-font
+                fi
+            fi
+        elif [[ "$_UNAME" == "Linux" ]]; then
+            if [ ! -f "$HOME/.local/share/fonts/HackNerdFont-Regular.ttf" ]; then
+                echo "Installing all Hack Nerd Font variations..."
+                mkdir -p "$HOME/.local/share/fonts"
+                BASE_URL="https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack"
+                for style in "" "Mono" "Propo"; do
+                    for weight in "Regular" "Bold" "Italic" "BoldItalic"; do
+                        FILE="HackNerdFont${style}-${weight}.ttf"
+                        curl -sfLo "$HOME/.local/share/fonts/$FILE" "$BASE_URL/${weight}/$FILE"
+                    done
+                done
+                command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$HOME/.local/share/fonts"
             fi
         fi
-    elif [ "$(uname)" = "Linux" ]; then
-        # Linux: Manual installation
-        if [ ! -f "$HOME/.local/share/fonts/HackNerdFont-Regular.ttf" ]; then
-            echo "Installing all Hack Nerd Font variations..."
-            mkdir -p "$HOME/.local/share/fonts"
-            BASE_URL="https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack"
-            for style in "" "Mono" "Propo"; do
-                for weight in "Regular" "Bold" "Italic" "BoldItalic"; do
-                    FILE="HackNerdFont${style}-${weight}.ttf"
-                    curl -sfLo "$HOME/.local/share/fonts/$FILE" "$BASE_URL/${weight}/$FILE"
-                done
-            done
-            # Update font cache if fc-cache is available
-            command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$HOME/.local/share/fonts"
-        fi
-    fi
 
-    PLUGINS_DIR="$HOME/.local/share"
-    mkdir -p "$PLUGINS_DIR"
+        PLUGINS_DIR="$HOME/.local/share"
+        mkdir -p "$PLUGINS_DIR"
 
-    install_plugin() {
-        local repo=$1
-        local name=$(basename "$repo")
-        local dir="$PLUGINS_DIR/$name"
-        if [ ! -d "$dir" ]; then
-            echo "Installing $repo..."
-            git clone --depth 1 "https://github.com/$repo.git" "$dir"
+        install_plugin() {
+            local repo=$1
+            local name=$(basename "$repo")
+            local dir="$PLUGINS_DIR/$name"
+            if [ ! -d "$dir" ]; then
+                echo "Installing $repo..."
+                git clone --depth 1 "https://github.com/$repo.git" "$dir"
+            fi
+        }
+
+        install_plugin "junegunn/fzf-git.sh"
+        install_plugin "wfxr/forgit"
+
+        # Ranger Plugins
+        RANGER_PLUGIN_DIR="$HOME/.config/ranger/plugins"
+        if [ ! -d "$RANGER_PLUGIN_DIR/ranger_devicons" ]; then
+            echo "Installing ranger_devicons..."
+            mkdir -p "$RANGER_PLUGIN_DIR"
+            git clone --depth 1 https://github.com/alexanderjeurissen/ranger_devicons "$RANGER_PLUGIN_DIR/ranger_devicons"
         fi
     }
 
-    install_plugin "junegunn/fzf-git.sh"
-    install_plugin "wfxr/forgit"
+    # Only run the heavy check if explicitly requested or once a week
+    # For now, let's keep it manual or very lightweight
+    PLUGINS_DIR="$HOME/.local/share"
 
-    # Ranger Plugins
-    RANGER_PLUGIN_DIR="$HOME/.config/ranger/plugins"
-    if [ ! -d "$RANGER_PLUGIN_DIR/ranger_devicons" ]; then
-        echo "Installing ranger_devicons..."
-        mkdir -p "$RANGER_PLUGIN_DIR"
-        git clone --depth 1 https://github.com/alexanderjeurissen/ranger_devicons "$RANGER_PLUGIN_DIR/ranger_devicons"
-    fi
-
+    # Source plugins if they exist
     if [ -f "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh" ]; then
         source "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh"
     fi
-    if [ -f "$PLUGINS_DIR/forgit/completions/git-forgit.bash" ]; then
-        # Fix forgit completion error: _git_switch_branch not found
+    if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
         if [[ -n "$BASH_VERSION" ]]; then
             _git_switch_branch() { _git_checkout_branch "$@"; }
+            [ -f "$PLUGINS_DIR/forgit/completions/git-forgit.bash" ] && source "$PLUGINS_DIR/forgit/completions/git-forgit.bash"
+        elif [[ -n "$ZSH_VERSION" ]]; then
+            [ -f "$PLUGINS_DIR/forgit/completions/_git-forgit" ] && source "$PLUGINS_DIR/forgit/completions/_git-forgit"
         fi
-        [[ -n "$BASH_VERSION" ]] && source "$PLUGINS_DIR/forgit/completions/git-forgit.bash"
-    fi
-    if [ -f "$PLUGINS_DIR/forgit/completions/_git-forgit" ]; then
-        [[ -n "$ZSH_VERSION" ]] && source "$PLUGINS_DIR/forgit/completions/_git-forgit"
-    fi
-    if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
         source "$PLUGINS_DIR/forgit/forgit.plugin.sh"
     fi
 fi
