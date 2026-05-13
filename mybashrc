@@ -445,9 +445,11 @@ if ! $_IS_CONTAINER; then
         fi
     }
 
-    # Only run the heavy check if explicitly requested or once a week
-    # For now, let's keep it manual or very lightweight
+    # Only run the heavy check if explicitly requested or if core plugins are missing
     PLUGINS_DIR="$HOME/.local/share"
+    if [ ! -d "$PLUGINS_DIR/forgit" ] || [ ! -d "$PLUGINS_DIR/fzf-git.sh" ]; then
+        check_install_plugins
+    fi
 
     # Source plugins if they exist
     if [ -f "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh" ]; then
