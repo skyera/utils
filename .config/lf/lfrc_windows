@@ -7,6 +7,9 @@
 # If you want to use the GUI quicklook tool to preview images / docs with `V`:
 # winget install QL-Win.QuickLook
  
+# Include default configuration first, then override with Windows-specific settings
+source %LOCALAPPDATA%\lf\lfrc.default
+
 # interpreter for shell commands
 set shell powershell
  
@@ -55,9 +58,6 @@ map zz :fzf_find
 # We use $env:id and $PWD since shell is set to powershell
 $lf -remote "send $env:id cmd go_origin cd '$PWD'"
 map go :go_origin
-
-# Include default configuration (add this for consistency)
-source %LOCALAPPDATA%\lf\lfrc.default
 
 set icons true
 # https://github.com/gokcehan/lf/blob/master/etc/icons.example -> %LOCALAPPDATA%\lf\icons
