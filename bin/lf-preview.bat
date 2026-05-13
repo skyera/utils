@@ -12,7 +12,7 @@ if /i "%FILE:~-4%"==".gif"  goto :image
 if /i "%FILE:~-4%"==".bmp"  goto :image
 
 REM Default to bat for text files
-bat --style="numbers" --color=always --paging=never "%FILE%" 2> bat-error.log
+bat --style="numbers" --color=always --paging=never "%FILE%" 2>nul
 goto :eof
 
 :image
