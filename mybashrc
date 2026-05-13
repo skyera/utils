@@ -373,23 +373,25 @@ fi
 if ! $_IS_CONTAINER; then
     # Function to check and install missing tools (moved out of hot path)
     check_install_plugins() {
-        # Install vim-plug if missing
-        if [ ! -f "$HOME/.vim/autoload/plug.vim" ]; then
-            echo "Installing vim-plug for Vim..."
-            curl -fLo "$HOME/.vim/autoload/plug.vim" --create-dirs \
-                https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-        fi
+        if ! $_IS_WINDOWS; then
+            # Install vim-plug if missing
+            if [ ! -f "$HOME/.vim/autoload/plug.vim" ]; then
+                echo "Installing vim-plug for Vim..."
+                curl -fLo "$HOME/.vim/autoload/plug.vim" --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            fi
 
-        if [ ! -f "$HOME/.local/share/nvim/site/autoload/plug.vim" ]; then
-            echo "Installing vim-plug for Neovim..."
-            curl -fLo "$HOME/.local/share/nvim/site/autoload/plug.vim" --create-dirs \
-                https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-        fi
+            if [ ! -f "$HOME/.local/share/nvim/site/autoload/plug.vim" ]; then
+                echo "Installing vim-plug for Neovim..."
+                curl -fLo "$HOME/.local/share/nvim/site/autoload/plug.vim" --create-dirs \
+                    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+            fi
 
-        # Install TPM (Tmux Plugin Manager) if missing
-        if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
-            echo "Installing TPM for Tmux..."
-            git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+            # Install TPM (Tmux Plugin Manager) if missing
+            if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
+                echo "Installing TPM for Tmux..."
+                git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+            fi
         fi
 
         # Install Hack Nerd Font variations if missing
@@ -433,11 +435,13 @@ if ! $_IS_CONTAINER; then
         install_plugin "wfxr/forgit"
 
         # Ranger Plugins
-        RANGER_PLUGIN_DIR="$HOME/.config/ranger/plugins"
-        if [ ! -d "$RANGER_PLUGIN_DIR/ranger_devicons" ]; then
-            echo "Installing ranger_devicons..."
-            mkdir -p "$RANGER_PLUGIN_DIR"
-            git clone --depth 1 https://github.com/alexanderjeurissen/ranger_devicons "$RANGER_PLUGIN_DIR/ranger_devicons"
+        if ! $_IS_WINDOWS; then
+            RANGER_PLUGIN_DIR="$HOME/.config/ranger/plugins"
+            if [ ! -d "$RANGER_PLUGIN_DIR/ranger_devicons" ]; then
+                echo "Installing ranger_devicons..."
+                mkdir -p "$RANGER_PLUGIN_DIR"
+                git clone --depth 1 https://github.com/alexanderjeurissen/ranger_devicons "$RANGER_PLUGIN_DIR/ranger_devicons"
+            fi
         fi
     }
 
