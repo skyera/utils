@@ -340,7 +340,7 @@ if ! is_container; then
                 echo "[Warning] Homebrew not found. Please install Homebrew to enable automatic font deployment."
             fi
         fi
-    else
+    elif [ "$(uname)" = "Linux" ]; then
         # Linux: Manual installation
         if [ ! -f "$HOME/.local/share/fonts/HackNerdFont-Regular.ttf" ]; then
             echo "Installing all Hack Nerd Font variations..."
