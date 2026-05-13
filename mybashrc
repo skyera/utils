@@ -29,6 +29,11 @@ if [[ "$(uname)" == MINGW* ]]; then
     command -v nvim.exe >/dev/null 2>&1 && alias nvim='nvim.exe'
     command -v vim.exe >/dev/null 2>&1 && alias vim='vim.exe'
     alias vi='nvim'
+
+    # Use Windows-installed Python if available
+    command -v python.exe >/dev/null 2>&1 && alias python='python.exe'
+    command -v python3.exe >/dev/null 2>&1 && alias python3='python3.exe'
+    command -v pip.exe >/dev/null 2>&1 && alias pip='pip.exe'
 fi
 
 # PATH
