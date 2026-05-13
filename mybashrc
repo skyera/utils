@@ -257,6 +257,11 @@ elif [[ -n "$ZSH_VERSION" ]]; then
 fi
 alias tmuxfix="printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'"
 
+# lf wrapper: override directory color only for lf (scoped, not global)
+lf() {
+    LS_COLORS="${LS_COLORS/di=01;34/di=01;36}" command lf "$@"
+}
+
 tpe() {
     local file="/tmp/tmux_capture_$(date +%Y%m%d_%H%M%S)_$$"
     tmux capture-pane -Jp -S - -E - > "$file"

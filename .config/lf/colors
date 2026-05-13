@@ -2,8 +2,8 @@
 # 36 = Cyan, 32 = Green, 35 = Magenta, 33 = Yellow, 31 = Red
 # 1 = Bold
 
-# Directory: Cyan (like Ranger Gruvbox)
-di=36
+# Directory: Bold Cyan (bright & readable, like Ranger Gruvbox)
+di=1;36
 # Executable: Green (like Ranger)
 ex=32
 # Symbolic Link: Cyan (good link) or Magenta (broken link)
