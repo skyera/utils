@@ -38,6 +38,8 @@ handle_extension() {
         rpm|rz|t7z|tar|tbz|tbz2|tgz|tlz|txz|tZ|tzo|war|xpi|xz|Z|zip)
             atool --list -- "${FILE_PATH}" && exit 5
             bsdtar --list --file "${FILE_PATH}" && exit 5
+            tar -tf "${FILE_PATH}" && exit 5
+            unzip -l "${FILE_PATH}" && exit 5
             exit 1;;
         rar)
             # Avoid password prompt by forcing non-interactive mode
@@ -124,6 +126,7 @@ handle_mime() {
 }
 
 MIMETYPE="$(file --dereference --brief --mime-type -- "${FILE_PATH}")"
+
 if [[ "${PV_IMAGE_ENABLED}" == 'True' ]]; then
     handle_image "${MIMETYPE}"
 fi
