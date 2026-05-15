@@ -33,12 +33,12 @@ class fzf_locate(Command):
         import subprocess
         import os
         home = os.path.expanduser('~')
-        # Search from home, but we'll use a relative path for fzf display
-        command = f"fd --base-directory {home} --hidden --exclude .git | fzf -e -i --preview 'bat --color=always --style=numbers --line-range :500 {home}/{{}}'"
+        # Simplified command using absolute paths directly
+        command = f"fd --hidden --exclude .git . {home} | fzf -e -i --preview 'bat --color=always --style=numbers --line-range :500 {{}}'"
         fzf = self.fm.execute_command(command, stdout=subprocess.PIPE)
         stdout, stderr = fzf.communicate()
         if fzf.returncode == 0:
-            fzf_file = os.path.join(home, stdout.decode('utf-8').rstrip('\n'))
+            fzf_file = os.path.abspath(stdout.decode('utf-8').rstrip('\n'))
             if os.path.isdir(fzf_file):
                 self.fm.cd(fzf_file)
             else:
