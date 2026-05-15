@@ -19,6 +19,9 @@ IFS=$'\n'
 # 7    | empty, display nothing
 # 8    | terminal image, display stdout
 
+# Debug: log arguments to /tmp/ranger_scope_debug
+# echo "FILE: $1, WIDTH: $2, HEIGHT: $3" >> /tmp/ranger_scope_debug
+
 FILE_PATH="${1}"         # Full path of the highlighted file
 PV_WIDTH="${2}"          # Width of the preview pane (number of fitting characters)
 PV_HEIGHT="${3}"         # Height of the preview pane (number of fitting characters)
@@ -104,7 +107,7 @@ handle_mime() {
     case "${mimetype}" in
         # Text (Requested change: use bat with line numbers)
         text/* | */xml | application/json | application/csv | application/x-tab-separated-values)
-            bat --style=numbers --color=always --theme="base16" --terminal-width "${PV_WIDTH}" -- "${FILE_PATH}" && exit 5
+            bat --style=numbers --color=always --theme="base16" -- "${FILE_PATH}" && exit 5
             exit 2;;
 
         # Image
