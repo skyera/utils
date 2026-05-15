@@ -104,8 +104,7 @@ handle_mime() {
     case "${mimetype}" in
         # Text (Requested change: use bat with line numbers)
         text/* | */xml | application/json | application/csv | application/x-tab-separated-values)
-            env COLORTERM=8bit bat --color=always --style="plain,numbers" \
-                --terminal-width "${PV_WIDTH}" -- "${FILE_PATH}" && exit 5
+            bat --style=numbers --color=always --theme="base16" --terminal-width "${PV_WIDTH}" -- "${FILE_PATH}" && exit 5
             exit 2;;
 
         # Image
