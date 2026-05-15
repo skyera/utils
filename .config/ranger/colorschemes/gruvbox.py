@@ -18,7 +18,7 @@ class Default(ColorScheme):
                 fg = black
             if context.border:
                 attr = normal
-                fg = black
+                fg = default
             if context.media:
                 if context.image:
                     fg = cyan
