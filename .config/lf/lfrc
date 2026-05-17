@@ -28,7 +28,10 @@ set dircounts true         # Show file counts in directories
 set hidden false           # Hidden files off by default (toggle with zh)
 map <m-1> select
 cmd fzf_find $~/bin/fzf_find.sh
-map zz :fzf_find
+map f :fzf_find
+
+# Filter commands (using Shift+F to avoid conflict with fzf_find)
+map F filter
 
 
 # --- Navigation ---
