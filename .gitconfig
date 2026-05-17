@@ -84,8 +84,5 @@
 [help]
 	autocorrect = 1
 
-[commit]
-	template = ~/.gitmessage
-
 [include]
 	path = ~/.gitconfig.local
