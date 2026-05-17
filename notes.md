@@ -927,6 +927,13 @@ This lists what would be copied/deleted without actually doing anything.
 robocopy C:\path\to\notebooks G:\notebooks /E /Z /R:3 /W:5 /MT:8 /LOG:G:\notebooks-sync.log /NP /NDL
 ```
 
+#### Google Drive Backup (Mirror)
+```cmd
+robocopy Notebooks "g:\My Drive\Notebooks" /MIR /Z /R:3 /W:5 /MT:8
+```
+
+⚠️ **Warning:** `/MIR` is destructive — it deletes files in the destination that are not in the source. Always run with `/L` first to preview.
+
 * `/LOG` — Write output to a log file.
 * `/NP` — No progress indicator (cleaner logs).
 * `/NDL` — Don't log directory names (cleaner logs).
