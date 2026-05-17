@@ -73,8 +73,9 @@ map <c-c> $[Console]::Out.Write($env:f) | clip
 - Inconsistent experience across window resizes
 
 **Fix:**
-- `lf-preview.sh`: Use `"${2:-40}x${3:-20}"` for the size.
-- `lf-preview.bat`: Use `%~2` and `%~3`.
+- `lf-preview.sh`: Use `WIDTH=${2:-40}; HEIGHT=${3:-20}; [ "$WIDTH" -lt 1 ] && WIDTH=1; [ "$HEIGHT" -lt 1 ] && HEIGHT=1` and `chafa --size="${WIDTH}x${HEIGHT}"`.
+- `lf-preview.bat`: Use `if "%WIDTH%"=="0" set "WIDTH=1"` etc.
+- Also made extension matching case-insensitive and added `file` utility fallback for images without extensions.
 
 ---
 

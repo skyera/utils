@@ -9,6 +9,10 @@ set "HEIGHT=%3"
 if "%WIDTH%"=="" set "WIDTH=40"
 if "%HEIGHT%"=="" set "HEIGHT=20"
 
+REM Ensure dimensions are at least 1x1 to prevent chafa errors
+if "%WIDTH%"=="0" set "WIDTH=1"
+if "%HEIGHT%"=="0" set "HEIGHT=1"
+
 REM Check file extension (case-insensitive) using %~x1
 set "EXT=%~x1"
 
@@ -17,6 +21,10 @@ if /i "%EXT%"==".jpg"  goto :image
 if /i "%EXT%"==".jpeg" goto :image
 if /i "%EXT%"==".gif"  goto :image
 if /i "%EXT%"==".bmp"  goto :image
+if /i "%EXT%"==".webp" goto :image
+if /i "%EXT%"==".ico"  goto :image
+if /i "%EXT%"==".tiff" goto :image
+if /i "%EXT%"==".svg"  goto :image
 
 REM Default to bat for text files
 bat --style="plain,numbers" --color=always --paging=never "%FILE%" 2>nul

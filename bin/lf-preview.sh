@@ -1,5 +1,14 @@
 #!/bin/sh
-case "$1" in
+
+# Get dimensions, default to 40x20 if not provided
+WIDTH=${2:-40}
+HEIGHT=${3:-20}
+
+# Ensure dimensions are at least 1x1 to prevent chafa errors
+[ "$WIDTH" -lt 1 ] && WIDTH=1
+[ "$HEIGHT" -lt 1 ] && HEIGHT=1
+
+case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
     *.tar|*.tar.gz|*.tar.bz2|*.tar.xz|*.tgz|*.tbz2|*.txz)
         tar -tf "$1" | head -n 20
         ;;
@@ -15,8 +24,8 @@ case "$1" in
     *.pdf)
         pdftotext "$1" - | head -n 20
         ;;
-    *.png|*.jpg|*.jpeg|*.gif|*.bmp|*.webp|*.heic|*.avif)
-        chafa --size="${2:-40}x${3:-20}" --colors=full "$1"
+    *.png|*.jpg|*.jpeg|*.gif|*.bmp|*.webp|*.heic|*.avif|*.ico|*.tiff|*.svg)
+        chafa --size="${WIDTH}x${HEIGHT}" --colors=full "$1"
         ;;
     *)
         if [ -d "$1" ]; then
@@ -24,7 +33,11 @@ case "$1" in
         elif [ -L "$1" ]; then
             ls -ld --color=always "$1"
         else
-            case $(file -bi "$1") in
+            MIME=$(file -bi "$1")
+            case "$MIME" in
+                image/*)
+                    chafa --size="${WIDTH}x${HEIGHT}" --colors=full "$1"
+                    ;;
                 text/*|application/json*|application/javascript*)
                     bat --style="plain,numbers" --color=always --paging=never "$1"
                     ;;
