@@ -2,10 +2,11 @@
 setlocal enabledelayedexpansion
 
 :: Call fd and fzf
-fd . --type f | fzf --preview "bat --color=always --style=numbers {}" > "%TEMP%\fzf_result.txt"
+set "tmpfile=%TEMP%\lf_fzf_%RANDOM%.txt"
+fd . --type f --type d | fzf --preview "bat --color=always --style=numbers {}" > "%tmpfile%"
 
 :: Read result
-set /p selected_file=<"%TEMP%\fzf_result.txt"
+set /p selected_file=<"%tmpfile%"
 
 :: Replace backslashes with forward slashes (lf prefers Unix-style paths)
 set "selected_file=!selected_file:\=/!"
@@ -15,6 +16,6 @@ if not "!selected_file!"=="" (
     lf -remote "send %id% select '!selected_file!'"
 )
 
-del "%TEMP%\fzf_result.txt"
+del "%tmpfile%"
 endlocal
 

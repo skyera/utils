@@ -58,6 +58,9 @@ fi=0
 *.ace=32
 *.7z=32
 *.apk=32
+*.tar.gz=32
+*.tar.xz=32
+*.tar.bz2=32
 # Images: Cyan (like Ranger)
 *.jpg=36
 *.jpeg=36
@@ -76,6 +79,9 @@ fi=0
 *.svgz=36
 *.mng=36
 *.pcx=36
+*.webp=36
+*.heic=36
+*.avif=36
 # Videos: Magenta (like Ranger)
 *.mov=35
 *.mpg=35
@@ -107,3 +113,11 @@ fi=0
 *.emf=35
 *.ogv=35
 *.ogx=35
+# Configs: Yellow
+*.json=33
+*.yaml=33
+*.yml=33
+*.toml=33
+*.xml=33
+*.conf=33
+*.ini=33

@@ -1,9 +1,10 @@
 #!/bin/bash
-# Call fd and fzf to select a file with bat preview
-fd . --type f | fzf --preview "bat --color=always --style=numbers {}" > /tmp/fzf_result.txt
+# Call fd and fzf to select a file/dir with bat preview
+tmpfile=$(mktemp /tmp/lf_fzf.XXXXXX)
+fd . --type f --type d | fzf --preview "bat --color=always --style=numbers {}" > "$tmpfile"
 
 # Read the selected file from the temp file
-selected_file=$(cat /tmp/fzf_result.txt)
+selected_file=$(cat "$tmpfile")
 
 # If a file was selected, send it to lf with Unix-style paths
 if [ -n "$selected_file" ]; then
@@ -11,4 +12,4 @@ if [ -n "$selected_file" ]; then
 fi
 
 # Clean up the temp file
-rm /tmp/fzf_result.txt
+rm "$tmpfile"

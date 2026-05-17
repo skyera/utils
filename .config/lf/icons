@@ -324,6 +324,13 @@ Vagrantfile             
 *.svgz  
 *.mng   
 *.pcx   
+*.xcf   
+*.xwd   
+*.yuv   
+*.cgm   
+*.emf   
+
+# video formats (extensions from dircolors defaults)
 *.mov   
 *.mpg   
 *.mpeg  
@@ -347,11 +354,6 @@ Vagrantfile             
 *.flv   
 *.gl    
 *.dl    
-*.xcf   
-*.xwd   
-*.yuv   
-*.cgm   
-*.emf   
 *.ogv   
 *.ogx   
 

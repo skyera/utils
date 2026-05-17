@@ -16,13 +16,15 @@ set shell powershell
 # change the default open command to work in powerShell
 #cmd open &start $Env:f
 # edit with nvim if exists, else vim
-map e $if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim $env:f } else { vim $env:f }
-map <enter> $if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim $env:f } else { vim $env:f }
+map e $$if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim "$env:f" } else { vim "$env:f" }
+map <enter> $$if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim "$env:f" } else { vim "$env:f" }
 # page through any file with bat
 # paging=always so that shorter files don't immediately exit back to lf
-map i $bat --paging=always $Env:f
+map i $bat --paging=always "$env:f"
 # use "bat -p" (plain pager) also for viewing lf docs
-cmd doc $lf -doc | bat -p
+cmd doc %{{
+    $lf -doc | bat -p
+}}
  
 # on my powershell 7.4.6 this breaks, commenting out
 #set shellflag "-cwa"
@@ -39,6 +41,7 @@ set ratios 1:3:4          # Larger preview area (left:preview:right)
 set info size:time         # Show file size and modification time
 set dircounts true         # Show file counts in directories
 set hidden false           # Hidden files off by default (toggle with zh)
+map zh set hidden!
 map <m-1> select
  
 # default, but with some separation before final %f, and after cwd
@@ -61,12 +64,23 @@ map go :go_origin
 
 set icons true
 # https://github.com/gokcehan/lf/blob/master/etc/icons.example -> %LOCALAPPDATA%\lf\icons
-map <c-c> $echo -n $env:f | clip
+map <c-c> $Set-Clipboard -Value $env:f
 
 # Filter commands (using Shift+F to avoid conflict with fzf_find)
 map F filter
 cmd filter %{{
     lf -remote "send $env:id set filter `$*`"
     lf -remote "send $env:id echo Filter: `$*`"
+}}
+
+# Enhanced utility commands
+cmd mkdir %{{
+    New-Item -ItemType Directory -Path "$args"
+    lf -remote "send $env:id reload"
+}}
+
+cmd touch %{{
+    New-Item -ItemType File -Path "$args"
+    lf -remote "send $env:id reload"
 }}
 

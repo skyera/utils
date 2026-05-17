@@ -4,11 +4,13 @@
 source ~/.config/lf/lfrc.default
 
 set shell bash
-map e $$EDITOR $f
-map <enter> $$EDITOR $f
+map e $$EDITOR "$f"
+map <enter> $$EDITOR "$f"
 
-map i $bat --paging=always $f
-cmd doc $lf -doc | bat -p
+map i $bat --paging=always "$f"
+cmd doc %{{
+    $lf -doc | bat -p
+}}
 
 set incsearch true
 set number true
@@ -17,7 +19,6 @@ set previewer ~/bin/lf-preview.sh
 set drawbox true
 
 # Enhanced shell settings for better UX
-set shellopts '-eu'          # Safer shell execution
 set scrolloff 10            # Keep cursor centered
 set smartcase true          # Smart case sensitivity
 
@@ -55,8 +56,8 @@ cmd touch %{{
 
 # Safe delete with confirmation
 cmd delete %{{
-    lf -remote "send $id echo 'Delete $fx? (y/n)'"
+    printf "Delete $fx? [y/n] "
     read -r ans
-    [ "$ans" = "y" ] && rm -rf $fx
+    [ "$ans" = "y" ] && rm -rf "$fx"
 }}
 
