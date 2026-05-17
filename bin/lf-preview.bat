@@ -32,5 +32,7 @@ goto :eof
 
 :image
 REM Use chafa for image files with dynamic dimensions
-chafa --size=%WIDTH%x%HEIGHT% --colors=full -- "%FILE%"
+REM Use symbols format (ASCII art) for cross-platform compatibility
+REM conhost terminals don't support sixels, which is chafa's default on Windows
+chafa --format=symbols --size=%WIDTH%x%HEIGHT% --colors=full -- "%FILE%"
 goto :eof
