@@ -3,7 +3,7 @@
 # personally, I symlink it from my synced config files like this:
 # cmd /c mklink lfrc $env:OneDriveConsumer\configs\dot-config-lf\lfrc.windows
  
-# winget install gokcehan.lf sharkdp.bat zoxide fzf vim.vim
+# winget install gokcehan.lf sharkdp.bat zoxide fzf vim.vim hpjansson.chafa
 # If you want to use the GUI quicklook tool to preview images / docs with `V`:
 # winget install QL-Win.QuickLook
  

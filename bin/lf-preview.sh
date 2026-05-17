@@ -10,39 +10,39 @@ HEIGHT=${3:-20}
 
 case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
     *.tar|*.tar.gz|*.tar.bz2|*.tar.xz|*.tgz|*.tbz2|*.txz)
-        tar -tf "$1" | head -n 20
+        tar -tf -- "$1" | head -n 20
         ;;
     *.zip)
-        unzip -l "$1" | head -n 20
+        unzip -l -- "$1" | head -n 20
         ;;
     *.rar)
-        unrar l "$1" | head -n 20
+        unrar l -- "$1" | head -n 20
         ;;
     *.7z)
-        7z l "$1" | head -n 20
+        7z l -- "$1" | head -n 20
         ;;
     *.pdf)
-        pdftotext "$1" - | head -n 20
+        pdftotext -- "$1" - | head -n 20
         ;;
     *.png|*.jpg|*.jpeg|*.gif|*.bmp|*.webp|*.heic|*.avif|*.ico|*.tiff|*.svg)
-        chafa --size="${WIDTH}x${HEIGHT}" --colors=full "$1"
+        chafa --size="${WIDTH}x${HEIGHT}" --colors=full -- "$1"
         ;;
     *)
         if [ -d "$1" ]; then
-            ls -F --color=always "$1"
+            ls -F --color=always -- "$1"
         elif [ -L "$1" ]; then
-            ls -ld --color=always "$1"
+            ls -ld --color=always -- "$1"
         else
-            MIME=$(file -bi "$1")
+            MIME=$(file -bi -- "$1")
             case "$MIME" in
                 image/*)
-                    chafa --size="${WIDTH}x${HEIGHT}" --colors=full "$1"
+                    chafa --size="${WIDTH}x${HEIGHT}" --colors=full -- "$1"
                     ;;
                 text/*|application/json*|application/javascript*)
-                    bat --style="plain,numbers" --color=always --paging=never "$1"
+                    bat --style="plain,numbers" --color=always --paging=never -- "$1"
                     ;;
                 *)
-                    file -b "$1"
+                    file -b -- "$1"
                     ;;
             esac
         fi
