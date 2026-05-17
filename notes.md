@@ -473,6 +473,45 @@ git clean -fd
 git checkout -f <branch>
 ```
 
+#### Add, Commit, Push Workflow
+```bash
+# Stage all changes in the current directory
+git add .
+
+# Stage a specific file
+git add path/to/file.txt
+
+# Stage interactively (hunk by hunk)
+git add -p
+
+# Commit with a message
+git commit -m "feat: add user authentication"
+
+# Stage and commit all tracked files in one step
+git commit -am "fix: resolve null pointer exception"
+
+# Amend the last commit (message or additional changes)
+git commit --amend -m "feat: add user authentication and session management"
+git commit --amend --no-edit   # keep the same message
+
+# Push to the default remote and branch
+git push
+
+# Push a new local branch to remote for the first time
+git push -u origin feature-branch
+
+# Force push (use with caution — rewrites remote history)
+git push --force-with-lease
+
+# Typical daily workflow
+git add .
+git commit -m "describe your change"
+git push
+```
+
+* **`.gitmessage` template:** Put a commit message template in the repo root and reference it via `git config commit.template .gitmessage` for consistent formatting.
+* **Good commit messages:** Use imperative mood (`Add` not `Added`), keep the subject under 50 chars, and leave a blank line before the body if you add details.
+
 ### git diff with meld
 ```bash
 git config --global diff.tool meld
@@ -844,6 +883,124 @@ docker run ... \
 * Performance, stress test
 * Check memory errors: valgrind AddressSanitizer
 ```
+
+---
+
+## Windows File Operations
+
+### Robocopy Folder Synchronization
+
+Robocopy (Robust File Copy) is a built-in Windows command-line tool for synchronizing folders.
+
+#### Option 1: One-Way Update (Safer — Adds/Updates Only, No Deletions)
+Use this to copy new and changed files from source to destination, leaving existing destination files untouched:
+
+```cmd
+robocopy C:\path\to\notebooks G:\notebooks /E /Z /R:3 /W:5 /MT:8
+```
+
+* `/E` — Copy subdirectories, including empty ones.
+* `/Z` — Restartable mode (survives interruptions).
+* `/R:3 /W:5` — Retry 3 times, wait 5 seconds between retries.
+* `/MT:8` — Use 8 threads for faster copying.
+
+#### Option 2: True Mirror (Destination = Exact Copy of Source)
+Use `/MIR` to make the destination an exact clone. **This will delete files in the destination that are not in the source.**
+
+```cmd
+robocopy C:\path\to\notebooks G:\notebooks /MIR /Z /R:3 /W:5 /MT:8
+```
+
+⚠️ **Warning:** `/MIR` can destroy data. If you accidentally swap source/destination or point to an empty folder, it will wipe the other side. Always run a dry run first.
+
+#### Dry Run (Preview What Would Happen)
+Before running either command, preview the actions with `/L`:
+
+```cmd
+robocopy C:\path\to\notebooks G:\notebooks /MIR /L
+```
+
+This lists what would be copied/deleted without actually doing anything.
+
+#### Full Practical Command (with Logging)
+```cmd
+robocopy C:\path\to\notebooks G:\notebooks /E /Z /R:3 /W:5 /MT:8 /LOG:G:\notebooks-sync.log /NP /NDL
+```
+
+* `/LOG` — Write output to a log file.
+* `/NP` — No progress indicator (cleaner logs).
+* `/NDL` — Don't log directory names (cleaner logs).
+
+### Rsync (Linux/WSL/macOS)
+
+`rsync` is the standard Unix tool for fast, incremental file transfers and synchronization.
+
+#### Basic Local Sync (One-Way, Add/Update Only)
+```bash
+rsync -av /path/to/notebooks/ /mnt/g/notebooks/
+```
+
+* `-a` — Archive mode (preserves permissions, timestamps, symlinks, etc.).
+* `-v` — Verbose output.
+* **Trailing slash on source** is important: `src/` copies *contents*; `src` copies the folder itself.
+
+#### True Mirror (Delete Extra Files in Destination)
+```bash
+rsync -av --delete /path/to/notebooks/ /mnt/g/notebooks/
+```
+
+* `--delete` — Remove files in the destination that no longer exist in the source.
+
+⚠️ **Warning:** `--delete` is destructive. A typo or empty source can wipe the destination. Test with `--dry-run` first.
+
+#### Dry Run (Preview)
+```bash
+rsync -av --delete --dry-run /path/to/notebooks/ /mnt/g/notebooks/
+```
+
+* `--dry-run` (`-n`) — Shows what would happen without making any changes.
+
+#### Common Useful Flags
+
+| Flag | Meaning |
+|------|---------|
+| `-z` | Compress data during transfer (good for network). |
+| `-P` | Show progress and allow resuming partial files. |
+| `--exclude='*.tmp'` | Exclude files matching pattern. |
+| `--exclude-from='exclude.txt'` | Read exclude patterns from a file. |
+| `-e ssh` | Use SSH for remote transfers (default if remote path uses `:`). |
+| `--progress` | Show per-file progress. |
+| `-h` | Human-readable sizes in output. |
+| `--stats` | Show transfer statistics at the end. |
+| `-n` | Dry run (same as `--dry-run`). |
+
+#### Remote Sync Over SSH
+```bash
+# Push local to remote
+rsync -avz /path/to/notebooks/ user@server:/backup/notebooks/
+
+# Pull remote to local
+rsync -avz user@server:/backup/notebooks/ /path/to/notebooks/
+```
+
+#### Full Practical Command (with Logging)
+```bash
+rsync -avh --delete --progress --exclude='*.tmp' \
+      /path/to/notebooks/ /mnt/g/notebooks/ | tee /tmp/rsync-log.txt
+```
+
+#### Rsync vs Robocopy Quick Reference
+
+| Feature | Robocopy (Windows) | Rsync (Unix) |
+|---------|-------------------|--------------|
+| One-way update | `/E` | `-av` |
+| True mirror | `/MIR` | `-av --delete` |
+| Dry run | `/L` | `-n` or `--dry-run` |
+| Multithreaded | `/MT:N` | Single-threaded (use `parallel` for multiple files) |
+| Resume interrupted | `/Z` | Built-in (`-P`) |
+| Remote sync | No native | Native via SSH |
+| Preserve attributes | Yes | Yes (`-a`) |
+| Network compression | No | Yes (`-z`) |
 
 ---
 
