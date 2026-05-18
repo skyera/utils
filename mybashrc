@@ -465,3 +465,5 @@ if ! $_IS_CONTAINER; then
         source "$PLUGINS_DIR/forgit/forgit.plugin.sh"
     fi
 fi
+
+alias gsu='git submodule update --init --recursive -f'
