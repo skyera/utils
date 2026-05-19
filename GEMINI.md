@@ -9,6 +9,12 @@ For any issue, feature request, review, or modification task, the agent MUST fol
 
 Verification is the only path to finality. Do not assume success.
 
+## Handling Multiple Issues
+When presented with multiple issues, bugs, or feature requests at once, you MUST prepend the standard workflow with an explicit triage and selection phase:
+1. **Triage & Prioritize**: List all identified issues, grouped by estimated priority (High, Medium, Low).
+2. **Suggest Fixes**: For each issue in the list, provide a brief (1-2 sentence) description of the likely root cause and proposed fix.
+3. **User Selection**: Ask the user to select which specific issue(s) they want to address first. Wait for their selection before proceeding to the "Design & Plan" phase for the chosen items.
+
 ## Testing Guidelines
 
 When creating a test plan or verifying changes, consider the following:
