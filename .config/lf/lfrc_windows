@@ -84,8 +84,8 @@ cmd touch %{{
 # --- Consolidated Defaults & PowerShell-Native Helpers ---
 
 # Spawn subshell (w for Command Prompt, W for PowerShell)
-map w $$cmd
-map W $$powerShell
+map w $cmd
+map W $powerShell
 
 # Filter controls
 map <esc> setfilter
