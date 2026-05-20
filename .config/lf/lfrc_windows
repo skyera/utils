@@ -7,9 +7,6 @@
 # If you want to use the GUI quicklook tool to preview images / docs with `V`:
 # winget install QL-Win.QuickLook
  
-# Include default configuration first, then override with Windows-specific settings
-source %LOCALAPPDATA%\lf\lfrc.default
-
 # interpreter for shell commands
 set shell powershell
  
@@ -83,4 +80,25 @@ cmd touch %{{
     New-Item -ItemType File -Path "$args"
     lf -remote "send $env:id reload"
 }}
+
+# --- Consolidated Defaults & PowerShell-Native Helpers ---
+
+# Spawn subshell (w for Command Prompt, W for PowerShell)
+map w $$cmd
+map W $$powerShell
+
+# Filter controls
+map <esc> setfilter
+
+# Introspection menus using Windows environment variables and bat pager
+cmd maps %{{
+    $lf -remote "query $env:id maps" | bat -p
+}}
+cmd cmaps %{{
+    $lf -remote "query $env:id cmaps" | bat -p
+}}
+cmd cmds %{{
+    $lf -remote "query $env:id cmds" | bat -p
+}}
+
 
