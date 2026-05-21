@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-deploy_gui.py - Cross-platform dotfiles deployment GUI
+deploy_gui.py - Cross-platform dotfiles deployment GUI with modern styling
 """
 
 import tkinter as tk
@@ -17,7 +17,7 @@ class DotfilesDeployGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Dotfiles Deployer")
-        self.root.geometry("1100x750")
+        self.root.geometry("1150x800")
         
         self.repo_dir = os.path.dirname(os.path.abspath(__file__))
         self.system = platform.system()
@@ -25,6 +25,7 @@ class DotfilesDeployGUI:
         # UI State
         self.backup_var = tk.BooleanVar(value=True)
         self.nvim_choice = tk.StringVar(value="lua")
+        self.dark_mode = True  # Starts in Dark Mode by default
         
         # Store metadata for tree items
         self.source_metadata = {}
@@ -34,6 +35,7 @@ class DotfilesDeployGUI:
         self.file_configs = self._get_file_configs()
         
         self.setup_ui()
+        self.apply_theme()
         self.refresh_file_lists()
     
     def _get_file_configs(self):
@@ -124,39 +126,24 @@ class DotfilesDeployGUI:
         # Expand ~ and environment variables
         path = os.path.expanduser(path)
         if self.system == "Windows":
-            # Expand %VAR% style
             path = os.path.expandvars(path)
         else:
-            # Expand $VAR style (os.path.expandvars handles this on Unix too)
             path = os.path.expandvars(path)
             
         return os.path.abspath(path)
 
     def setup_ui(self):
-        # Configure overall style
-        style = ttk.Style()
-        # Use a more modern theme if available
-        if "clam" in style.theme_names():
-            style.theme_use("clam")
-            
-        # Define colors
-        bg_color = "#f0f0f0"
-        header_bg = "#2c3e50"
-        header_fg = "#ecf0f1"
-        
-        self.root.configure(bg=bg_color)
-        
         # Header section
-        header_frame = tk.Frame(self.root, bg=header_bg, height=60)
-        header_frame.pack(fill=tk.X)
-        header_frame.pack_propagate(False)
+        self.header_frame = tk.Frame(self.root, height=65)
+        self.header_frame.pack(fill=tk.X)
+        self.header_frame.pack_propagate(False)
         
-        tk.Label(header_frame, text="🛡️ Dotfiles Deployer", font=("Arial", 16, "bold"), 
-                 bg=header_bg, fg=header_fg).pack(side=tk.LEFT, padx=20)
+        self.header_title = tk.Label(self.header_frame, text="🛡️ Dotfiles Deployer", font=("Arial", 16, "bold"))
+        self.header_title.pack(side=tk.LEFT, padx=20)
         
         system_info = f"💻 {self.system} | 🏠 {os.path.expanduser('~')}"
-        tk.Label(header_frame, text=system_info, font=("Arial", 10), 
-                 bg=header_bg, fg=header_fg).pack(side=tk.RIGHT, padx=20)
+        self.header_sys_info = tk.Label(self.header_frame, text=system_info, font=("Arial", 10))
+        self.header_sys_info.pack(side=tk.RIGHT, padx=20)
         
         # Top toolbar
         toolbar = ttk.Frame(self.root, padding="10")
@@ -181,6 +168,10 @@ class DotfilesDeployGUI:
         ttk.Label(toolbar, text="⚙️ Neovim: ", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=5)
         ttk.Radiobutton(toolbar, text="Lua", variable=self.nvim_choice, value="lua", command=self.refresh_file_lists).pack(side=tk.LEFT)
         ttk.Radiobutton(toolbar, text="Vimscript", variable=self.nvim_choice, value="vim", command=self.refresh_file_lists).pack(side=tk.LEFT)
+        
+        # Theme toggle button
+        self.btn_theme = ttk.Button(toolbar, text="🌙 Dark", command=self.toggle_theme)
+        self.btn_theme.pack(side=tk.RIGHT, padx=5)
         
         # Main content area
         main_content = ttk.Frame(self.root, padding="5")
@@ -207,7 +198,6 @@ class DotfilesDeployGUI:
         self.source_tree.column("dest", width=380)
         self.source_tree.pack(fill=tk.BOTH, expand=True)
         
-        # Scrollbars
         s_scroll = ttk.Scrollbar(left_frame, orient=tk.VERTICAL, command=self.source_tree.yview)
         s_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.source_tree.configure(yscrollcommand=s_scroll.set)
@@ -233,10 +223,8 @@ class DotfilesDeployGUI:
         diff_frame = ttk.LabelFrame(self.v_paned, text=" 🔍 Difference (Source vs Destination) ", padding="5")
         self.v_paned.add(diff_frame, weight=2)
         
-        # Text widget for diff with both scrollbars
         self.diff_text = tk.Text(diff_frame, wrap=tk.NONE, height=10,
-                                font=("Consolas" if self.system == "Windows" else "Monospace", 10),
-                                bg="#fdfdfd")
+                                 font=("Consolas" if self.system == "Windows" else "Monospace", 10))
         
         d_scroll_y = ttk.Scrollbar(diff_frame, orient=tk.VERTICAL, command=self.diff_text.yview)
         d_scroll_x = ttk.Scrollbar(diff_frame, orient=tk.HORIZONTAL, command=self.diff_text.xview)
@@ -248,7 +236,7 @@ class DotfilesDeployGUI:
         
         # Status bar
         self.status_bar = tk.Label(self.root, text="Ready", relief=tk.SUNKEN, anchor=tk.W, 
-                                   padx=10, pady=5, bg="#ddd", font=("Arial", 9))
+                                   padx=10, pady=5, font=("Arial", 9))
         self.status_bar.pack(fill=tk.X)
         
         # Bind events
@@ -258,34 +246,219 @@ class DotfilesDeployGUI:
         
         self.dest_tree.bind("<Button-3>", self.on_dest_right_click)
         self.dest_tree.bind("<<TreeviewSelect>>", self.on_tree_select)
-        
-        # Tags for status colors and zebra striping
-        for tree in [self.source_tree, self.dest_tree]:
-            tree.tag_configure("green", foreground="#27ae60", font=("Arial", 9, "bold"))
-            tree.tag_configure("orange", foreground="#d35400", font=("Arial", 9, "bold"))
-            tree.tag_configure("red", foreground="#c0392b", font=("Arial", 9, "bold"))
-            tree.tag_configure("gray", foreground="#7f8c8d")
-            tree.tag_configure("odd", background="#ffffff")
-            tree.tag_configure("even", background="#f9f9f9")
 
-        # Diff tags
-        self.diff_text.tag_configure("diff_add", foreground="#27ae60", background="#e8f8f5")
-        self.diff_text.tag_configure("diff_sub", foreground="#c0392b", background="#f9ebeb")
-        self.diff_text.tag_configure("diff_header", foreground="#2980b9", font=("Arial", 10, "bold"))
-        self.diff_text.config(state=tk.DISABLED)
+    def apply_theme(self):
+        """Apply theme colors and styles based on the active mode (Light or Dark)"""
+        style = ttk.Style()
+        
+        # Color Palettes
+        if self.dark_mode:
+            # Charcoal Dark Theme
+            self.colors = {
+                "bg": "#1e1e24",          # Deep Charcoal window background
+                "surface": "#2d3142",     # Dark Slate container background
+                "fg": "#eceff1",          # Cool Off-White text
+                "fg_sub": "#90a4ae",      # Muted Blue-Gray
+                "accent_green": "#4caf50",# Bright emerald green
+                "accent_orange": "#ff9800",# Soft warm orange
+                "accent_red": "#ef5350",   # Coral red
+                "accent_blue": "#29b6f6",  # Cool cyan/blue
+                "select_bg": "#3e4a5d",   # Dark Slate active selection
+                "select_fg": "#ffffff",
+                "stripe_even": "#242835", # Subtle row zebra color
+                "stripe_odd": "#2d3142",
+                "border": "#3a3f58",
+                "text_bg": "#15171e",     # Even darker text background for Diff
+                "text_insert": "#ffffff", # White caret
+            }
+        else:
+            # Elegant Light Theme
+            self.colors = {
+                "bg": "#f4f6f8",          # Warm Light-Gray window background
+                "surface": "#ffffff",     # Crisp White container background
+                "fg": "#1a1f2c",          # Deep Slate-Black text
+                "fg_sub": "#627d98",      # Slate Gray
+                "accent_green": "#2e7d32",# Rich Forest Green
+                "accent_orange": "#e65100",# Deep Amber Orange
+                "accent_red": "#c62828",   # Deep Ruby Red
+                "accent_blue": "#1565c0",  # Strong Royal Blue
+                "select_bg": "#dbeafe",   # Sky Blue active selection
+                "select_fg": "#1e3a8a",
+                "stripe_even": "#f8fafc", # Subtle row zebra color
+                "stripe_odd": "#ffffff",
+                "border": "#cfd8dc",
+                "text_bg": "#ffffff",     # White background for Diff
+                "text_insert": "#000000", # Black caret
+            }
+
+        # Apply root background
+        self.root.configure(bg=self.colors["bg"])
+        
+        # Define ttk element styles
+        style.theme_use("clam")
+        
+        style.configure(".",
+            background=self.colors["bg"],
+            foreground=self.colors["fg"],
+            font=("Segoe UI" if self.system == "Windows" else "Sans", 10),
+            troughcolor=self.colors["bg"],
+            bordercolor=self.colors["border"],
+            darkcolor=self.colors["border"],
+            lightcolor=self.colors["border"],
+        )
+        
+        # Frames
+        style.configure("TFrame", background=self.colors["bg"])
+        style.configure("TLabelframe", background=self.colors["bg"], foreground=self.colors["fg"], bordercolor=self.colors["border"])
+        style.configure("TLabelframe.Label", background=self.colors["bg"], foreground=self.colors["accent_blue"], font=("Segoe UI" if self.system == "Windows" else "Sans", 10, "bold"))
+        
+        # Buttons
+        style.configure("TButton",
+            background=self.colors["surface"],
+            foreground=self.colors["fg"],
+            bordercolor=self.colors["border"],
+            darkcolor=self.colors["border"],
+            lightcolor=self.colors["border"],
+            padding=6,
+            relief="flat",
+            font=("Segoe UI" if self.system == "Windows" else "Sans", 9, "bold")
+        )
+        style.map("TButton",
+            background=[("active", self.colors["select_bg"]), ("pressed", self.colors["border"])],
+            foreground=[("active", self.colors["select_fg"])],
+        )
+        
+        # Checkbutton / Radiobutton
+        style.configure("TCheckbutton", background=self.colors["bg"], foreground=self.colors["fg"])
+        style.configure("TRadiobutton", background=self.colors["bg"], foreground=self.colors["fg"])
+        
+        # Paned Window
+        style.configure("TPanedwindow", background=self.colors["bg"])
+        
+        # Treeview
+        style.configure("Treeview",
+            background=self.colors["surface"],
+            fieldbackground=self.colors["surface"],
+            foreground=self.colors["fg"],
+            rowheight=26,
+            font=("Segoe UI" if self.system == "Windows" else "Sans", 10),
+            borderwidth=1,
+            relief="flat"
+        )
+        style.map("Treeview",
+            background=[("selected", self.colors["select_bg"])],
+            foreground=[("selected", self.colors["select_fg"])],
+        )
+        
+        style.configure("Treeview.Heading",
+            background=self.colors["bg"],
+            foreground=self.colors["fg"],
+            font=("Segoe UI" if self.system == "Windows" else "Sans", 10, "bold"),
+            borderwidth=1,
+            relief="flat"
+        )
+        style.map("Treeview.Heading",
+            background=[("active", self.colors["surface"])],
+        )
+        
+        # Update Diff text widget colors
+        self.diff_text.config(
+            bg=self.colors["text_bg"],
+            fg=self.colors["fg"],
+            insertbackground=self.colors["text_insert"],
+            selectbackground=self.colors["select_bg"],
+            selectforeground=self.colors["select_fg"],
+            highlightbackground=self.colors["border"],
+            highlightcolor=self.colors["accent_blue"]
+        )
+        
+        # Update header frame styles
+        self.header_frame.configure(bg=self.colors["surface"])
+        self.header_title.configure(bg=self.colors["surface"], fg=self.colors["accent_blue"])
+        self.header_sys_info.configure(bg=self.colors["surface"], fg=self.colors["fg_sub"])
+            
+        # Update status bar background
+        self.status_bar.configure(bg=self.colors["surface"], fg=self.colors["fg_sub"])
+            
+        # Update Treeview tags
+        for tree in [self.source_tree, self.dest_tree]:
+            tree.tag_configure("green", foreground=self.colors["accent_green"], font=("Arial", 9, "bold"))
+            tree.tag_configure("orange", foreground=self.colors["accent_orange"], font=("Arial", 9, "bold"))
+            tree.tag_configure("red", foreground=self.colors["accent_red"], font=("Arial", 9, "bold"))
+            tree.tag_configure("gray", foreground=self.colors["fg_sub"])
+            tree.tag_configure("even", background=self.colors["stripe_even"])
+            tree.tag_configure("odd", background=self.colors["stripe_odd"])
+
+        # Update Diff View text tags
+        self.diff_text.tag_configure("diff_add", foreground=self.colors["accent_green"], background="#e8f8f5" if not self.dark_mode else "#162e24")
+        self.diff_text.tag_configure("diff_sub", foreground=self.colors["accent_red"], background="#f9ebeb" if not self.dark_mode else "#351a1e")
+        self.diff_text.tag_configure("diff_header", foreground=self.colors["accent_blue"], font=("Consolas" if self.system == "Windows" else "Monospace", 10, "bold"))
+        self.diff_text.tag_configure("diff_orange", foreground=self.colors["accent_orange"])
+
+        # Update theme toggle button text
+        theme_icon = "☀️ Light" if self.dark_mode else "🌙 Dark"
+        self.btn_theme.configure(text=theme_icon)
+
+    def toggle_theme(self):
+        """Toggle between Dark and Light mode themes"""
+        self.dark_mode = not self.dark_mode
+        self.apply_theme()
+        self.refresh_file_lists()
+
+    def is_binary_file(self, filepath):
+        """Check if a file is binary by looking for null bytes in the first 2KB"""
+        if not os.path.isfile(filepath):
+            return False
+        try:
+            with open(filepath, 'rb') as f:
+                chunk = f.read(2048)
+                return b'\x00' in chunk
+        except Exception:
+            return True  # Treat as binary on read errors
+
+    def get_file_sha256(self, filepath):
+        """Compute the SHA-256 hash of a file"""
+        import hashlib
+        if not os.path.isfile(filepath):
+            return None
+        sha256 = hashlib.sha256()
+        try:
+            with open(filepath, 'rb') as f:
+                while True:
+                    data = f.read(65536)
+                    if not data:
+                        break
+                    sha256.update(data)
+            return sha256.hexdigest()
+        except Exception:
+            return "Error calculating hash"
 
     def get_sync_status(self, src, dest, is_dir=False):
-        """Compare src and dest to get status with icons"""
-        if not os.path.exists(src):
+        """Compare src and dest to get status with icons, handling broken symlinks safely"""
+        if not os.path.lexists(src):
             return "❔ Missing Src", "gray"
         
-        if not os.path.exists(dest):
+        if not os.path.lexists(dest):
             return "❌ Missing", "red"
         
         try:
             if is_dir:
                 return "✅ Exists", "green"
             else:
+                if os.path.islink(dest):
+                    # Destination is a symlink (could be valid or broken)
+                    try:
+                        target = os.readlink(dest)
+                        target_abs = os.path.abspath(os.path.expanduser(target))
+                        src_abs = os.path.abspath(src)
+                        if target_abs == src_abs:
+                            return "✅ Synced Link", "green"
+                        else:
+                            return "⚠️ Outdated Link", "orange"
+                    except Exception:
+                        return "🚫 Broken Link", "red"
+                
+                # Check for standard file comparison
                 if filecmp.cmp(src, dest, shallow=False):
                     return "✅ Synced", "green"
                 else:
@@ -313,16 +486,134 @@ class DotfilesDeployGUI:
             self.diff_text.config(state=tk.DISABLED)
 
     def show_diff(self, src, dest, is_dir=False):
-        """Generate and display unified diff in the text widget"""
+        """Generate and display unified diff, directory summaries, or binary metadata differences"""
         self.diff_text.config(state=tk.NORMAL)
         self.diff_text.delete(1.0, tk.END)
         
         if is_dir:
-            self.diff_text.insert(tk.END, f"Directory comparison not supported in diff view.\nSource: {src}\nDestination: {dest}")
-        elif not os.path.exists(src):
+            self.diff_text.insert(tk.END, f"📂 Directory Comparison Summary\n", "diff_header")
+            self.diff_text.insert(tk.END, f"Source: {src}\n")
+            self.diff_text.insert(tk.END, f"Destination: {dest}\n\n")
+            
+            if not os.path.lexists(dest):
+                self.diff_text.insert(tk.END, "❌ Destination directory does not exist.\n", "diff_sub")
+                self.diff_text.insert(tk.END, "\nFiles to be deployed:\n", "diff_header")
+                for root_dir, _, files in os.walk(src):
+                    for file in files:
+                        full_path = os.path.join(root_dir, file)
+                        rel_path = os.path.relpath(full_path, src)
+                        self.diff_text.insert(tk.END, f"  + {rel_path}\n", "diff_add")
+            else:
+                # Both exist, compare them recursively
+                src_files = {}
+                dest_files = {}
+                
+                for root_dir, _, files in os.walk(src):
+                    for file in files:
+                        full_path = os.path.join(root_dir, file)
+                        rel_path = os.path.relpath(full_path, src)
+                        src_files[rel_path] = full_path
+                        
+                for root_dir, _, files in os.walk(dest):
+                    for file in files:
+                        full_path = os.path.join(root_dir, file)
+                        rel_path = os.path.relpath(full_path, dest)
+                        dest_files[rel_path] = full_path
+                
+                all_rel_paths = sorted(list(set(src_files.keys()) | set(dest_files.keys())))
+                
+                modified_files = []
+                added_files = []
+                removed_files = []
+                synced_files = []
+                
+                for rel_path in all_rel_paths:
+                    s_file = src_files.get(rel_path)
+                    d_file = dest_files.get(rel_path)
+                    
+                    if s_file and not d_file:
+                        added_files.append(rel_path)
+                    elif not s_file and d_file:
+                        removed_files.append(rel_path)
+                    else:
+                        if self.is_binary_file(s_file) or self.is_binary_file(d_file):
+                            s_hash = self.get_file_sha256(s_file)
+                            d_hash = self.get_file_sha256(d_file)
+                            if s_hash == d_hash:
+                                synced_files.append(rel_path)
+                            else:
+                                modified_files.append(rel_path)
+                        else:
+                            if filecmp.cmp(s_file, d_file, shallow=False):
+                                synced_files.append(rel_path)
+                            else:
+                                modified_files.append(rel_path)
+                
+                # Render results in diff view
+                if modified_files:
+                    self.diff_text.insert(tk.END, "⚠️ Modified Files (Differing Content/Size):\n", "diff_header")
+                    for f in modified_files:
+                        self.diff_text.insert(tk.END, f"  ~ {f}\n", "diff_orange")
+                    self.diff_text.insert(tk.END, "\n")
+                    
+                if added_files:
+                    self.diff_text.insert(tk.END, "➕ New Files (In Repository only):\n", "diff_header")
+                    for f in added_files:
+                        self.diff_text.insert(tk.END, f"  + {f}\n", "diff_add")
+                    self.diff_text.insert(tk.END, "\n")
+                    
+                if removed_files:
+                    self.diff_text.insert(tk.END, "❌ Untracked Files (In System destination only):\n", "diff_header")
+                    for f in removed_files:
+                        self.diff_text.insert(tk.END, f"  - {f} (Will be removed on sync)\n", "diff_sub")
+                    self.diff_text.insert(tk.END, "\n")
+                    
+                if synced_files:
+                    self.diff_text.insert(tk.END, "✅ Synced Files:\n", "diff_header")
+                    # Display count instead of a huge list to keep view readable
+                    self.diff_text.insert(tk.END, f"  ({len(synced_files)} identical files synced successfully)\n", "diff_add")
+                        
+                if not modified_files and not added_files and not removed_files:
+                    self.diff_text.insert(tk.END, "✨ All files in the directory are fully identical.", "diff_add")
+                    
+        elif not os.path.lexists(src):
             self.diff_text.insert(tk.END, f"Source file missing: {src}")
-        elif not os.path.exists(dest):
-            self.diff_text.insert(tk.END, f"Destination file missing (New file):\n\n")
+            
+        elif self.is_binary_file(src) or (os.path.lexists(dest) and self.is_binary_file(dest)):
+            # Binary Comparison Panel
+            self.diff_text.insert(tk.END, "💾 Binary File Comparison (Metadata Only)\n\n", "diff_header")
+            
+            src_size = os.path.getsize(src) if os.path.isfile(src) else 0
+            src_time = datetime.fromtimestamp(os.path.getmtime(src)).strftime('%Y-%m-%d %H:%M:%S') if os.path.isfile(src) else "N/A"
+            src_hash = self.get_file_sha256(src)
+            
+            self.diff_text.insert(tk.END, f"Source (Repository):\n", "diff_header")
+            self.diff_text.insert(tk.END, f"  Path: {src}\n")
+            self.diff_text.insert(tk.END, f"  Size: {src_size:,} bytes\n")
+            self.diff_text.insert(tk.END, f"  Modified: {src_time}\n")
+            self.diff_text.insert(tk.END, f"  SHA-256: {src_hash}\n\n")
+            
+            if not os.path.lexists(dest):
+                self.diff_text.insert(tk.END, "Destination (System):\n", "diff_header")
+                self.diff_text.insert(tk.END, "  ❌ File does not exist at destination.\n", "diff_sub")
+            else:
+                dest_size = os.path.getsize(dest) if os.path.isfile(dest) else 0
+                dest_time = datetime.fromtimestamp(os.path.getmtime(dest)).strftime('%Y-%m-%d %H:%M:%S') if os.path.isfile(dest) else "N/A"
+                dest_hash = self.get_file_sha256(dest)
+                
+                self.diff_text.insert(tk.END, f"Destination (System):\n", "diff_header")
+                self.diff_text.insert(tk.END, f"  Path: {dest}\n")
+                self.diff_text.insert(tk.END, f"  Size: {dest_size:,} bytes\n")
+                self.diff_text.insert(tk.END, f"  Modified: {dest_time}\n")
+                self.diff_text.insert(tk.END, f"  SHA-256: {dest_hash}\n\n")
+                
+                if src_hash == dest_hash:
+                    self.diff_text.insert(tk.END, "✨ Files are identical (matched hashes).", "diff_add")
+                else:
+                    self.diff_text.insert(tk.END, "⚠️ Files differ (hash or size mismatch).", "diff_sub")
+                    
+        elif not os.path.lexists(dest):
+            self.diff_text.insert(tk.END, f"Destination file missing (New file):\n\n", "diff_orange")
             try:
                 with open(src, 'r', encoding='utf-8', errors='replace') as f:
                     self.diff_text.insert(tk.END, f.read())
@@ -353,7 +644,7 @@ class DotfilesDeployGUI:
                     self.diff_text.insert(tk.END, line + '\n', tag)
                 
                 if not has_diff:
-                    self.diff_text.insert(tk.END, "✨ Files are identical.")
+                    self.diff_text.insert(tk.END, "✨ Files are identical.", "diff_add")
                     
             except Exception as e:
                 self.diff_text.insert(tk.END, f"Error generating diff: {e}")
@@ -378,7 +669,6 @@ class DotfilesDeployGUI:
             
             row_idx = 0
             for item in cat_config["items"]:
-                # Check condition (e.g., nvim choice)
                 if "condition" in item:
                     if item["condition"] != self.nvim_choice.get():
                         continue
@@ -392,7 +682,6 @@ class DotfilesDeployGUI:
                 is_dir = item.get("is_dir", False)
                 status, color = self.get_sync_status(src_path, dest_path, is_dir)
                 
-                # Zebra stripe tag
                 stripe_tag = "even" if row_idx % 2 == 0 else "odd"
                 
                 # Source Tree
@@ -418,44 +707,103 @@ class DotfilesDeployGUI:
         
         self.status_bar.config(text=f" 📋 Total items: {total_items} | System: {self.system} ")
 
+    def _post_deploy_shell_config(self, dest):
+        """Ensure ~/.mybashrc is sourced in ~/.bashrc (and ~/.zshrc on macOS)"""
+        if os.path.basename(dest) != ".mybashrc" and os.path.basename(dest) != "mybashrc":
+            return
+        
+        home = os.path.expanduser("~")
+        sourcing_line = "[ -f ~/.mybashrc ] && . ~/.mybashrc"
+        
+        shell_configs = [os.path.join(home, ".bashrc")]
+        if self.system == "Darwin":
+            shell_configs.append(os.path.join(home, ".zshrc"))
+            
+        for config_path in shell_configs:
+            if os.path.lexists(config_path):
+                try:
+                    with open(config_path, "r", encoding="utf-8", errors="replace") as f:
+                        content = f.read()
+                    
+                    if sourcing_line not in content:
+                        with open(config_path, "a", encoding="utf-8") as f:
+                            f.write(f"\n# Source personal aliases and functions\n{sourcing_line}\n")
+                        self.status_bar.config(text=f"Sourcing block appended to {os.path.basename(config_path)}")
+                except Exception as e:
+                    print(f"Error appending sourcing to {config_path}: {e}")
 
     def deploy_file(self, src, dest, is_dir=False):
-        """Core deployment logic for single file or directory"""
-        if not os.path.exists(src):
+        """Core deployment logic for single file or directory, handling symlinks and conflicts safely"""
+        if not os.path.lexists(src):
             return False, f"Source not found: {src}"
         
         try:
-            # Create parent directory
             dest_dir = os.path.dirname(dest)
-            if not os.path.exists(dest_dir):
+            if not os.path.lexists(dest_dir):
                 os.makedirs(dest_dir)
             
             # Backup
-            if self.backup_var.get() and os.path.exists(dest):
+            if self.backup_var.get() and os.path.lexists(dest):
                 bak_path = dest + ".bak"
-                if os.path.isdir(dest):
-                    if os.path.exists(bak_path):
+                
+                # Clean up existing backup of same path
+                if os.path.lexists(bak_path):
+                    if os.path.islink(bak_path) or os.path.isfile(bak_path):
+                        os.remove(bak_path)
+                    elif os.path.isdir(bak_path):
                         shutil.rmtree(bak_path)
+                        
+                # Copy backup
+                if os.path.islink(dest):
+                    os.symlink(os.readlink(dest), bak_path)
+                elif os.path.isdir(dest):
                     shutil.copytree(dest, bak_path)
                 else:
                     shutil.copy2(dest, bak_path)
             
+            # Handle Neovim conflicts specifically
+            dest_basename = os.path.basename(dest)
+            if "nvim" in dest.lower():
+                if is_dir and dest_basename == "nvim":
+                    init_vim_path = os.path.join(dest, "init.vim")
+                    if os.path.lexists(init_vim_path):
+                        os.remove(init_vim_path)
+                elif dest_basename == "init.vim":
+                    nvim_dir = os.path.dirname(dest)
+                    init_lua_path = os.path.join(nvim_dir, "init.lua")
+                    lua_dir_path = os.path.join(nvim_dir, "lua")
+                    if os.path.lexists(init_lua_path):
+                        os.remove(init_lua_path)
+                    if os.path.lexists(lua_dir_path):
+                        if os.path.islink(lua_dir_path):
+                            os.remove(lua_dir_path)
+                        else:
+                            shutil.rmtree(lua_dir_path)
+            
             # Deploy
             if is_dir:
-                if os.path.exists(dest):
-                    if os.path.islink(dest):
-                        os.unlink(dest)
+                if os.path.lexists(dest):
+                    if os.path.islink(dest) or os.path.isfile(dest):
+                        os.remove(dest)
                     elif os.path.isdir(dest):
                         shutil.rmtree(dest)
-                    else:
-                        os.remove(dest)
                 shutil.copytree(src, dest)
             else:
+                if os.path.lexists(dest):
+                    if os.path.islink(dest) or os.path.isfile(dest):
+                        os.remove(dest)
+                    elif os.path.isdir(dest):
+                        shutil.rmtree(dest)
                 shutil.copy2(src, dest)
+                
                 # Permissions
                 if self.system != "Windows":
                     if "/bin/" in src or src.endswith(".sh"):
                         os.chmod(dest, 0o755)
+            
+            # Post-deployment sourcing hook for mybashrc
+            if dest_basename == ".mybashrc" or dest_basename == "mybashrc":
+                self._post_deploy_shell_config(dest)
             
             return True, f"Deployed to {dest}"
         except Exception as e:
@@ -475,6 +823,11 @@ class DotfilesDeployGUI:
                     messagebox.showerror("Error", msg)
 
     def on_source_right_click(self, event):
+        row_id = self.source_tree.identify_row(event.y)
+        if row_id:
+            self.source_tree.selection_set(row_id)
+            self.source_tree.focus(row_id)
+            
         selection = self.source_tree.selection()
         if not selection: return
         
@@ -487,12 +840,16 @@ class DotfilesDeployGUI:
             menu.add_command(label="Open Source", command=lambda: self.open_path(m["src"]))
             menu.add_command(label="Open Destination", command=lambda: self.open_path(os.path.dirname(m["dest"])))
         else:
-            # Category
             menu.add_command(label="Deploy Category", command=lambda: self.deploy_category(item_id))
             
         menu.post(event.x_root, event.y_root)
 
     def on_dest_right_click(self, event):
+        row_id = self.dest_tree.identify_row(event.y)
+        if row_id:
+            self.dest_tree.selection_set(row_id)
+            self.dest_tree.focus(row_id)
+            
         selection = self.dest_tree.selection()
         if not selection: return
         
@@ -505,7 +862,7 @@ class DotfilesDeployGUI:
         menu.add_command(label="Open Location", command=lambda: self.open_path(os.path.dirname(m["dest"])))
         
         bak_path = m["dest"] + ".bak"
-        if os.path.exists(bak_path):
+        if os.path.lexists(bak_path):
             menu.add_separator()
             menu.add_command(label="Restore from .bak", command=lambda: self.restore_bak(m))
             
@@ -560,9 +917,18 @@ class DotfilesDeployGUI:
         
         try:
             if m["is_dir"]:
-                if os.path.exists(m["dest"]): shutil.rmtree(m["dest"])
+                if os.path.lexists(m["dest"]):
+                    if os.path.islink(m["dest"]) or os.path.isfile(m["dest"]):
+                        os.remove(m["dest"])
+                    else:
+                        shutil.rmtree(m["dest"])
                 shutil.copytree(bak_path, m["dest"])
             else:
+                if os.path.lexists(m["dest"]):
+                    if os.path.islink(m["dest"]) or os.path.isfile(m["dest"]):
+                        os.remove(m["dest"])
+                    else:
+                        shutil.rmtree(m["dest"])
                 shutil.copy2(bak_path, m["dest"])
             self.refresh_file_lists()
             self.status_bar.config(text="Restored from backup")
@@ -570,8 +936,8 @@ class DotfilesDeployGUI:
             messagebox.showerror("Error", str(e))
 
     def open_path(self, path):
-        """Open file or folder in system explorer/editor"""
-        if not os.path.exists(path):
+        """Open file or folder in system explorer/editor asynchronously"""
+        if not os.path.lexists(path):
             messagebox.showerror("Error", f"Path does not exist: {path}")
             return
             
@@ -580,21 +946,16 @@ class DotfilesDeployGUI:
                 os.startfile(path)
             elif self.system == "Darwin":
                 import subprocess
-                subprocess.run(["open", path])
+                subprocess.Popen(["open", path])
             else:
                 import subprocess
-                subprocess.run(["xdg-open", path])
+                subprocess.Popen(["xdg-open", path])
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open: {str(e)}")
 
 
 def main():
     root = tk.Tk()
-    # Simple styling
-    style = ttk.Style()
-    style.configure("Treeview", font=("Segoe UI" if platform.system() == "Windows" else "Sans", 10))
-    style.configure("Treeview.Heading", font=("Segoe UI" if platform.system() == "Windows" else "Sans", 10, "bold"))
-    
     app = DotfilesDeployGUI(root)
     root.mainloop()
 
