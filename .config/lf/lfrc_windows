@@ -13,8 +13,8 @@ set shell powershell
 # change the default open command to work in powerShell
 #cmd open &start $Env:f
 # edit with nvim if exists, else vim
-map e $$if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim "$env:f" } else { vim "$env:f" }
-map <enter> $$if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim "$env:f" } else { vim "$env:f" }
+map e $if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim "$env:f" } else { vim "$env:f" }
+map <enter> $if (Get-Command nvim -ErrorAction SilentlyContinue) { nvim "$env:f" } else { vim "$env:f" }
 # page through any file with bat
 # paging=always so that shorter files don't immediately exit back to lf
 map i $bat --paging=always "$env:f"
@@ -66,8 +66,8 @@ map <c-c> $Set-Clipboard -Value $env:f
 # Filter commands (using Shift+F to avoid conflict with fzf_find)
 map F filter
 cmd filter %{{
-    lf -remote "send $env:id set filter `$*`"
-    lf -remote "send $env:id echo Filter: `$*`"
+    lf -remote "send $env:id set filter '$args'"
+    lf -remote "send $env:id echo Filter: '$args'"
 }}
 
 # Enhanced utility commands

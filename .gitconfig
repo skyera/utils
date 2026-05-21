@@ -11,7 +11,7 @@
 	diffFilter = sh -c 'command -v delta >/dev/null && delta --color-only || cat'
 
 [init]
-	defaultBranch = master
+	defaultBranch = main
 
 [alias]
 	st = status
