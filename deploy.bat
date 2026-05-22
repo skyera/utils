@@ -42,6 +42,7 @@ call :deploy_file "%REPO_DIR%\.config\lf\colors"       "%LOCALAPPDATA%\lf\colors
 call :deploy_file "%REPO_DIR%\.config\fd\ignore"      "%APPDATA%\fd\ignore"
 call :deploy_file "%REPO_DIR%\.ripgreprc"             "%USERPROFILE%\.ripgreprc"
 call :deploy_file "%REPO_DIR%\.gitconfig"             "%USERPROFILE%\.gitconfig"
+call :deploy_file "%REPO_DIR%\.config\git\ignore"     "%USERPROFILE%\.config\git\ignore"
 call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
 call :deploy_file "%REPO_DIR%\.vifm\vifmrc"           "%APPDATA%\vifm\vifmrc"
 call :deploy_file "%REPO_DIR%\.gdbinit"               "%USERPROFILE%\.gdbinit"
