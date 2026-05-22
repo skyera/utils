@@ -11,12 +11,41 @@ _IS_WINDOWS=false
 is_container() {
     # On Windows, we're likely not in a container of interest for this script
     $_IS_WINDOWS && return 1
-    [ -f /.dockerenv ] || [ -f /.containerenv ] || grep -q "docker\|lxc" /proc/1/cgroup 2>/dev/null || [ -n "$CONTAINER" ]
+    [ -f /.dockerenv ] || [ -f /.containerenv ] || grep -q "docker\|lxc\|kubepods" /proc/1/cgroup 2>/dev/null || [ -n "$CONTAINER" ] || [ -n "$KUBERNETES_SERVICE_HOST" ]
 }
 
 # Cache container status
 _IS_CONTAINER=false
 is_container && _IS_CONTAINER=true
+
+# Git configuration overrides for containers or old git versions
+# zdiff3 requires Git 2.35+
+_GIT_VERSION=$(git version | cut -d' ' -f3)
+_GIT_MAJOR=$(echo $_GIT_VERSION | cut -d. -f1)
+_GIT_MINOR=$(echo $_GIT_VERSION | cut -d. -f2)
+
+if [ "$_GIT_MAJOR" -lt 2 ] || { [ "$_GIT_MAJOR" -eq 2 ] && [ "$_GIT_MINOR" -lt 35 ]; }; then
+    _GIT_SUPPORTS_ZDIFF3=false
+else
+    _GIT_SUPPORTS_ZDIFF3=true
+fi
+
+if $_IS_CONTAINER || ! $_GIT_SUPPORTS_ZDIFF3; then
+    # Git < 2.35 (e.g. Git 2.25 in Ubuntu 20.04) does not support zdiff3
+    # Git < 2.37 does not support push.autoSetupRemote
+    # Use an alias because GIT_CONFIG_PARAMETERS format changed between Git versions
+    _GIT_EXTRA_ARGS=""
+    if ! $_GIT_SUPPORTS_ZDIFF3; then
+        _GIT_EXTRA_ARGS="$_GIT_EXTRA_ARGS -c merge.conflictstyle=diff3"
+    fi
+    if [ "$_GIT_MAJOR" -lt 2 ] || { [ "$_GIT_MAJOR" -eq 2 ] && [ "$_GIT_MINOR" -lt 37 ]; }; then
+        _GIT_EXTRA_ARGS="$_GIT_EXTRA_ARGS -c push.autoSetupRemote=false"
+    fi
+    
+    if [ -n "$_GIT_EXTRA_ARGS" ]; then
+        alias git="git $_GIT_EXTRA_ARGS"
+    fi
+fi
 
 # Git Pager (delta) detection
 # Avoid running delta --version if possible, or only do it once
@@ -24,14 +53,6 @@ if ! $_IS_CONTAINER && command -v delta >/dev/null 2>&1; then
     export GIT_PAGER="delta"
 else
     export GIT_PAGER="less"
-fi
-
-# Git configuration overrides for containers
-if $_IS_CONTAINER; then
-    # Git < 2.35 (e.g. Git 2.25 in Ubuntu 20.04) does not support zdiff3
-    # Git < 2.37 does not support push.autoSetupRemote
-    # Use an alias because GIT_CONFIG_PARAMETERS format changed between Git versions
-    alias git='git -c merge.conflictstyle=diff3 -c push.autoSetupRemote=false'
 fi
 
 # Windows-specific overrides
