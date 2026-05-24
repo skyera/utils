@@ -47,6 +47,18 @@ call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
 call :deploy_file "%REPO_DIR%\.vifm\vifmrc"           "%APPDATA%\vifm\vifmrc"
 call :deploy_file "%REPO_DIR%\.gdbinit"               "%USERPROFILE%\.gdbinit"
 
+:: Git Bash / Mintty configuration
+set "GIT_BASH_FOUND=0"
+where git >nul 2>nul
+if %ERRORLEVEL% equ 0 set "GIT_BASH_FOUND=1"
+if exist "%ProgramFiles%\Git" set "GIT_BASH_FOUND=1"
+if exist "%ProgramFiles(x86)%\Git" set "GIT_BASH_FOUND=1"
+if exist "%LocalAppData%\Programs\Git" set "GIT_BASH_FOUND=1"
+
+if "%GIT_BASH_FOUND%"=="1" (
+    call :deploy_file "%REPO_DIR%\.minttyrc" "%USERPROFILE%\.minttyrc"
+)
+
 :: Ranger configuration
 call :deploy_file "%REPO_DIR%\.config\ranger\rc.conf"      "%APPDATA%\ranger\rc.conf"
 call :deploy_file "%REPO_DIR%\.config\ranger\commands.py"  "%APPDATA%\ranger\commands.py"

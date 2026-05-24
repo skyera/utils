@@ -483,7 +483,14 @@ if ! $_IS_CONTAINER; then
         elif [[ -n "$ZSH_VERSION" ]]; then
             [ -f "$PLUGINS_DIR/forgit/completions/_git-forgit" ] && source "$PLUGINS_DIR/forgit/completions/_git-forgit"
         fi
-        source "$PLUGINS_DIR/forgit/forgit.plugin.sh"
+        
+        # If forgit.plugin.sh is a git symlink placeholder (contains just the string 'forgit.plugin.zsh'),
+        # source the target file directly to avoid 'command not found' on Windows/Git Bash.
+        if [ "$(cat "$PLUGINS_DIR/forgit/forgit.plugin.sh" 2>/dev/null)" = "forgit.plugin.zsh" ]; then
+            source "$PLUGINS_DIR/forgit/forgit.plugin.zsh"
+        else
+            source "$PLUGINS_DIR/forgit/forgit.plugin.sh"
+        fi
     fi
 fi
 
