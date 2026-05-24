@@ -1,5 +1,5 @@
 [core]
-	autocrlf = false
+	autocrlf = input
 	eol = lf
 	excludesfile = ~/.config/git/ignore
 	editor = nvim
