@@ -104,6 +104,42 @@ export DYLD_LIBRARY_PATH="/opt/homebrew/lib/:$DYLD_LIBRARY_PATH"
 export TERM=xterm-256color
 ```
 
+### ttyd
+Share a terminal or tmux session over the web.
+
+#### Basic Usage
+Start ttyd with basic authentication:
+```bash
+ttyd -p 9000 -c admin:admin tmux attach -t test
+```
+
+To shut down `ttyd` (if running in the foreground, press `Ctrl+C`; otherwise kill the process):
+```bash
+killall ttyd
+```
+
+#### Useful Options & Tips
+* **Read-Only Mode** (clients can view the terminal but cannot input or interact):
+  ```bash
+  ttyd -R -p 9000 tmux attach -t test
+  ```
+* **Bind to Localhost Only** (essential if running behind a reverse proxy like Nginx):
+  ```bash
+  ttyd -i 127.0.0.1 -p 9000 tmux attach -t test
+  ```
+* **Secure with SSL/TLS** (enable HTTPS directly):
+  ```bash
+  ttyd --ssl --ssl-cert cert.pem --ssl-key key.pem -p 9000 bash
+  ```
+* **Run a Specific Utility** (e.g., share a real-time monitor rather than a shell):
+  ```bash
+  ttyd -p 9000 htop
+  ```
+* **Custom Client/UI Options** (configure font size, cursor blink, etc.):
+  ```bash
+  ttyd -t fontSize=14 -t cursorBlink=true bash
+  ```
+
 ---
 
 ## Editors
