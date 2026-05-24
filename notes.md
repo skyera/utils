@@ -108,9 +108,9 @@ export TERM=xterm-256color
 Share a terminal or tmux session over the web.
 
 #### Basic Usage
-Start ttyd with basic authentication:
+Start ttyd with basic authentication and write access (allowing clients to type):
 ```bash
-ttyd -p 9000 -c admin:admin tmux attach -t test
+ttyd -W -p 9000 -c admin:admin tmux attach -t test
 ```
 
 To shut down `ttyd` (if running in the foreground, press `Ctrl+C`; otherwise kill the process):
@@ -118,18 +118,26 @@ To shut down `ttyd` (if running in the foreground, press `Ctrl+C`; otherwise kil
 killall ttyd
 ```
 
+#### Shared Collaborative Session
+To allow multiple clients (and you locally) to type and collaborate in the same tmux session:
+```bash
+ttyd -W tmux new -A -s test bash
+```
+
 #### Useful Options & Tips
-* **Read-Only Mode** (clients can view the terminal but cannot input or interact):
+* **Write Access** (essential as ttyd is readonly by default in v1.7.4+):
+  Use the `-W` or `--writable` flag to allow client input.
+* **Read-Only Mode** (explicitly disable input or omit `-W`):
   ```bash
-  ttyd -R -p 9000 tmux attach -t test
+  ttyd -p 9000 tmux attach -t test
   ```
 * **Bind to Localhost Only** (essential if running behind a reverse proxy like Nginx):
   ```bash
-  ttyd -i 127.0.0.1 -p 9000 tmux attach -t test
+  ttyd -W -i 127.0.0.1 -p 9000 tmux attach -t test
   ```
 * **Secure with SSL/TLS** (enable HTTPS directly):
   ```bash
-  ttyd --ssl --ssl-cert cert.pem --ssl-key key.pem -p 9000 bash
+  ttyd -W --ssl --ssl-cert cert.pem --ssl-key key.pem -p 9000 bash
   ```
 * **Run a Specific Utility** (e.g., share a real-time monitor rather than a shell):
   ```bash
@@ -137,7 +145,7 @@ killall ttyd
   ```
 * **Custom Client/UI Options** (configure font size, cursor blink, etc.):
   ```bash
-  ttyd -t fontSize=14 -t cursorBlink=true bash
+  ttyd -W -t fontSize=14 -t cursorBlink=true bash
   ```
 
 ---
