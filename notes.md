@@ -266,6 +266,13 @@ exa --tree
 
 ### fzf
 
+#### Keybindings
+* Ctrl + T — Fuzzy-find files
+* Ctrl + R — Fuzzy-search command history
+* Alt + C — Fuzzy cd into directory
+
+(These require fzf --key-bindings installed.)
+
 #### Shell Integration
 ```bash
 eval "$(fzf --bash)"
