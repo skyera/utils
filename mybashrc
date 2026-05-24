@@ -69,6 +69,11 @@ if $_IS_WINDOWS; then
 
     # mpv media player (run via winpty for Git Bash console compatibility)
     alias mpv='winpty /c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe'
+
+    # Enable native Windows symlinks in MSYS2/Git Bash.
+    # NOTE: Windows requires "Developer Mode" to be enabled for standard users to create symlinks.
+    # Enable it via: Windows Settings -> System -> For developers -> Toggle "Developer Mode" ON.
+    export MSYS="winsymlinks:nativestrict"
 fi
 
 # PATH
