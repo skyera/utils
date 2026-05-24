@@ -118,6 +118,12 @@ To shut down `ttyd` (if running in the foreground, press `Ctrl+C`; otherwise kil
 killall ttyd
 ```
 
+#### Startup Script
+A helper script is available under `bin/start_ttyd.sh`. It automatically checks if the `test` tmux session exists, creates it if it is missing, and starts `ttyd` as readonly:
+```bash
+./bin/start_ttyd.sh
+```
+
 #### Shared Collaborative Session
 To allow multiple clients (and you locally) to type and collaborate in the same tmux session:
 ```bash
