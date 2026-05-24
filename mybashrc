@@ -66,6 +66,9 @@ if $_IS_WINDOWS; then
     command -v python.exe >/dev/null 2>&1 && alias python='python.exe'
     command -v python3.exe >/dev/null 2>&1 && alias python3='python3.exe'
     command -v pip.exe >/dev/null 2>&1 && alias pip='pip.exe'
+
+    # mpv media player (run via winpty for Git Bash console compatibility)
+    alias mpv='winpty /c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe'
 fi
 
 # PATH
