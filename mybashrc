@@ -20,14 +20,18 @@ is_container && _IS_CONTAINER=true
 
 # Git configuration overrides for containers or old git versions
 # zdiff3 requires Git 2.35+
-_GIT_VERSION=$(git version | cut -d' ' -f3)
-_GIT_MAJOR=$(echo $_GIT_VERSION | cut -d. -f1)
-_GIT_MINOR=$(echo $_GIT_VERSION | cut -d. -f2)
-
-if [ "$_GIT_MAJOR" -lt 2 ] || { [ "$_GIT_MAJOR" -eq 2 ] && [ "$_GIT_MINOR" -lt 35 ]; }; then
-    _GIT_SUPPORTS_ZDIFF3=false
-else
+if $_IS_WINDOWS; then
     _GIT_SUPPORTS_ZDIFF3=true
+else
+    _GIT_VERSION=$(git version | cut -d' ' -f3)
+    _GIT_MAJOR=$(echo $_GIT_VERSION | cut -d. -f1)
+    _GIT_MINOR=$(echo $_GIT_VERSION | cut -d. -f2)
+
+    if [ "$_GIT_MAJOR" -lt 2 ] || { [ "$_GIT_MAJOR" -eq 2 ] && [ "$_GIT_MINOR" -lt 35 ]; }; then
+        _GIT_SUPPORTS_ZDIFF3=false
+    else
+        _GIT_SUPPORTS_ZDIFF3=true
+    fi
 fi
 
 if $_IS_CONTAINER || ! $_GIT_SUPPORTS_ZDIFF3; then

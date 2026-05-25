@@ -134,4 +134,24 @@ for f in "$REPO_DIR/bin/"*; do
     fi
 done
 
+# 4. Handle legacy Git versions (< 2.35.0) for 'zdiff3' compatibility
+if command -v git >/dev/null 2>&1; then
+    GIT_VER=$(git --version | awk '{print $3}' | grep -oE '^[0-9]+\.[0-9]+')
+    IFS='.' read -r major minor <<< "$GIT_VER"
+    
+    if [[ -n "$major" && -n "$minor" ]]; then
+        if [ "$major" -lt 2 ] || { [ "$major" -eq 2 ] && [ "$minor" -lt 35 ]; }; then
+            echo "Detected legacy Git version ($GIT_VER < 2.35) which does not support 'zdiff3'."
+            
+            # Ensure ~/.gitconfig.local has the fallback
+            if [ ! -f "$HOME/.gitconfig.local" ] || ! grep -q "conflictstyle" "$HOME/.gitconfig.local" 2>/dev/null; then
+                echo -e "\n[merge]\n\tconflictstyle = diff3" >> "$HOME/.gitconfig.local"
+                echo "Added legacy 'conflictstyle = diff3' fallback to ~/.gitconfig.local"
+            else
+                echo "~/.gitconfig.local already configured."
+            fi
+        fi
+    fi
+fi
+
 echo "Deployment complete! Please restart your shell or run 'source ~/.bashrc'."
