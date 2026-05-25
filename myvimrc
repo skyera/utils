@@ -5,7 +5,6 @@ set nocompatible
 filetype off
 
 call plug#begin()
-Plug 'flazz/vim-colorschemes'
 Plug 'tiagofumo/vim-nerdtree-syntax-highlight'
 Plug 'scrooloose/nerdtree'
 Plug 'vim-scripts/genutils'
