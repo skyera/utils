@@ -496,6 +496,19 @@ if ! $_IS_CONTAINER; then
     if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
         if [[ -n "$BASH_VERSION" ]]; then
             _git_switch_branch() { _git_checkout_branch "$@"; }
+            
+            # Ensure _completion_loader is defined on reload to prevent forgit completion errors
+            if ! declare -F _completion_loader >/dev/null 2>&1; then
+                if [ -f /usr/share/bash-completion/bash_completion ]; then
+                    source /usr/share/bash-completion/bash_completion
+                elif [ -f /etc/bash_completion ]; then
+                    source /etc/bash_completion
+                fi
+            fi
+            if ! declare -F _completion_loader >/dev/null 2>&1; then
+                _completion_loader() { :; }
+            fi
+
             [ -f "$PLUGINS_DIR/forgit/completions/git-forgit.bash" ] && source "$PLUGINS_DIR/forgit/completions/git-forgit.bash"
         elif [[ -n "$ZSH_VERSION" ]]; then
             [ -f "$PLUGINS_DIR/forgit/completions/_git-forgit" ] && source "$PLUGINS_DIR/forgit/completions/_git-forgit"
