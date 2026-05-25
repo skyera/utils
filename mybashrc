@@ -83,7 +83,11 @@ export PATH=$HOME/bin:$HOME/.local/share/forgit/bin:$PATH
 if [[ -z "$_EDITOR" ]]; then
     if command -v nvim >/dev/null 2>&1; then
         _EDITOR="nvim"
-        _NEOVIM_BIN=$(command -v nvim)
+        if $_IS_WINDOWS; then
+            _NEOVIM_BIN=$(command -v nvim.exe)
+        else
+            _NEOVIM_BIN=$(command -v nvim)
+        fi
     elif command -v vim >/dev/null 2>&1; then
         _EDITOR="vim"
     else
