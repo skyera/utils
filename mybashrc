@@ -86,11 +86,6 @@ export PATH=$HOME/bin:$HOME/.local/share/forgit/bin:$PATH
 if [[ -z "$_EDITOR" ]]; then
     if command -v nvim >/dev/null 2>&1; then
         _EDITOR="nvim"
-        if $_IS_WINDOWS; then
-            _NEOVIM_BIN=$(command -v nvim.exe)
-        else
-            _NEOVIM_BIN=$(command -v nvim)
-        fi
     elif command -v vim >/dev/null 2>&1; then
         _EDITOR="vim"
     else
@@ -99,6 +94,15 @@ if [[ -z "$_EDITOR" ]]; then
 fi
 export EDITOR="$_EDITOR"
 export VISUAL="$EDITOR"
+
+# Detect Neovim binary path if not already set (cached, fast builtin check)
+if [[ -z "$_NEOVIM_BIN" ]]; then
+    if $_IS_WINDOWS; then
+        _NEOVIM_BIN=$(command -v nvim.exe)
+    else
+        _NEOVIM_BIN=$(command -v nvim)
+    fi
+fi
 export NEOVIM_BIN="$_NEOVIM_BIN"
 
 # Tool configs
@@ -319,18 +323,24 @@ fstash() {
 
 # Remove Neovide alias if already defined in the current shell to prevent syntax errors during reload/sourcing
 unalias neovide 2>/dev/null
-if [[ -n "$NEOVIM_BIN" ]]; then
-    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
-        # Convert POSIX path to native Windows path for the native Neovide executable
-        # Defer cygpath call using a function to avoid subprocess spawn during shell startup
-        function neovide {
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    # Convert POSIX path to native Windows path for the native Neovide executable
+    # Defer cygpath call using a function to avoid subprocess spawn during shell startup
+    function neovide {
+        if [[ -n "$NEOVIM_BIN" ]]; then
             command neovide --neovim-bin "$(cygpath -w "$NEOVIM_BIN")" "$@"
-        }
-    else
-        function neovide {
+        else
+            command neovide "$@"
+        fi
+    }
+else
+    function neovide {
+        if [[ -n "$NEOVIM_BIN" ]]; then
             command neovide --neovim-bin "$NEOVIM_BIN" "$@"
-        }
-    fi
+        else
+            command neovide "$@"
+        fi
+    }
 fi
 if [[ -n "$BASH_VERSION" ]]; then
     alias reload='source ~/.bashrc'
