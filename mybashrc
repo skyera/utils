@@ -311,7 +311,12 @@ fstash() {
 # =============================================================================
 
 if [[ -n "$NEOVIM_BIN" ]]; then
-    alias neovide="neovide --neovim-bin $NEOVIM_BIN"
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+        # Convert POSIX path to native Windows path for the native Neovide executable
+        alias neovide="neovide --neovim-bin '$(cygpath -w "$NEOVIM_BIN")'"
+    else
+        alias neovide="neovide --neovim-bin '$NEOVIM_BIN'"
+    fi
 fi
 if [[ -n "$BASH_VERSION" ]]; then
     alias reload='source ~/.bashrc'
