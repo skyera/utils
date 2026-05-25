@@ -317,15 +317,17 @@ fstash() {
 # ALIASES
 # =============================================================================
 
+# Remove Neovide alias if already defined in the current shell to prevent syntax errors during reload/sourcing
+unalias neovide 2>/dev/null
 if [[ -n "$NEOVIM_BIN" ]]; then
     if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
         # Convert POSIX path to native Windows path for the native Neovide executable
         # Defer cygpath call using a function to avoid subprocess spawn during shell startup
-        neovide() {
+        function neovide {
             command neovide --neovim-bin "$(cygpath -w "$NEOVIM_BIN")" "$@"
         }
     else
-        neovide() {
+        function neovide {
             command neovide --neovim-bin "$NEOVIM_BIN" "$@"
         }
     fi
