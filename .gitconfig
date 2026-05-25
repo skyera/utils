@@ -5,6 +5,8 @@
 	editor = nvim
 	symlinks = true
 	longpaths = true
+	fscache = true
+	preloadindex = true
 	pager = sh -c 'command -v delta >/dev/null && delta || less'
 
 [interactive]
