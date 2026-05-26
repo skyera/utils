@@ -65,10 +65,10 @@ if $_IS_WINDOWS; then
     command -v vim.exe >/dev/null 2>&1 && alias vim='vim.exe'
     alias vi='nvim'
 
-    # Use Windows-installed Python if available
-    command -v python.exe >/dev/null 2>&1 && alias python='python.exe'
-    command -v python3.exe >/dev/null 2>&1 && alias python3='python3.exe'
-    command -v pip.exe >/dev/null 2>&1 && alias pip='pip.exe'
+    # Use Windows-installed Python if available (wrapped in winpty for Git Bash console compatibility)
+    command -v python.exe >/dev/null 2>&1 && alias python='winpty python.exe'
+    command -v python3.exe >/dev/null 2>&1 && alias python3='winpty python3.exe'
+    command -v pip.exe >/dev/null 2>&1 && alias pip='winpty pip.exe'
 
     # mpv media player (run via winpty for Git Bash console compatibility)
     alias mpv='winpty /c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe'
