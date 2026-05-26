@@ -154,4 +154,81 @@ if command -v git >/dev/null 2>&1; then
     fi
 fi
 
+# 5. Install missing plugins and tools (TPM, fonts, fzf-git.sh, forgit, ranger_devicons)
+echo "Installing shell plugins and fonts..."
+IS_WINDOWS=false
+[[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]] && IS_WINDOWS=true
+
+if ! $IS_WINDOWS; then
+    # Install vim-plug if missing
+    if [ ! -f "$HOME/.vim/autoload/plug.vim" ]; then
+        echo "Installing vim-plug for Vim..."
+        curl -fLo "$HOME/.vim/autoload/plug.vim" --create-dirs \
+            https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    fi
+
+    if [ ! -f "$HOME/.local/share/nvim/site/autoload/plug.vim" ]; then
+        echo "Installing vim-plug for Neovim..."
+        curl -fLo "$HOME/.local/share/nvim/site/autoload/plug.vim" --create-dirs \
+            https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    fi
+
+    # Install TPM (Tmux Plugin Manager) if missing
+    if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
+        echo "Installing TPM for Tmux..."
+        git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+    fi
+fi
+
+# Install Hack Nerd Font variations if missing
+if [[ "$OSTYPE" == darwin* ]]; then
+    if [ ! -f "$HOME/Library/Fonts/HackNerdFont-Regular.ttf" ] && \
+       [ ! -f "$HOME/Library/Fonts/Hack Nerd Font Complete.ttf" ]; then
+        if command -v brew >/dev/null 2>&1; then
+            echo "Installing Hack Nerd Font via Homebrew..."
+            brew install --cask font-hack-nerd-font
+        fi
+    fi
+elif [[ "$OSTYPE" == linux* ]]; then
+    if [ ! -f "$HOME/.local/share/fonts/HackNerdFont-Regular.ttf" ]; then
+        echo "Installing all Hack Nerd Font variations..."
+        mkdir -p "$HOME/.local/share/fonts"
+        BASE_URL="https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack"
+        for style in "" "Mono" "Propo"; do
+            for weight in "Regular" "Bold" "Italic" "BoldItalic"; do
+                FILE="HackNerdFont${style}-${weight}.ttf"
+                curl -sfLo "$HOME/.local/share/fonts/$FILE" "$BASE_URL/${weight}/$FILE"
+            done
+        done
+        command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$HOME/.local/share/fonts"
+    fi
+fi
+
+PLUGINS_DIR="$HOME/.local/share"
+mkdir -p "$PLUGINS_DIR"
+
+install_plugin() {
+    local repo=$1
+    local name
+    name=$(basename "$repo")
+    local dir="$PLUGINS_DIR/$name"
+    if [ ! -d "$dir" ]; then
+        echo "Installing $repo..."
+        git clone --depth 1 "https://github.com/$repo.git" "$dir"
+    fi
+}
+
+install_plugin "junegunn/fzf-git.sh"
+install_plugin "wfxr/forgit"
+
+# Ranger Plugins
+if ! $IS_WINDOWS; then
+    RANGER_PLUGIN_DIR="$HOME/.config/ranger/plugins"
+    if [ ! -d "$RANGER_PLUGIN_DIR/ranger_devicons" ]; then
+        echo "Installing ranger_devicons..."
+        mkdir -p "$RANGER_PLUGIN_DIR"
+        git clone --depth 1 https://github.com/alexanderjeurissen/ranger_devicons "$RANGER_PLUGIN_DIR/ranger_devicons"
+    fi
+fi
+
 echo "Deployment complete! Please restart your shell or run 'source ~/.bashrc'."
