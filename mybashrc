@@ -80,7 +80,9 @@ if $_IS_WINDOWS; then
 fi
 
 # PATH
-export PATH=$HOME/bin:$HOME/.local/share/forgit/bin:$PATH
+# Safely add to PATH without creating duplicate entries upon sourcing/reloading
+[[ ":$PATH:" != *":$HOME/bin:"* ]] && export PATH="$HOME/bin:$PATH"
+[[ ":$PATH:" != *":$HOME/.local/share/forgit/bin:"* ]] && export PATH="$HOME/.local/share/forgit/bin:$PATH"
 
 # Editor & Tool detection (cached)
 if [[ -z "$_EDITOR" ]]; then
@@ -107,8 +109,34 @@ export NEOVIM_BIN="$_NEOVIM_BIN"
 
 # Tool configs
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
-export CPLUS_INCLUDE_PATH="$HOME/test/doctest/doctest:$HOME/test/nanobench/src/include:$HOME/test/FakeIt/single_header/doctest:$HOME/test/json/single_include:$HOME/test/stb:$HOME/test/LuaBridge/Source:$HOME/test/luajit/src:$CPLUS_INCLUDE_PATH"
-export LIBRARY_PATH="$HOME/test/luajit/src:$LIBRARY_PATH"
+# Safely prepend include and library paths without duplicates or trailing colons
+_add_path_to_var() {
+    local var_name="$1"
+    local dir_path="$2"
+    eval "local current_val=\$$var_name"
+    if [[ ":$current_val:" != *":$dir_path:"* ]]; then
+        if [[ -z "$current_val" ]]; then
+            eval "export $var_name=\"$dir_path\""
+        else
+            eval "export $var_name=\"$dir_path:$current_val\""
+        fi
+    fi
+}
+
+for _p in "$HOME/test/doctest/doctest" \
+          "$HOME/test/nanobench/src/include" \
+          "$HOME/test/FakeIt/single_header/doctest" \
+          "$HOME/test/json/single_include" \
+          "$HOME/test/stb" \
+          "$HOME/test/LuaBridge/Source" \
+          "$HOME/test/luajit/src"; do
+    _add_path_to_var CPLUS_INCLUDE_PATH "$_p"
+done
+
+_add_path_to_var LIBRARY_PATH "$HOME/test/luajit/src"
+
+unset -f _add_path_to_var
+unset _p
 
 # Terminal & Display
 [[ -z "$TMUX" ]] && export TERM=xterm-256color
