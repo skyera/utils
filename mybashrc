@@ -161,10 +161,37 @@ export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude .g
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --strip-cwd-prefix --exclude .git"
 
-show_file_or_dir_preview="if [ -d {} ]; then eza --tree --icons=always --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
+# Check tool availability for robust, cross-platform previews
+_HAS_EZA=false && command -v eza >/dev/null 2>&1 && _HAS_EZA=true
+_HAS_BAT=false && command -v bat >/dev/null 2>&1 && _HAS_BAT=true
+
+if $_HAS_EZA && $_HAS_BAT; then
+    show_file_or_dir_preview="if [ -d {} ]; then eza --tree --icons=always --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
+    _eza_preview='eza --tree --icons=always --color=always {} | head -200'
+    _bat_preview='bat --style=numbers --color=always {1}'
+elif $_HAS_EZA; then
+    show_file_or_dir_preview="if [ -d {} ]; then eza --tree --icons=always --color=always {} | head -200; else head -500 {}; fi"
+    _eza_preview='eza --tree --icons=always --color=always {} | head -200'
+    _bat_preview='head -500 {1}'
+elif $_HAS_BAT; then
+    show_file_or_dir_preview="if [ -d {} ]; then ls -R {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
+    _eza_preview='ls -R {} | head -200'
+    _bat_preview='bat --style=numbers --color=always {1}'
+else
+    show_file_or_dir_preview="if [ -d {} ]; then ls -R {} | head -200; else head -500 {}; fi"
+    _eza_preview='ls -R {} | head -200'
+    _bat_preview='head -500 {1}'
+fi
+
+if command -v delta >/dev/null 2>&1; then
+    _delta_preview="git stash show -p {1} | delta"
+else
+    _delta_preview="git stash show -p {1}"
+fi
+
 export FZF_DEFAULT_OPTS="--preview '$show_file_or_dir_preview'"
 export FZF_CTRL_T_OPTS="--preview '$show_file_or_dir_preview'"
-export FZF_ALT_C_OPTS="--preview 'eza --tree --icons=always --color=always {} | head -200'"
+export FZF_ALT_C_OPTS="--preview '$_eza_preview'"
 export FZF_CTRL_R_OPTS="--sort --exact --preview 'echo {}'"
 
 _fzf_compgen_path() { fd --hidden --exclude .git "$1"; }
@@ -173,7 +200,7 @@ _fzf_compgen_dir() { fd --type=d --hidden --exclude .git "$1"; }
 _fzf_comprun() {
     local command=$1; shift
     case "$command" in
-        cd) fzf --preview 'eza --tree --color=always {} | head -200' "$@" ;;
+        cd) fzf --preview "$_eza_preview" "$@" ;;
         export|unset) fzf --preview "eval 'echo ${}'" "$@" ;;
         ssh) fzf --preview 'dig {}' "$@" ;;
         *) fzf --preview "$show_file_or_dir_preview" "$@" ;;
@@ -186,7 +213,7 @@ _fzf_comprun() {
 
 fcd() {
     local dir
-    dir=$(fd -t d | fzf --preview 'eza --tree --icons=always --color=always {} | head -200') && cd "$dir"
+    dir=$(fd -t d | fzf --preview "$_eza_preview") && cd "$dir"
 }
 
 fvim() {
@@ -253,7 +280,7 @@ frg() {
     results="$(
         rg --smart-case --no-ignore-vcs --line-number --no-heading "$pattern" |
         fzf --multi --delimiter : \
-            --preview 'bat --style=numbers --color=always {1}' \
+            --preview "$_bat_preview" \
             --preview-window=right:60%
     )" || return
 
@@ -327,7 +354,7 @@ fstash() {
         git stash list --pretty="%C(yellow)%h %C(magenta)%ad %C(reset)%s" --date=short |
         fzf --ansi --no-sort --query="$q" --print-query \
             --expect=ctrl-d,ctrl-b --header="[Stash] Enter:apply, Ctrl-d:drop, Ctrl-b:pop" \
-            --preview="git stash show -p {1} | delta"
+            --preview "$_delta_preview"
     ); do
         mapfile -t out <<< "$out"
         q="${out[0]}"
