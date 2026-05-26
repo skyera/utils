@@ -379,25 +379,17 @@ fstash() {
 
 # Remove Neovide alias if already defined in the current shell to prevent syntax errors during reload/sourcing
 unalias neovide 2>/dev/null
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
-    # Convert POSIX path to native Windows path for the native Neovide executable
-    # Defer cygpath call using a function to avoid subprocess spawn during shell startup
-    function neovide {
-        if [[ -n "$NEOVIM_BIN" ]]; then
-            command neovide --neovim-bin "$(cygpath -w "$NEOVIM_BIN")" "$@"
-        else
-            command neovide "$@"
+neovide() {
+    if [[ -n "$NEOVIM_BIN" ]]; then
+        local nvim_path="$NEOVIM_BIN"
+        if $_IS_WINDOWS; then
+            nvim_path=$(cygpath -w "$NEOVIM_BIN")
         fi
-    }
-else
-    function neovide {
-        if [[ -n "$NEOVIM_BIN" ]]; then
-            command neovide --neovim-bin "$NEOVIM_BIN" "$@"
-        else
-            command neovide "$@"
-        fi
-    }
-fi
+        command neovide --neovim-bin "$nvim_path" "$@"
+    else
+        command neovide "$@"
+    fi
+}
 if [[ -n "$BASH_VERSION" ]]; then
     alias reload='source ~/.bashrc'
 elif [[ -n "$ZSH_VERSION" ]]; then
