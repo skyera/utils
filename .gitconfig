@@ -38,6 +38,7 @@
 	files = ls-files
 	grep = grep --line-number
 	bd = branch -d
+	dm = !git branch --merged | grep -v '\\*' | grep -v 'master' | grep -v 'main' | xargs -r git branch -d
 	tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit
 	recent = for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'
 
