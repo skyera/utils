@@ -27,6 +27,7 @@
 	d = diff
 	dt = difftool
 	dtd = difftool --dir-diff
+	gsu = submodule update --init --recursive -f
 	mt = mergetool
 	lo = log --pretty=format:'%C(yellow)%h %C(cyan)%ad %Creset%s' --date=short
 	du = diff @{u}
