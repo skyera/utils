@@ -71,7 +71,7 @@
 	autoStash = true
 
 [merge]
-	tool = vimdiff
+	tool = nvimdiff
 	conflictstyle = zdiff3
 
 [mergetool]
@@ -79,7 +79,13 @@
 
 [difftool]
 	prompt = false
-	tool = vimdiff
+	tool = nvimdiff
+
+[difftool "nvimdiff"]
+	cmd = nvim -d --noplugin "$LOCAL" "$REMOTE"
+
+[mergetool "nvimdiff"]
+	cmd = nvim -d --noplugin "$LOCAL" "$BASE" "$REMOTE" "$MERGED" -c 'wincmd J'
 
 [mergetool "vimdiff"]
 	layout = "(LOCAL,BASE,REMOTE)/MERGED"
