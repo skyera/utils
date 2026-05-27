@@ -525,6 +525,9 @@ git reset --hard
 # move branch tip to commit, delete all commits after it
 git reset --hard <commit>
 
+# reset current branch to match its remote tracking branch without typing the branch name
+git reset --hard @{u}
+
 # recover from submodule issues
 git clean -fd
 git checkout -f <branch>
