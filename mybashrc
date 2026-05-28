@@ -143,6 +143,92 @@ unset _p
 export PROMPT_DIRTRIM=2
 export LIBGL_ALWAYS_SOFTWARE=1
 
+# =============================================================================
+# PROMPT CONFIGURATION (Git-Aware & Colorized)
+# =============================================================================
+if [[ -n "$BASH_VERSION" ]]; then
+    # Load git-sh-prompt if available
+    if ! declare -F __git_ps1 >/dev/null 2>&1; then
+        for _prompt_script in "/usr/lib/git-core/git-sh-prompt" \
+                              "/usr/share/git-core/git-sh-prompt" \
+                              "/etc/bash_completion.d/git-prompt"; do
+            if [ -f "$_prompt_script" ]; then
+                source "$_prompt_script"
+                break
+            fi
+        done
+    fi
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        # Configure Git prompt features
+        export GIT_PS1_SHOWDIRTYSTATE=true       # '*' for unstaged, '+' for staged changes
+        export GIT_PS1_SHOWSTASHSTATE=true       # '$' if stash exists
+        export GIT_PS1_SHOWUNTRACKEDFILES=true   # '%' if untracked files exist
+        export GIT_PS1_SHOWUPSTREAM="auto"       # '<', '>', '=', '<>' compared to upstream
+        export GIT_PS1_STATESEPARATOR=" "
+        
+        _set_bash_prompt() {
+            local exit_code=$?
+            local red="\[\033[01;31m\]"
+            local green="\[\033[01;32m\]"
+            local teal="\[\033[01;36m\]"
+            local violet="\[\033[01;35m\]"
+            local reset="\[\033[00m\]"
+            
+            local status_indicator=""
+            if [ $exit_code -ne 0 ]; then
+                status_indicator="${red}[$exit_code] ${reset}"
+            fi
+            
+            # Format: [exit_code] user@host:path (branch_status) $
+            local git_info
+            git_info=$(__git_ps1 " (%s)")
+            
+            PS1="${status_indicator}${green}\u@\h${reset}:${teal}\w${violet}${git_info}${reset}\$ "
+        }
+        PROMPT_COMMAND="_set_bash_prompt"
+    else
+        # Fallback premium prompt if __git_ps1 is unavailable
+        _set_bash_fallback_prompt() {
+            local exit_code=$?
+            local red="\[\033[01;31m\]"
+            local green="\[\033[01;32m\]"
+            local teal="\[\033[01;36m\]"
+            local violet="\[\033[01;35m\]"
+            local reset="\[\033[00m\]"
+            
+            local status_indicator=""
+            if [ $exit_code -ne 0 ]; then
+                status_indicator="${red}[$exit_code] ${reset}"
+            fi
+            
+            local branch=""
+            if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+                branch=" ($(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))"
+            fi
+            
+            PS1="${status_indicator}${green}\u@\h${reset}:${teal}\w${violet}${branch}${reset}\$ "
+        }
+        PROMPT_COMMAND="_set_bash_fallback_prompt"
+    fi
+
+elif [[ -n "$ZSH_VERSION" ]]; then
+    # Zsh built-in Git integration (vcs_info)
+    autoload -Uz vcs_info
+    precmd_vcs_info() { vcs_info; }
+    precmd_functions+=(precmd_vcs_info)
+    
+    zstyle ':vcs_info:*' enable git
+    zstyle ':vcs_info:git:*' formats ' (%b)'
+    zstyle ':vcs_info:git:*' actionformats ' (%b|%a)'
+    
+    setopt prompt_subst
+    
+    # Premium styled prompt for Zsh
+    PROMPT='%(?..%F{red}[%?] %f)%F{green}%n@%m%f:%F{cyan}%~%f%F{magenta}${vcs_info_msg_0_}%f %# '
+fi
+
+
 # History (shell-agnostic)
 export HISTSIZE=10000
 export HISTFILESIZE=20000
