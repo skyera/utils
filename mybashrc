@@ -22,9 +22,11 @@ is_container && _IS_CONTAINER=true
 if $_IS_WINDOWS; then
     _GIT_SUPPORTS_ZDIFF3=true
 else
-    _GIT_VERSION=$(git version | cut -d' ' -f3)
-    _GIT_MAJOR=$(echo $_GIT_VERSION | cut -d. -f1)
-    _GIT_MINOR=$(echo $_GIT_VERSION | cut -d. -f2)
+    _GIT_VERSION=$(git version 2>/dev/null)
+    _GIT_VERSION=${_GIT_VERSION#git version }
+    IFS='.' read -r _GIT_MAJOR _GIT_MINOR _rest <<< "$_GIT_VERSION"
+    _GIT_MAJOR=${_GIT_MAJOR:-0}
+    _GIT_MINOR=${_GIT_MINOR:-0}
 
     if [ "$_GIT_MAJOR" -lt 2 ] || { [ "$_GIT_MAJOR" -eq 2 ] && [ "$_GIT_MINOR" -lt 35 ]; }; then
         _GIT_SUPPORTS_ZDIFF3=false
