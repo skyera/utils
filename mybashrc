@@ -146,12 +146,27 @@ export LIBGL_ALWAYS_SOFTWARE=1
 # =============================================================================
 # PROMPT CONFIGURATION (Git-Aware & Colorized)
 # =============================================================================
+
+# Cached tool check for fallback prompt
+_HAS_GIT=false && command -v git >/dev/null 2>&1 && _HAS_GIT=true
+
+# Unicode check to choose a modern chevron or classic fallback
+_PROMPT_CHAR="\$"
+if [[ "$LANG" == *".UTF-8"* || "$LANG" == *".utf8"* || "$LC_ALL" == *".UTF-8"* ]]; then
+    _PROMPT_CHAR="❯"
+fi
+
 if [[ -n "$BASH_VERSION" ]]; then
     # Load git-sh-prompt if available
     if ! declare -F __git_ps1 >/dev/null 2>&1; then
         for _prompt_script in "/usr/lib/git-core/git-sh-prompt" \
                               "/usr/share/git-core/git-sh-prompt" \
-                              "/etc/bash_completion.d/git-prompt"; do
+                              "/etc/bash_completion.d/git-prompt" \
+                              "/opt/homebrew/etc/bash_completion.d/git-prompt.sh" \
+                              "/usr/local/etc/bash_completion.d/git-prompt.sh" \
+                              "/Library/Developer/CommandLineTools/usr/share/git-core/git-sh-prompt" \
+                              "/etc/profile.d/git-prompt.sh" \
+                              "/mingw64/share/git/completion/git-prompt.sh"; do
             if [ -f "$_prompt_script" ]; then
                 source "$_prompt_script"
                 break
@@ -167,12 +182,14 @@ if [[ -n "$BASH_VERSION" ]]; then
         export GIT_PS1_SHOWUPSTREAM="auto"       # '<', '>', '=', '<>' compared to upstream
         export GIT_PS1_STATESEPARATOR=" "
         
-        _set_bash_prompt() {
+        _set_bash_prompt_vars() {
             local exit_code=$?
-            local red="\[\033[01;31m\]"
-            local green="\[\033[01;32m\]"
-            local teal="\[\033[01;36m\]"
-            local violet="\[\033[01;35m\]"
+            # Curated modern pastel palette (using 256-color modes)
+            local red="\[\033[38;5;203m\]"
+            local mint="\[\033[38;5;85m\]"
+            local sky="\[\033[38;5;117m\]"
+            local lavender="\[\033[38;5;141m\]"
+            local amber="\[\033[38;5;214m\]"
             local reset="\[\033[00m\]"
             
             local status_indicator=""
@@ -180,21 +197,21 @@ if [[ -n "$BASH_VERSION" ]]; then
                 status_indicator="${red}[$exit_code] ${reset}"
             fi
             
-            # Format: [exit_code] user@host:path (branch_status) $
-            local git_info
-            git_info=$(__git_ps1 " (%s)")
-            
-            PS1="${status_indicator}${green}\u@\h${reset}:${teal}\w${violet}${git_info}${reset}\$ "
+            _PRE="${status_indicator}${mint}\u@\h${reset}:${sky}\w"
+            _POST=" ${amber}${_PROMPT_CHAR}${reset} "
+            _FORMAT="${lavender} (%s)"
+            return $exit_code
         }
-        PROMPT_COMMAND="_set_bash_prompt"
+        PROMPT_COMMAND='_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"'
     else
         # Fallback premium prompt if __git_ps1 is unavailable
         _set_bash_fallback_prompt() {
             local exit_code=$?
-            local red="\[\033[01;31m\]"
-            local green="\[\033[01;32m\]"
-            local teal="\[\033[01;36m\]"
-            local violet="\[\033[01;35m\]"
+            local red="\[\033[38;5;203m\]"
+            local mint="\[\033[38;5;85m\]"
+            local sky="\[\033[38;5;117m\]"
+            local lavender="\[\033[38;5;141m\]"
+            local amber="\[\033[38;5;214m\]"
             local reset="\[\033[00m\]"
             
             local status_indicator=""
@@ -203,11 +220,12 @@ if [[ -n "$BASH_VERSION" ]]; then
             fi
             
             local branch=""
-            if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-                branch=" ($(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))"
+            if $_HAS_GIT && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+                branch="${lavender} ($(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))"
             fi
             
-            PS1="${status_indicator}${green}\u@\h${reset}:${teal}\w${violet}${branch}${reset}\$ "
+            PS1="${status_indicator}${mint}\u@\h${reset}:${sky}\w${branch} ${amber}${_PROMPT_CHAR}${reset} "
+            return $exit_code
         }
         PROMPT_COMMAND="_set_bash_fallback_prompt"
     fi
@@ -219,13 +237,48 @@ elif [[ -n "$ZSH_VERSION" ]]; then
     precmd_functions+=(precmd_vcs_info)
     
     zstyle ':vcs_info:*' enable git
-    zstyle ':vcs_info:git:*' formats ' (%b)'
-    zstyle ':vcs_info:git:*' actionformats ' (%b|%a)'
+    zstyle ':vcs_info:*' check-for-changes true
+    zstyle ':vcs_info:git:*' formats ' (%b%u%c%m)'
+    zstyle ':vcs_info:git:*' actionformats ' (%b|%a%u%c%m)'
+    zstyle ':vcs_info:git:*' unstagedstr '*'
+    zstyle ':vcs_info:git:*' stagedstr '+'
+
+    # Zsh vcs_info hooks to check for untracked files, stashes, and upstream status
+    +vi-git-untracked() {
+        if git status --porcelain 2>/dev/null | grep -q '^\?\?'; then
+            hook_com[unstaged]+='%'
+        fi
+    }
+
+    +vi-git-stash() {
+        if git rev-parse --verify refs/stash >/dev/null 2>&1; then
+            hook_com[misc]+='$'
+        fi
+    }
+
+    +vi-git-upstream() {
+        local count
+        if count=$(git rev-list --left-right --count HEAD...@{upstream} 2>/dev/null); then
+            local ahead behind
+            read -r ahead behind <<<"$count"
+            local upstream_status=""
+            if (( ahead > 0 && behind > 0 )); then
+                upstream_status="<>"
+            elif (( ahead > 0 )); then
+                upstream_status=">"
+            elif (( behind > 0 )); then
+                upstream_status="<"
+            fi
+            [[ -n "$upstream_status" ]] && hook_com[misc]+=" $upstream_status"
+        fi
+    }
+    
+    zstyle ':vcs_info:git*+set-message:*' hooks git-upstream git-stash git-untracked
     
     setopt prompt_subst
     
-    # Premium styled prompt for Zsh
-    PROMPT='%(?..%F{red}[%?] %f)%F{green}%n@%m%f:%F{cyan}%~%f%F{magenta}${vcs_info_msg_0_}%f %# '
+    # Premium styled prompt for Zsh with curated colors
+    PROMPT='%(?..%F{203}[%?] %f)%F{85}%n@%m%f:%F{117}%~%f%F{141}${vcs_info_msg_0_}%f %F{214}$_PROMPT_CHAR%f '
 fi
 
 
