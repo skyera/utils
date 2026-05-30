@@ -151,6 +151,9 @@ export LIBGL_ALWAYS_SOFTWARE=1
 # PROMPT CONFIGURATION (Git-Aware & Colorized)
 # =============================================================================
 
+# Disable Conda's default unstyled PS1 prefix injection
+export CONDA_CHANGEPS1=false
+
 # Cached tool check for fallback prompt
 _HAS_GIT=false && command -v git >/dev/null 2>&1 && _HAS_GIT=true
 
@@ -194,6 +197,7 @@ if [[ -n "$BASH_VERSION" ]]; then
             local sky="\[\033[38;5;117m\]"
             local lavender="\[\033[38;5;141m\]"
             local amber="\[\033[38;5;214m\]"
+            local soft_green="\[\033[38;5;120m\]"
             local reset="\[\033[00m\]"
             
             local status_indicator=""
@@ -201,7 +205,12 @@ if [[ -n "$BASH_VERSION" ]]; then
                 status_indicator="${red}[$exit_code] ${reset}"
             fi
             
-            _PRE="${status_indicator}${mint}\u@\h${reset}:${sky}\w"
+            local conda_env=""
+            if [[ -n "$CONDA_DEFAULT_ENV" && "$CONDA_DEFAULT_ENV" != "base" ]]; then
+                conda_env="${soft_green}(${CONDA_DEFAULT_ENV}) ${reset}"
+            fi
+            
+            _PRE="${status_indicator}${conda_env}${mint}\u@\h${reset}:${sky}\w"
             _POST=" ${amber}${_PROMPT_CHAR}${reset} "
             _FORMAT="${lavender} (%s)"
             return $exit_code
@@ -216,6 +225,7 @@ if [[ -n "$BASH_VERSION" ]]; then
             local sky="\[\033[38;5;117m\]"
             local lavender="\[\033[38;5;141m\]"
             local amber="\[\033[38;5;214m\]"
+            local soft_green="\[\033[38;5;120m\]"
             local reset="\[\033[00m\]"
             
             local status_indicator=""
@@ -223,12 +233,17 @@ if [[ -n "$BASH_VERSION" ]]; then
                 status_indicator="${red}[$exit_code] ${reset}"
             fi
             
+            local conda_env=""
+            if [[ -n "$CONDA_DEFAULT_ENV" && "$CONDA_DEFAULT_ENV" != "base" ]]; then
+                conda_env="${soft_green}(${CONDA_DEFAULT_ENV}) ${reset}"
+            fi
+            
             local branch=""
             if $_HAS_GIT && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
                 branch="${lavender} ($(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))"
             fi
             
-            PS1="${status_indicator}${mint}\u@\h${reset}:${sky}\w${branch} ${amber}${_PROMPT_CHAR}${reset} "
+            PS1="${status_indicator}${conda_env}${mint}\u@\h${reset}:${sky}\w${branch} ${amber}${_PROMPT_CHAR}${reset} "
             return $exit_code
         }
         PROMPT_COMMAND="_set_bash_fallback_prompt"
@@ -281,8 +296,15 @@ elif [[ -n "$ZSH_VERSION" ]]; then
     
     setopt prompt_subst
     
+    # Dynamic Conda environment indicator for Zsh
+    _zsh_conda_prompt() {
+        if [[ -n "$CONDA_DEFAULT_ENV" && "$CONDA_DEFAULT_ENV" != "base" ]]; then
+            echo "%F{120}(${CONDA_DEFAULT_ENV}) %f"
+        fi
+    }
+    
     # Premium styled prompt for Zsh with curated colors
-    PROMPT='%(?..%F{203}[%?] %f)%F{85}%n@%m%f:%F{117}%~%f%F{141}${vcs_info_msg_0_}%f %F{214}$_PROMPT_CHAR%f '
+    PROMPT='%(?..%F{203}[%?] %f)$(_zsh_conda_prompt)%F{85}%n@%m%f:%F{117}%~%f%F{141}${vcs_info_msg_0_}%f %F{214}$_PROMPT_CHAR%f '
 fi
 
 
