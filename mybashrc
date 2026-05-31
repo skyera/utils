@@ -691,3 +691,68 @@ if ! $_IS_CONTAINER; then
 fi
 
 alias gsu='git submodule update --init --recursive -f'
+
+# Select 2 directories and pass them as environment variables to tmuxp to load dev with a custom session name
+txp() {
+    local repos_dir
+    local container_dir
+    local session_name
+
+    if [ "$#" -ge 2 ]; then
+        repos_dir="$1"
+        container_dir="$2"
+        session_name="$3"
+    else
+        echo "Select REPOS_DIR:"
+        repos_dir=$(find /home/zliu/test -mindepth 1 -maxdepth 2 -type d -not -path '*/.*' 2>/dev/null | fzf --prompt="REPOS_DIR> ")
+        if [ -z "$repos_dir" ]; then
+            echo "Cancelled selecting REPOS_DIR"
+            return 1
+        fi
+        echo "Selected REPOS_DIR: $repos_dir"
+
+        echo "Select CONTAINER_DIR:"
+        container_dir=$(find /home/zliu/test -mindepth 1 -maxdepth 2 -type d -not -path '*/.*' 2>/dev/null | fzf --prompt="CONTAINER_DIR> ")
+        if [ -z "$container_dir" ]; then
+            echo "Cancelled selecting CONTAINER_DIR"
+            return 1
+        fi
+        echo "Selected CONTAINER_DIR: $container_dir"
+    fi
+
+    # Verify both directories exist
+    if [ ! -d "$repos_dir" ]; then
+        echo "Error: $repos_dir is not a directory."
+        return 1
+    fi
+    if [ ! -d "$container_dir" ]; then
+        echo "Error: $container_dir is not a directory."
+        return 1
+    fi
+
+    # Determine default session name from repos_dir basename
+    local default_name
+    default_name=$(basename "$repos_dir")
+
+    if [ -z "$session_name" ]; then
+        if [ "$#" -ge 2 ]; then
+            session_name="$default_name"
+        else
+            read -e -p "Enter session name (default: $default_name): " session_name
+            session_name="${session_name:-$default_name}"
+        fi
+    fi
+
+    # Sanitize session name for tmux (remove illegal characters like dots and colons)
+    session_name=$(echo "$session_name" | tr -d '.:')
+
+    # Export variables for tmuxp
+    export REPOS_DIR="$repos_dir"
+    export CONTAINER_DIR="$container_dir"
+
+    # Start tmuxp with the custom session name
+    echo "Loading tmuxp session: $session_name"
+    tmuxp load dev -s "$session_name"
+}
+
+

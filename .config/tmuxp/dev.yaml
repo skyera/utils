@@ -1,0 +1,33 @@
+# /home/zliu/.config/tmuxp/dev.yaml
+
+session_name: dev
+start_directory: $REPOS_DIR
+
+environment:
+  REPOS_DIR: $REPOS_DIR
+  CONTAINER_DIR: $CONTAINER_DIR
+
+windows:
+  - window_name: code
+    panes:
+      - shell_command: cd "$REPOS_DIR"
+  - window_name: make
+    layout: even-vertical
+    panes:
+      - shell_command: cd "$REPOS_DIR"
+      - shell_command: cd "$CONTAINER_DIR"
+  - window_name: scripts
+    panes:
+      - shell_command:
+          - cd "$REPOS_DIR"
+          - ls
+  - window_name: lsa
+    panes:
+      - shell_command:
+          - cd "$REPOS_DIR"
+          - pwd
+  - window_name: AI
+    panes:
+      - shell_command:
+          - cd "$REPOS_DIR"
+          - echo "AI"
