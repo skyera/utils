@@ -2,6 +2,15 @@
 # ENVIRONMENT
 # =============================================================================
 
+# Configuration options for prompt selection
+SH_PROMPT_STYLE=${SH_PROMPT_STYLE:-"custom"} # options: "custom" or "oh-my-bash"
+OSH_THEME=${OSH_THEME:-"font"}             # oh-my-bash theme to use
+
+# Customize what oh-my-bash loads when active:
+OMB_PLUGINS=${OMB_PLUGINS:-"git bash-preexec"}
+OMB_ALIASES=${OMB_ALIASES:-"general"}
+OMB_COMPLETIONS=${OMB_COMPLETIONS:-"git npm pip"}
+
 # System detection (avoiding uname subprocess call which is slow on Windows/Git Bash)
 _IS_WINDOWS=false
 [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]] && _IS_WINDOWS=true
@@ -163,6 +172,30 @@ if [[ "$LANG" == *".UTF-8"* || "$LANG" == *".utf8"* || "$LC_ALL" == *".UTF-8"* ]
     _PROMPT_CHAR="❯"
 fi
 
+if [[ "$SH_PROMPT_STYLE" == "oh-my-bash" && -n "$BASH_VERSION" ]]; then
+    export OSH=$HOME/.oh-my-bash
+    if [ ! -d "$OSH" ]; then
+        if command -v git >/dev/null 2>&1; then
+            echo -e "\033[32m[mybashrc] ~/.oh-my-bash not found. Automatically cloning oh-my-bash...\033[0m"
+            git clone --depth=1 https://github.com/ohmybash/oh-my-bash.git "$OSH"
+        else
+            echo -e "\033[31m[mybashrc] Error: git is required to download oh-my-bash.\033[0m"
+        fi
+    fi
+    
+    if [ -f "$OSH/oh-my-bash.sh" ]; then
+        # Map our config to oh-my-bash expected arrays
+        plugins=($OMB_PLUGINS)
+        aliases=($OMB_ALIASES)
+        completions=($OMB_COMPLETIONS)
+        source "$OSH/oh-my-bash.sh"
+    else
+        echo -e "\033[33m[mybashrc] Note: oh-my-bash could not be loaded. Falling back to custom prompt.\033[0m"
+        SH_PROMPT_STYLE="custom"
+    fi
+fi
+
+if [[ "$SH_PROMPT_STYLE" == "custom" ]]; then
 if [[ -n "$BASH_VERSION" ]]; then
     # Load git-sh-prompt if available
     if ! declare -F __git_ps1 >/dev/null 2>&1; then
@@ -306,6 +339,7 @@ elif [[ -n "$ZSH_VERSION" ]]; then
     # Premium styled prompt for Zsh with curated colors
     PROMPT='%(?..%F{203}[%?] %f)$(_zsh_conda_prompt)%F{85}%n@%m%f:%F{117}%~%f%F{141}${vcs_info_msg_0_}%f %F{214}$_PROMPT_CHAR%f '
 fi
+fi
 
 
 # History (shell-agnostic)
@@ -375,6 +409,54 @@ _fzf_comprun() {
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
+
+switch_prompt() {
+    local style="$1"
+    if [[ "$style" == "oh-my-bash" || "$style" == "omb" ]]; then
+        if [[ -n "$BASH_VERSION" ]]; then
+            export OSH=$HOME/.oh-my-bash
+            if [ ! -d "$OSH" ]; then
+                if command -v git >/dev/null 2>&1; then
+                    echo -e "\033[32m[mybashrc] ~/.oh-my-bash not found. Automatically cloning oh-my-bash...\033[0m"
+                    git clone --depth=1 https://github.com/ohmybash/oh-my-bash.git "$OSH"
+                else
+                    echo -e "\033[31m[mybashrc] Error: git is required to download oh-my-bash.\033[0m"
+                    return 1
+                fi
+            fi
+            
+            if [ -f "$OSH/oh-my-bash.sh" ]; then
+                export SH_PROMPT_STYLE="oh-my-bash"
+                plugins=($OMB_PLUGINS)
+                aliases=($OMB_ALIASES)
+                completions=($OMB_COMPLETIONS)
+                source "$OSH/oh-my-bash.sh"
+                echo "Switched prompt style to oh-my-bash (Theme: $OSH_THEME)"
+            else
+                echo "Error: oh-my-bash could not be loaded from $OSH"
+            fi
+        else
+            echo "oh-my-bash is only supported in Bash."
+        fi
+    elif [[ "$style" == "custom" || "$style" == "my" ]]; then
+        export SH_PROMPT_STYLE="custom"
+        if [[ -n "$BASH_VERSION" ]]; then
+            unset PROMPT_COMMAND
+            if declare -F _set_bash_prompt_vars >/dev/null 2>&1; then
+                PROMPT_COMMAND='_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"'
+            else
+                PROMPT_COMMAND="_set_bash_fallback_prompt"
+            fi
+            echo "Switched prompt style to custom mybashrc prompt."
+        elif [[ -n "$ZSH_VERSION" ]]; then
+            PROMPT='%(?..%F{203}[%?] %f)$(_zsh_conda_prompt)%F{85}%n@%m%f:%F{117}%~%f%F{141}${vcs_info_msg_0_}%f %F{214}$_PROMPT_CHAR%f '
+            echo "Switched prompt style to custom mybashrc prompt."
+        fi
+    else
+        echo "Usage: switch_prompt [custom | oh-my-bash]"
+        echo "Current style: $SH_PROMPT_STYLE"
+    fi
+}
 
 fcd() {
     local dir
