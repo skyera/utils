@@ -421,6 +421,20 @@ switch_prompt() {
     local style="$1"
     if [[ "$style" == "oh-my-bash" || "$style" == "omb" ]]; then
         if [[ -n "$BASH_VERSION" ]]; then
+            # Remove custom prompt hooks from PROMPT_COMMAND if present
+            if declare -p PROMPT_COMMAND 2>/dev/null | grep -q "declare -a"; then
+                local new_pc=()
+                for pc in "${PROMPT_COMMAND[@]}"; do
+                    if [[ "$pc" != *"_set_bash_prompt_vars"* && "$pc" != *"_set_bash_fallback_prompt"* ]]; then
+                        new_pc+=("$pc")
+                    fi
+                done
+                PROMPT_COMMAND=("${new_pc[@]}")
+            else
+                PROMPT_COMMAND="${PROMPT_COMMAND//_set_bash_prompt_vars; __git_ps1 \"\$_PRE\" \"\$_POST\" \"\$_FORMAT\"/}"
+                PROMPT_COMMAND="${PROMPT_COMMAND//_set_bash_fallback_prompt/}"
+            fi
+
             export OSH=$HOME/.oh-my-bash
             if [ ! -d "$OSH" ]; then
                 if command -v git >/dev/null 2>&1; then
@@ -434,11 +448,31 @@ switch_prompt() {
             
             if [ -f "$OSH/oh-my-bash.sh" ]; then
                 export SH_PROMPT_STYLE="oh-my-bash"
-                unset PROMPT_COMMAND
-                plugins=($OMB_PLUGINS)
-                aliases=($OMB_ALIASES)
-                completions=($OMB_COMPLETIONS)
-                source "$OSH/oh-my-bash.sh"
+                
+                # Sourced only once to avoid duplicate hooks, path additions, and warnings
+                if ! declare -f _omb_util_add_prompt_command >/dev/null 2>&1; then
+                    plugins=($OMB_PLUGINS)
+                    aliases=($OMB_ALIASES)
+                    completions=($OMB_COMPLETIONS)
+                    source "$OSH/oh-my-bash.sh"
+                else
+                    # If already sourced, ensure the hook is added back to PROMPT_COMMAND
+                    if ((BASH_VERSINFO[0] * 10000 + BASH_VERSINFO[1] * 100 + BASH_VERSINFO[2] >= 50100)); then
+                        local found=false
+                        for pc in "${PROMPT_COMMAND[@]}"; do
+                            [[ "$pc" == *"_omb_util_prompt_command_hook"* ]] && found=true
+                        done
+                        $found || PROMPT_COMMAND+=("_omb_util_prompt_command_hook")
+                    else
+                        [[ "$PROMPT_COMMAND" == *"_omb_util_prompt_command_hook"* ]] || PROMPT_COMMAND="_omb_util_prompt_command_hook; $PROMPT_COMMAND"
+                    fi
+                    
+                    # Forces re-evaluation of prompt theme PS1 in active session
+                    if declare -f _omb_theme_PROMPT_COMMAND >/dev/null 2>&1; then
+                        _omb_theme_PROMPT_COMMAND
+                    fi
+                fi
+                
                 _apply_overrides
                 echo "Switched prompt style to oh-my-bash (Theme: $OSH_THEME)"
             else
@@ -450,6 +484,7 @@ switch_prompt() {
     elif [[ "$style" == "custom" || "$style" == "my" ]]; then
         export SH_PROMPT_STYLE="custom"
         if [[ -n "$BASH_VERSION" ]]; then
+            # Cleanly unset PROMPT_COMMAND to remove oh-my-bash hook
             unset PROMPT_COMMAND
             if declare -F _set_bash_prompt_vars >/dev/null 2>&1; then
                 PROMPT_COMMAND='_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"'
