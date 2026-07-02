@@ -434,6 +434,7 @@ switch_prompt() {
             
             if [ -f "$OSH/oh-my-bash.sh" ]; then
                 export SH_PROMPT_STYLE="oh-my-bash"
+                unset PROMPT_COMMAND
                 plugins=($OMB_PLUGINS)
                 aliases=($OMB_ALIASES)
                 completions=($OMB_COMPLETIONS)
