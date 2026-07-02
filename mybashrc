@@ -431,6 +431,7 @@ switch_prompt() {
                 aliases=($OMB_ALIASES)
                 completions=($OMB_COMPLETIONS)
                 source "$OSH/oh-my-bash.sh"
+                _apply_overrides
                 echo "Switched prompt style to oh-my-bash (Theme: $OSH_THEME)"
             else
                 echo "Error: oh-my-bash could not be loaded from $OSH"
@@ -456,6 +457,16 @@ switch_prompt() {
         echo "Usage: switch_prompt [custom | oh-my-bash]"
         echo "Current style: $SH_PROMPT_STYLE"
     fi
+}
+
+_apply_overrides() {
+    if command -v eza >/dev/null 2>&1; then
+        alias ls='eza --icons=always --group-directories-first'
+        alias ll='eza -lh --icons=always --group-directories-first'
+        alias la='eza -a --icons=always --group-directories-first'
+        alias lt='eza --tree --icons=always'
+    fi
+    alias gsu='git submodule update --init --recursive -f'
 }
 
 fcd() {
@@ -658,12 +669,7 @@ tpe() {
     echo "Deleted $file"
 }
 
-if command -v eza >/dev/null 2>&1; then
-    alias ls='eza --icons=always --group-directories-first'
-    alias ll='eza -lh --icons=always --group-directories-first'
-    alias la='eza -a --icons=always --group-directories-first'
-    alias lt='eza --tree --icons=always'
-fi
+_apply_overrides
 
 alias git-branch-gone='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'''
 alias fzlog='git-fuzzy log'
@@ -771,8 +777,6 @@ if ! $_IS_CONTAINER; then
         unset _TMP_FIRST_LINE
     fi
 fi
-
-alias gsu='git submodule update --init --recursive -f'
 
 # Select 2 directories and pass them as environment variables to tmuxp to load dev with a custom session name
 txp() {
