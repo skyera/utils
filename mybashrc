@@ -431,7 +431,14 @@ switch_prompt() {
                 done
                 PROMPT_COMMAND=("${new_pc[@]}")
             else
+                # Clean up prompt vars hook with potential semicolons
+                PROMPT_COMMAND="${PROMPT_COMMAND//_set_bash_prompt_vars; __git_ps1 \"\$_PRE\" \"\$_POST\" \"\$_FORMAT\"; /}"
+                PROMPT_COMMAND="${PROMPT_COMMAND//; _set_bash_prompt_vars; __git_ps1 \"\$_PRE\" \"\$_POST\" \"\$_FORMAT\"/}"
                 PROMPT_COMMAND="${PROMPT_COMMAND//_set_bash_prompt_vars; __git_ps1 \"\$_PRE\" \"\$_POST\" \"\$_FORMAT\"/}"
+
+                # Clean up fallback prompt hook with potential semicolons
+                PROMPT_COMMAND="${PROMPT_COMMAND//_set_bash_fallback_prompt; /}"
+                PROMPT_COMMAND="${PROMPT_COMMAND//; _set_bash_fallback_prompt/}"
                 PROMPT_COMMAND="${PROMPT_COMMAND//_set_bash_fallback_prompt/}"
             fi
 
