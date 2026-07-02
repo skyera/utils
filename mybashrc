@@ -195,7 +195,6 @@ if [[ "$SH_PROMPT_STYLE" == "oh-my-bash" && -n "$BASH_VERSION" ]]; then
     fi
 fi
 
-if [[ "$SH_PROMPT_STYLE" == "custom" ]]; then
 if [[ -n "$BASH_VERSION" ]]; then
     # Load git-sh-prompt if available
     if ! declare -F __git_ps1 >/dev/null 2>&1; then
@@ -248,7 +247,6 @@ if [[ -n "$BASH_VERSION" ]]; then
             _FORMAT="${lavender} (%s)"
             return $exit_code
         }
-        PROMPT_COMMAND='_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"'
     else
         # Fallback premium prompt if __git_ps1 is unavailable
         _set_bash_fallback_prompt() {
@@ -279,7 +277,15 @@ if [[ -n "$BASH_VERSION" ]]; then
             PS1="${status_indicator}${conda_env}${mint}\u@\h${reset}:${sky}\w${branch} ${amber}${_PROMPT_CHAR}${reset} "
             return $exit_code
         }
-        PROMPT_COMMAND="_set_bash_fallback_prompt"
+    fi
+
+    # Set PROMPT_COMMAND only if the custom prompt is selected
+    if [[ "$SH_PROMPT_STYLE" == "custom" ]]; then
+        if declare -F _set_bash_prompt_vars >/dev/null 2>&1; then
+            PROMPT_COMMAND='_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"'
+        else
+            PROMPT_COMMAND="_set_bash_fallback_prompt"
+        fi
     fi
 
 elif [[ -n "$ZSH_VERSION" ]]; then
@@ -336,9 +342,10 @@ elif [[ -n "$ZSH_VERSION" ]]; then
         fi
     }
     
-    # Premium styled prompt for Zsh with curated colors
-    PROMPT='%(?..%F{203}[%?] %f)$(_zsh_conda_prompt)%F{85}%n@%m%f:%F{117}%~%f%F{141}${vcs_info_msg_0_}%f %F{214}$_PROMPT_CHAR%f '
-fi
+    # Premium styled prompt for Zsh with curated colors (applied only if custom)
+    if [[ "$SH_PROMPT_STYLE" == "custom" ]]; then
+        PROMPT='%(?..%F{203}[%?] %f)$(_zsh_conda_prompt)%F{85}%n@%m%f:%F{117}%~%f%F{141}${vcs_info_msg_0_}%f %F{214}$_PROMPT_CHAR%f '
+    fi
 fi
 
 
