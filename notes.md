@@ -602,6 +602,21 @@ C-GW  look for git worktrees
 C-GE  look for git for-each-ref
 ```
 
+### forgit
+
+On older Bash versions (like Bash 4.4 on Ubuntu 18.04), `builtin export` in POSIX mode still outputs environment variables prefixed with `declare -x ` instead of `export `. This causes `forgit`'s compatibility check to output a false warning:
+```text
+[Warn] Config options have to be exported in future versions of forgit.
+[Warn] Please update your config accordingly:
+[Warn]   export FORGIT_INSTALL_DIR
+```
+
+To fix this, update the export check in `forgit.plugin.zsh` (located in `$HOME/.local/share/forgit/forgit.plugin.zsh`) to also match `declare -x`:
+```diff
+-    if ! builtin export | command grep -Eq "(^$var=|^export $var=)"; then
++    if ! builtin export | command grep -Eq "(^$var=|^export $var=|^declare -x $var=)"; then
+```
+
 ---
 
 ## Debugging & Profiling
