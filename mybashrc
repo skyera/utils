@@ -484,12 +484,41 @@ switch_prompt() {
     elif [[ "$style" == "custom" || "$style" == "my" ]]; then
         export SH_PROMPT_STYLE="custom"
         if [[ -n "$BASH_VERSION" ]]; then
-            # Cleanly unset PROMPT_COMMAND to remove oh-my-bash hook
-            unset PROMPT_COMMAND
-            if declare -F _set_bash_prompt_vars >/dev/null 2>&1; then
-                PROMPT_COMMAND='_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"'
+            # Surgically remove oh-my-bash hook from PROMPT_COMMAND if present to preserve other integrations (zoxide, fzf, etc.)
+            if declare -p PROMPT_COMMAND 2>/dev/null | grep -q "declare -a"; then
+                local new_pc=()
+                for pc in "${PROMPT_COMMAND[@]}"; do
+                    if [[ "$pc" != *"_omb_util_prompt_command_hook"* ]]; then
+                        new_pc+=("$pc")
+                    fi
+                done
+                PROMPT_COMMAND=("${new_pc[@]}")
             else
-                PROMPT_COMMAND="_set_bash_fallback_prompt"
+                PROMPT_COMMAND="${PROMPT_COMMAND//_omb_util_prompt_command_hook; /}"
+                PROMPT_COMMAND="${PROMPT_COMMAND//; _omb_util_prompt_command_hook/}"
+                PROMPT_COMMAND="${PROMPT_COMMAND//_omb_util_prompt_command_hook/}"
+            fi
+
+            # Add custom prompt hook if not already present
+            if ((BASH_VERSINFO[0] * 10000 + BASH_VERSINFO[1] * 100 + BASH_VERSINFO[2] >= 50100)); then
+                local found=false
+                if declare -F _set_bash_prompt_vars >/dev/null 2>&1; then
+                    for pc in "${PROMPT_COMMAND[@]}"; do
+                        [[ "$pc" == *"_set_bash_prompt_vars"* ]] && found=true
+                    done
+                    $found || PROMPT_COMMAND+=('_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"')
+                else
+                    for pc in "${PROMPT_COMMAND[@]}"; do
+                        [[ "$pc" == *"_set_bash_fallback_prompt"* ]] && found=true
+                    done
+                    $found || PROMPT_COMMAND+=("_set_bash_fallback_prompt")
+                fi
+            else
+                if declare -F _set_bash_prompt_vars >/dev/null 2>&1; then
+                    [[ "$PROMPT_COMMAND" == *"_set_bash_prompt_vars"* ]] || PROMPT_COMMAND='_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"'
+                else
+                    [[ "$PROMPT_COMMAND" == *"_set_bash_fallback_prompt"* ]] || PROMPT_COMMAND="_set_bash_fallback_prompt"
+                fi
             fi
             echo "Switched prompt style to custom mybashrc prompt."
         elif [[ -n "$ZSH_VERSION" ]]; then
