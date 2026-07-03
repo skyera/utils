@@ -106,6 +106,17 @@ setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc"
 setx FZF_DEFAULT_COMMAND "fd --follow --hidden --exclude .git --ignore-file \"%APPDATA%\fd\ignore\""
 setx FZF_DEFAULT_OPTS "--preview \"bat --color=always {}\""
 
+:: Set Yazi MIME detector path
+set "YAZI_FILE_PATH="
+if exist "%ProgramFiles%\Git\usr\bin\file.exe" set "YAZI_FILE_PATH=%ProgramFiles%\Git\usr\bin\file.exe"
+if not defined YAZI_FILE_PATH if exist "%ProgramFiles(x86)%\Git\usr\bin\file.exe" set "YAZI_FILE_PATH=%ProgramFiles(x86)%\Git\usr\bin\file.exe"
+if not defined YAZI_FILE_PATH if exist "%LocalAppData%\Programs\Git\usr\bin\file.exe" set "YAZI_FILE_PATH=%LocalAppData%\Programs\Git\usr\bin\file.exe"
+if not defined YAZI_FILE_PATH if exist "C:\cygwin64\bin\file.exe" set "YAZI_FILE_PATH=C:\cygwin64\bin\file.exe"
+if defined YAZI_FILE_PATH (
+    echo Setting YAZI_FILE_ONE to !YAZI_FILE_PATH!...
+    setx YAZI_FILE_ONE "!YAZI_FILE_PATH!"
+)
+
 :: Add %BIN_DIR% to User PATH if not already present
 echo Adding %BIN_DIR% to PATH...
 powershell -Command "$d = '%BIN_DIR%'; $p = [Environment]::GetEnvironmentVariable('PATH', 'User'); if ($p -notlike \"*$d*\") { [Environment]::SetEnvironmentVariable('PATH', $p + ';' + $d, 'User') }"

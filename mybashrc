@@ -76,6 +76,15 @@ if $_IS_WINDOWS; then
     command -v vim.exe >/dev/null 2>&1 && alias vim='vim.exe'
     alias vi='nvim'
 
+    # Set Yazi file type detection helper path
+    if [ -f "C:/Program Files/Git/usr/bin/file.exe" ]; then
+        export YAZI_FILE_ONE="C:/Program Files/Git/usr/bin/file.exe"
+    elif [ -f "C:/Program Files (x86)/Git/usr/bin/file.exe" ]; then
+        export YAZI_FILE_ONE="C:/Program Files (x86)/Git/usr/bin/file.exe"
+    elif [ -f "C:/cygwin64/bin/file.exe" ]; then
+        export YAZI_FILE_ONE="C:/cygwin64/bin/file.exe"
+    fi
+
     # Use Windows-installed Python if available (wrapped in winpty for Git Bash console compatibility)
     command -v python.exe >/dev/null 2>&1 && alias python='winpty python.exe'
     command -v python3.exe >/dev/null 2>&1 && alias python3='winpty python3.exe'
