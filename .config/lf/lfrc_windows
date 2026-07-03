@@ -1,5 +1,5 @@
-#C:\Users\xxx\AppData\Local\lf\lfrc
-# this goes in $env:USERPROFILE\AppData\Local\lf\lfrc
+#C:\Users\xxx\AppData\Roaming\lf\lfrc
+# this goes in $env:USERPROFILE\AppData\Roaming\lf\lfrc
 # personally, I symlink it from my synced config files like this:
 # cmd /c mklink lfrc $env:OneDriveConsumer\configs\dot-config-lf\lfrc.windows
  
@@ -60,7 +60,7 @@ $lf -remote "send $env:id cmd go_origin cd '$PWD'"
 map go :go_origin
 
 set icons true
-# https://github.com/gokcehan/lf/blob/master/etc/icons.example -> %LOCALAPPDATA%\lf\icons
+# https://github.com/gokcehan/lf/blob/master/etc/icons.example -> %APPDATA%\lf\icons
 map <c-c> $Set-Clipboard -Value $env:f
 
 # Filter commands (using Shift+F to avoid conflict with fzf_find)

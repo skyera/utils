@@ -71,9 +71,9 @@ class DotfilesDeployGUI:
                 "category": "Tool Configs",
                 "items": [
                     {"src": ".config/lf/lfrc", "dest": {"Unix": "~/.config/lf/lfrc"}},
-                    {"src": ".config/lf/lfrc_windows", "dest": {"Windows": "%LOCALAPPDATA%/lf/lfrc"}},
-                    {"src": ".config/lf/icons", "dest": {"Unix": "~/.config/lf/icons", "Windows": "%LOCALAPPDATA%/lf/icons"}},
-                    {"src": ".config/lf/colors", "dest": {"Unix": "~/.config/lf/colors", "Windows": "%LOCALAPPDATA%/lf/colors"}},
+                    {"src": ".config/lf/lfrc_windows", "dest": {"Windows": "%APPDATA%/lf/lfrc"}},
+                    {"src": ".config/lf/icons", "dest": {"Unix": "~/.config/lf/icons", "Windows": "%APPDATA%/lf/icons"}},
+                    {"src": ".config/lf/colors", "dest": {"Unix": "~/.config/lf/colors", "Windows": "%APPDATA%/lf/colors"}},
                     {"src": ".config/fd/ignore", "dest": {"Unix": "~/.config/fd/ignore", "Windows": "%APPDATA%/fd/ignore"}},
                     {"src": ".config/git/ignore", "dest": {"Unix": "~/.config/git/ignore", "Windows": "%USERPROFILE%/.config/git/ignore"}},
                     {"src": ".vifm/vifmrc", "dest": {"Unix": "~/.vifm/vifmrc", "Windows": "%APPDATA%/vifm/vifmrc"}},
