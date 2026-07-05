@@ -100,6 +100,12 @@ if "%NVIM_CHOICE%"=="lua" (
 echo Installing vim-plug for Vim...
 powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $p = \"$env:USERPROFILE\vimfiles\autoload\plug.vim\"; if (-not (Test-Path $p)) { iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim | ni $p -Force }"
 
+:: Link .vim/autoload and .vim/plugged to vimfiles equivalents for Git Bash/MSYS2 Vim compatibility
+echo Linking .vim directories for Git Bash/MSYS2 compatibility...
+if not exist "%USERPROFILE%\.vim" mkdir "%USERPROFILE%\.vim"
+if not exist "%USERPROFILE%\.vim\autoload" mklink /J "%USERPROFILE%\.vim\autoload" "%USERPROFILE%\vimfiles\autoload"
+if not exist "%USERPROFILE%\.vim\plugged" mklink /J "%USERPROFILE%\.vim\plugged" "%USERPROFILE%\vimfiles\plugged"
+
 :: Set Environment Variables
 echo Setting Environment Variables...
 setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc"

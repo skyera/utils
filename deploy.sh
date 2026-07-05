@@ -180,6 +180,17 @@ if ! $IS_WINDOWS; then
     fi
 fi
 
+if $IS_WINDOWS; then
+    echo "Creating directory junctions for Git Bash Vim compatibility..."
+    mkdir -p "$HOME/.vim"
+    if [ ! -d "$HOME/.vim/autoload" ]; then
+        cmd //c mklink //J "$(cygpath -w "$HOME/.vim/autoload")" "$(cygpath -w "$HOME/vimfiles/autoload")"
+    fi
+    if [ ! -d "$HOME/.vim/plugged" ]; then
+        cmd //c mklink //J "$(cygpath -w "$HOME/.vim/plugged")" "$(cygpath -w "$HOME/vimfiles/plugged")"
+    fi
+fi
+
 # Install Hack Nerd Font variations if missing
 if [[ "$OSTYPE" == darwin* ]]; then
     if [ ! -f "$HOME/Library/Fonts/HackNerdFont-Regular.ttf" ] && \
