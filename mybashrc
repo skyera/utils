@@ -69,6 +69,36 @@ else
     export GIT_PAGER="less"
 fi
 
+# Optimize git commands on WSL mounted Windows drives by routing to git.exe
+if [[ -n "$WSL_DISTRO_NAME" ]]; then
+    git() {
+        # If called from prompt scripts, bypass the wrapper to use native git
+        # This keeps the shell prompt instantaneous (10ms) while optimizing manual CLI commands
+        local f
+        if [[ -n "$BASH_VERSION" ]]; then
+            for f in "${FUNCNAME[@]}"; do
+                if [[ "$f" == "__git_ps1" || "$f" == "_set_bash_prompt_vars" ]]; then
+                    command git "$@"
+                    return
+                fi
+            done
+        elif [[ -n "$ZSH_VERSION" ]]; then
+            for f in "${funcstack[@]}"; do
+                if [[ "$f" == "vcs_info" || "$f" == "precmd_vcs_info" ]]; then
+                    command git "$@"
+                    return
+                fi
+            done
+        fi
+
+        if [[ "$PWD" == /mnt/* ]] && command -v git.exe >/dev/null 2>&1; then
+            git.exe "$@"
+        else
+            command git "$@"
+        fi
+    }
+fi
+
 # Windows-specific overrides
 if $_IS_WINDOWS; then
     # Use Windows-installed Neovim/Vim if available
@@ -232,6 +262,20 @@ if [[ -n "$BASH_VERSION" ]]; then
         
         _set_bash_prompt_vars() {
             local exit_code=$?
+            
+            # Dynamically adjust Git prompt features for WSL mounted drives to avoid severe lag
+            if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]]; then
+                GIT_PS1_SHOWDIRTYSTATE=""
+                GIT_PS1_SHOWSTASHSTATE=""
+                GIT_PS1_SHOWUNTRACKEDFILES=""
+                GIT_PS1_SHOWUPSTREAM=""
+            else
+                GIT_PS1_SHOWDIRTYSTATE=true
+                GIT_PS1_SHOWSTASHSTATE=true
+                GIT_PS1_SHOWUNTRACKEDFILES=true
+                GIT_PS1_SHOWUPSTREAM="auto"
+            fi
+            
             # Curated modern pastel palette (using 256-color modes)
             local red="\[\033[38;5;203m\]"
             local mint="\[\033[38;5;85m\]"
@@ -297,10 +341,16 @@ if [[ -n "$BASH_VERSION" ]]; then
         fi
     fi
 
-elif [[ -n "$ZSH_VERSION" ]]; then
-    # Zsh built-in Git integration (vcs_info)
+elif [[ -n "$ZSH_VERSION" ]]; then    # Zsh built-in Git integration (vcs_info)
     autoload -Uz vcs_info
-    precmd_vcs_info() { vcs_info; }
+    precmd_vcs_info() {
+        if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]]; then
+            zstyle ':vcs_info:*' check-for-changes false
+        else
+            zstyle ':vcs_info:*' check-for-changes true
+        fi
+        vcs_info
+    }
     precmd_functions+=(precmd_vcs_info)
     
     zstyle ':vcs_info:*' enable git
@@ -309,21 +359,30 @@ elif [[ -n "$ZSH_VERSION" ]]; then
     zstyle ':vcs_info:git:*' actionformats ' (%b|%a%u%c%m)'
     zstyle ':vcs_info:git:*' unstagedstr '*'
     zstyle ':vcs_info:git:*' stagedstr '+'
-
+ 
     # Zsh vcs_info hooks to check for untracked files, stashes, and upstream status
     +vi-git-untracked() {
+        if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]]; then
+            return 0
+        fi
         if git status --porcelain 2>/dev/null | grep -q '^\?\?'; then
             hook_com[unstaged]+='%'
         fi
     }
 
     +vi-git-stash() {
+        if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]]; then
+            return 0
+        fi
         if git rev-parse --verify refs/stash >/dev/null 2>&1; then
             hook_com[misc]+='$'
         fi
     }
 
     +vi-git-upstream() {
+        if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]]; then
+            return 0
+        fi
         local count
         if count=$(git rev-list --left-right --count HEAD...@{upstream} 2>/dev/null); then
             local ahead behind

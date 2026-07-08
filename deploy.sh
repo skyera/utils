@@ -52,7 +52,12 @@ deploy_file() {
         cp "$dest" "${dest}.bak"
     fi
     
-    cp "$src" "$dest"
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+        cp "$src" "$dest"
+    else
+        # Strip Windows carriage returns (CRLF to LF) when deploying on Linux/macOS
+        tr -d '\r' < "$src" > "$dest"
+    fi
     echo "Deployed $dest"
 }
 
