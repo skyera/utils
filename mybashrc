@@ -150,9 +150,13 @@ export VISUAL="$EDITOR"
 # Detect Neovim binary path if not already set (cached, fast builtin check)
 if [[ -z "$_NEOVIM_BIN" ]]; then
     if $_IS_WINDOWS; then
-        _NEOVIM_BIN=$(command -v nvim.exe)
+        if command -v nvim.exe >/dev/null 2>&1; then
+            _NEOVIM_BIN="nvim.exe"
+        fi
     else
-        _NEOVIM_BIN=$(command -v nvim)
+        if command -v nvim >/dev/null 2>&1; then
+            _NEOVIM_BIN="nvim"
+        fi
     fi
 fi
 export NEOVIM_BIN="$_NEOVIM_BIN"
@@ -204,6 +208,46 @@ export CONDA_CHANGEPS1=false
 
 # Cached tool check for fallback prompt
 _HAS_GIT=false && command -v git >/dev/null 2>&1 && _HAS_GIT=true
+
+_git_branch_fast() {
+    local dir="$PWD"
+    local gitdir=""
+    while [[ -n "$dir" ]]; do
+        if [[ -d "$dir/.git" ]]; then
+            gitdir="$dir/.git"
+            break
+        elif [[ -f "$dir/.git" ]]; then
+            local gitref
+            if read -r gitref < "$dir/.git" 2>/dev/null; then
+                if [[ "$gitref" =~ ^gitdir:\ (.*) ]]; then
+                    local rel_path="${BASH_REMATCH[1]}"
+                    if [[ "$rel_path" == /* ]]; then
+                        gitdir="$rel_path"
+                    else
+                        gitdir="$dir/$rel_path"
+                    fi
+                    break
+                fi
+            fi
+        fi
+        local parent="${dir%/*}"
+        [[ "$parent" == "$dir" ]] && break
+        dir="$parent"
+    done
+    [[ -z "$gitdir" ]] && return 1
+    if [[ -f "$gitdir/HEAD" ]]; then
+        local head_content
+        read -r head_content < "$gitdir/HEAD" 2>/dev/null
+        if [[ "$head_content" =~ ^ref:\ refs/heads/(.*) ]]; then
+            echo "${BASH_REMATCH[1]}"
+            return 0
+        elif [[ -n "$head_content" ]]; then
+            echo "${head_content:0:7}"
+            return 0
+        fi
+    fi
+    return 1
+}
 
 # Unicode check to choose a modern chevron or classic fallback
 _PROMPT_CHAR="\$"
@@ -262,9 +306,12 @@ if [[ -n "$BASH_VERSION" ]]; then
         
         _set_bash_prompt_vars() {
             local exit_code=$?
+            if [[ -n "$1" ]]; then
+                exit_code=$1
+            fi
             
-            # Dynamically adjust Git prompt features for WSL mounted drives to avoid severe lag
-            if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]]; then
+            # Dynamically adjust Git prompt features for WSL mounted drives or Git Bash on Windows to avoid severe lag
+            if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]] || $_IS_WINDOWS; then
                 GIT_PS1_SHOWDIRTYSTATE=""
                 GIT_PS1_SHOWSTASHSTATE=""
                 GIT_PS1_SHOWUNTRACKEDFILES=""
@@ -300,6 +347,17 @@ if [[ -n "$BASH_VERSION" ]]; then
             _FORMAT="${lavender} (%s)"
             return $exit_code
         }
+
+        _render_prompt() {
+            local exit_code=$?
+            _set_bash_prompt_vars $exit_code
+            if _git_branch_fast >/dev/null; then
+                __git_ps1 "$_PRE" "$_POST" "$_FORMAT"
+            else
+                PS1="${_PRE}${_POST}"
+            fi
+            return $exit_code
+        }
     else
         # Fallback premium prompt if __git_ps1 is unavailable
         _set_bash_fallback_prompt() {
@@ -323,8 +381,9 @@ if [[ -n "$BASH_VERSION" ]]; then
             fi
             
             local branch=""
-            if $_HAS_GIT && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-                branch="${lavender} ($(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))"
+            local branch_name
+            if branch_name=$(_git_branch_fast); then
+                branch="${lavender} (${branch_name})"
             fi
             
             PS1="${status_indicator}${conda_env}${mint}\u@\h${reset}:${sky}\w${branch} ${amber}${_PROMPT_CHAR}${reset} "
@@ -334,8 +393,8 @@ if [[ -n "$BASH_VERSION" ]]; then
 
     # Set PROMPT_COMMAND only if the custom prompt is selected
     if [[ "$SH_PROMPT_STYLE" == "custom" ]]; then
-        if declare -F _set_bash_prompt_vars >/dev/null 2>&1; then
-            PROMPT_COMMAND='_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"'
+        if declare -F __git_ps1 >/dev/null 2>&1; then
+            PROMPT_COMMAND="_render_prompt"
         else
             PROMPT_COMMAND="_set_bash_fallback_prompt"
         fi
@@ -489,20 +548,20 @@ switch_prompt() {
     local style="$1"
     if [[ "$style" == "oh-my-bash" || "$style" == "omb" ]]; then
         if [[ -n "$BASH_VERSION" ]]; then
-            # Remove custom prompt hooks from PROMPT_COMMAND if present
+            # Remove custom prompt hooks from PROMPT_COMMAND if present to preserve other integrations (zoxide, fzf, etc.)
             if declare -p PROMPT_COMMAND 2>/dev/null | grep -q "declare -a"; then
                 local new_pc=()
                 for pc in "${PROMPT_COMMAND[@]}"; do
-                    if [[ "$pc" != *"_set_bash_prompt_vars"* && "$pc" != *"_set_bash_fallback_prompt"* ]]; then
+                    if [[ "$pc" != *"_render_prompt"* && "$pc" != *"_set_bash_fallback_prompt"* ]]; then
                         new_pc+=("$pc")
                     fi
                 done
                 PROMPT_COMMAND=("${new_pc[@]}")
             else
                 # Clean up prompt vars hook with potential semicolons
-                PROMPT_COMMAND="${PROMPT_COMMAND//_set_bash_prompt_vars; __git_ps1 \"\$_PRE\" \"\$_POST\" \"\$_FORMAT\"; /}"
-                PROMPT_COMMAND="${PROMPT_COMMAND//; _set_bash_prompt_vars; __git_ps1 \"\$_PRE\" \"\$_POST\" \"\$_FORMAT\"/}"
-                PROMPT_COMMAND="${PROMPT_COMMAND//_set_bash_prompt_vars; __git_ps1 \"\$_PRE\" \"\$_POST\" \"\$_FORMAT\"/}"
+                PROMPT_COMMAND="${PROMPT_COMMAND//_render_prompt; /}"
+                PROMPT_COMMAND="${PROMPT_COMMAND//; _render_prompt/}"
+                PROMPT_COMMAND="${PROMPT_COMMAND//_render_prompt/}"
 
                 # Clean up fallback prompt hook with potential semicolons
                 PROMPT_COMMAND="${PROMPT_COMMAND//_set_bash_fallback_prompt; /}"
@@ -577,11 +636,11 @@ switch_prompt() {
             # Add custom prompt hook if not already present
             if ((BASH_VERSINFO[0] * 10000 + BASH_VERSINFO[1] * 100 + BASH_VERSINFO[2] >= 50100)); then
                 local found=false
-                if declare -F _set_bash_prompt_vars >/dev/null 2>&1; then
+                if declare -F _render_prompt >/dev/null 2>&1; then
                     for pc in "${PROMPT_COMMAND[@]}"; do
-                        [[ "$pc" == *"_set_bash_prompt_vars"* ]] && found=true
+                        [[ "$pc" == *"_render_prompt"* ]] && found=true
                     done
-                    $found || PROMPT_COMMAND+=('_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"')
+                    $found || PROMPT_COMMAND+=('_render_prompt')
                 else
                     for pc in "${PROMPT_COMMAND[@]}"; do
                         [[ "$pc" == *"_set_bash_fallback_prompt"* ]] && found=true
@@ -589,8 +648,8 @@ switch_prompt() {
                     $found || PROMPT_COMMAND+=("_set_bash_fallback_prompt")
                 fi
             else
-                if declare -F _set_bash_prompt_vars >/dev/null 2>&1; then
-                    [[ "$PROMPT_COMMAND" == *"_set_bash_prompt_vars"* ]] || PROMPT_COMMAND='_set_bash_prompt_vars; __git_ps1 "$_PRE" "$_POST" "$_FORMAT"'
+                if declare -F _render_prompt >/dev/null 2>&1; then
+                    [[ "$PROMPT_COMMAND" == *"_render_prompt"* ]] || PROMPT_COMMAND='_render_prompt'
                 else
                     [[ "$PROMPT_COMMAND" == *"_set_bash_fallback_prompt"* ]] || PROMPT_COMMAND="_set_bash_fallback_prompt"
                 fi
