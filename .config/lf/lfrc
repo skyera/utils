@@ -33,8 +33,8 @@ map F filter
 
 
 # --- Navigation ---
-# Freeze the starting directory at load time using a sync shell call
-$lf -remote "send $id cmd go_origin cd '$(pwd)'"
+# Freeze the starting directory at load time using an async background shell call with retry loop
+&i=1; while [ $i -le 20 ]; do lf -remote "send $id cmd go_origin cd '$(pwd)'" >/dev/null 2>&1 && break; sleep 0.05; i=$((i+1)); done
 map go :go_origin
 
 # https://github.com/gokcehan/lf/blob/master/etc/icons.example->~/.config/lf/icons

@@ -54,9 +54,9 @@ cmd fzf_find $C:/app/bin/fzf_find.bat
 map f :fzf_find
 
 # --- Navigation ---
-# Freeze the starting directory at load time using a sync shell call
+# Freeze the starting directory at load time using an async background shell call with retry loop
 # We use $env:id and $PWD since shell is set to powershell
-$lf -remote "send $env:id cmd go_origin cd '$PWD'"
+&for ($i = 0; $i -lt 20; $i++) { lf -remote "send $env:id cmd go_origin cd '$PWD'" *>$null; if ($LASTEXITCODE -eq 0) { break }; Start-Sleep -Milliseconds 50 }
 map go :go_origin
 
 set icons true
