@@ -1,3 +1,11 @@
+-- Shell configuration: use bash when running inside Git Bash on Windows
+if vim.fn.has("win32") == 1 and vim.env.MSYSTEM then
+    vim.opt.shell = "bash"
+    vim.opt.shellcmdflag = "-c"
+    vim.opt.shellquote = ""
+    vim.opt.shellxquote = ""
+end
+
 -- General settings (translated from myvimrc)
 vim.opt.backspace = { "indent", "eol", "start" }
 vim.opt.history = 10000

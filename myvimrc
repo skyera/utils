@@ -63,6 +63,13 @@ call plug#end()
 " =============================================================================
 " 2. CORE SYSTEM OPTIONS
 " =============================================================================
+" Shell configuration: use bash when running inside Git Bash on Windows
+if has('win32') && !empty($MSYSTEM)
+    set shell=bash
+    set shellcmdflag=-c
+    set shellquote=
+    set shellxquote=
+endif
 set encoding=utf-8
 set history=10000
 set backspace=indent,eol,start
