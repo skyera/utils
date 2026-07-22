@@ -26,6 +26,37 @@ is_container() {
 _IS_CONTAINER=false
 is_container && _IS_CONTAINER=true
 
+# Optimize git commands on WSL mounted Windows drives by routing to git.exe
+if [[ -n "$WSL_DISTRO_NAME" ]]; then
+    unalias git 2>/dev/null
+    git() {
+        # If called from prompt scripts, bypass the wrapper to use native git
+        # This keeps the shell prompt instantaneous (10ms) while optimizing manual CLI commands
+        local f
+        if [[ -n "$BASH_VERSION" ]]; then
+            for f in "${FUNCNAME[@]}"; do
+                if [[ "$f" == "__git_ps1" || "$f" == "_set_bash_prompt_vars" ]]; then
+                    command git "$@"
+                    return
+                fi
+            done
+        elif [[ -n "$ZSH_VERSION" ]]; then
+            for f in "${funcstack[@]}"; do
+                if [[ "$f" == "vcs_info" || "$f" == "precmd_vcs_info" ]]; then
+                    command git "$@"
+                    return
+                fi
+            done
+        fi
+
+        if [[ "$PWD" == /mnt/* ]] && command -v git.exe >/dev/null 2>&1; then
+            git.exe "$@"
+        else
+            command git "$@"
+        fi
+    }
+fi
+
 # Git configuration overrides for containers or old git versions
 # zdiff3 requires Git 2.35+
 if $_IS_WINDOWS; then
@@ -67,36 +98,6 @@ if ! $_IS_CONTAINER && command -v delta >/dev/null 2>&1; then
     export GIT_PAGER="delta"
 else
     export GIT_PAGER="less"
-fi
-
-# Optimize git commands on WSL mounted Windows drives by routing to git.exe
-if [[ -n "$WSL_DISTRO_NAME" ]]; then
-    git() {
-        # If called from prompt scripts, bypass the wrapper to use native git
-        # This keeps the shell prompt instantaneous (10ms) while optimizing manual CLI commands
-        local f
-        if [[ -n "$BASH_VERSION" ]]; then
-            for f in "${FUNCNAME[@]}"; do
-                if [[ "$f" == "__git_ps1" || "$f" == "_set_bash_prompt_vars" ]]; then
-                    command git "$@"
-                    return
-                fi
-            done
-        elif [[ -n "$ZSH_VERSION" ]]; then
-            for f in "${funcstack[@]}"; do
-                if [[ "$f" == "vcs_info" || "$f" == "precmd_vcs_info" ]]; then
-                    command git "$@"
-                    return
-                fi
-            done
-        fi
-
-        if [[ "$PWD" == /mnt/* ]] && command -v git.exe >/dev/null 2>&1; then
-            git.exe "$@"
-        else
-            command git "$@"
-        fi
-    }
 fi
 
 # Windows-specific overrides
