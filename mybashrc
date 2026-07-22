@@ -26,9 +26,11 @@ is_container() {
 _IS_CONTAINER=false
 is_container && _IS_CONTAINER=true
 
+# Clear any existing git alias before function definition to prevent parse errors on reload
+unalias git 2>/dev/null
+
 # Optimize git commands on WSL mounted Windows drives by routing to git.exe
 if [[ -n "$WSL_DISTRO_NAME" ]]; then
-    unalias git 2>/dev/null
     git() {
         # If called from prompt scripts, bypass the wrapper to use native git
         # This keeps the shell prompt instantaneous (10ms) while optimizing manual CLI commands
