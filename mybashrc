@@ -955,6 +955,18 @@ if ! $_IS_CONTAINER; then
         source "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh"
     fi
     if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
+        # Source forgit.plugin.sh first so functions and variables are defined before completions
+        _TMP_FIRST_LINE=""
+        if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
+            read -r _TMP_FIRST_LINE < "$PLUGINS_DIR/forgit/forgit.plugin.sh" 2>/dev/null
+        fi
+        if [ "$_TMP_FIRST_LINE" = "forgit.plugin.zsh" ]; then
+            source "$PLUGINS_DIR/forgit/forgit.plugin.zsh"
+        else
+            source "$PLUGINS_DIR/forgit/forgit.plugin.sh"
+        fi
+        unset _TMP_FIRST_LINE
+
         if [[ -n "$BASH_VERSION" ]]; then
             _git_switch_branch() { _git_checkout_branch "$@"; }
             
@@ -996,9 +1008,10 @@ if ! $_IS_CONTAINER; then
                 done
             fi
 
-            # Ensure git completion binding is active
+            # Ensure git and git.exe completion bindings are active
             if declare -F __git_complete >/dev/null 2>&1 && declare -F _git >/dev/null 2>&1; then
                 __git_complete git _git 2>/dev/null
+                __git_complete git.exe _git 2>/dev/null
             fi
 
             # Fallback _completion_loader if bash_completion package is missing
@@ -1007,7 +1020,7 @@ if ! $_IS_CONTAINER; then
                     local cmd="$1"
                     local _gexec=""
                     command -v git >/dev/null 2>&1 && _gexec="$(git --exec-path 2>/dev/null)"
-                    if [[ "$cmd" == "git" ]] || ! declare -F __git_complete >/dev/null 2>&1; then
+                    if [[ "$cmd" == "git" ]] || [[ "$cmd" == "git.exe" ]] || ! declare -F __git_complete >/dev/null 2>&1; then
                         for _git_comp_script in "$_gexec/../../share/git/completion/git-completion.bash" \
                                                 "$_gexec/../../../share/git/completion/git-completion.bash" \
                                                 "$_gexec/../../share/bash-completion/completions/git" \
@@ -1041,20 +1054,6 @@ if ! $_IS_CONTAINER; then
         elif [[ -n "$ZSH_VERSION" ]]; then
             [ -f "$PLUGINS_DIR/forgit/completions/_git-forgit" ] && source "$PLUGINS_DIR/forgit/completions/_git-forgit"
         fi
-        
-        # If forgit.plugin.sh is a git symlink placeholder (contains just the string 'forgit.plugin.zsh'),
-        # source the target file directly to avoid 'command not found' on Windows/Git Bash.
-        # Use read -r instead of cat to avoid spawning a subprocess on Windows/Git Bash.
-        _TMP_FIRST_LINE=""
-        if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
-            read -r _TMP_FIRST_LINE < "$PLUGINS_DIR/forgit/forgit.plugin.sh" 2>/dev/null
-        fi
-        if [ "$_TMP_FIRST_LINE" = "forgit.plugin.zsh" ]; then
-            source "$PLUGINS_DIR/forgit/forgit.plugin.zsh"
-        else
-            source "$PLUGINS_DIR/forgit/forgit.plugin.sh"
-        fi
-        unset _TMP_FIRST_LINE
     fi
 fi
 
