@@ -1046,7 +1046,7 @@ if ! $_IS_CONTAINER; then
                             return 0
                         fi
                     done
-                    return 0
+                    return 1
                 }
             fi
 
