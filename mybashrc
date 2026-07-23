@@ -284,7 +284,11 @@ fi
 if [[ -n "$BASH_VERSION" ]]; then
     # Load git-sh-prompt if available
     if ! declare -F __git_ps1 >/dev/null 2>&1; then
-        for _prompt_script in "/usr/lib/git-core/git-sh-prompt" \
+        _git_exec_dir=""
+        command -v git >/dev/null 2>&1 && _git_exec_dir="$(git --exec-path 2>/dev/null)"
+        for _prompt_script in "$_git_exec_dir/../../share/git/completion/git-prompt.sh" \
+                              "$_git_exec_dir/../../../share/git/completion/git-prompt.sh" \
+                              "/usr/lib/git-core/git-sh-prompt" \
                               "/usr/share/git-core/git-sh-prompt" \
                               "/etc/bash_completion.d/git-prompt" \
                               "/opt/homebrew/etc/bash_completion.d/git-prompt.sh" \
@@ -292,7 +296,7 @@ if [[ -n "$BASH_VERSION" ]]; then
                               "/Library/Developer/CommandLineTools/usr/share/git-core/git-sh-prompt" \
                               "/etc/profile.d/git-prompt.sh" \
                               "/mingw64/share/git/completion/git-prompt.sh"; do
-            if [ -f "$_prompt_script" ]; then
+            if [ -n "$_prompt_script" ] && [ -f "$_prompt_script" ]; then
                 source "$_prompt_script"
                 break
             fi
@@ -955,58 +959,76 @@ if ! $_IS_CONTAINER; then
             _git_switch_branch() { _git_checkout_branch "$@"; }
             
             # Ensure Git completion and _completion_loader are available on reload (including Git Bash on Windows & macOS)
+            _git_exec_path=""
+            command -v git >/dev/null 2>&1 && _git_exec_path="$(git --exec-path 2>/dev/null)"
+
             if ! declare -F _completion_loader >/dev/null 2>&1; then
                 for _comp_main in "/usr/share/bash-completion/bash_completion" \
                                   "/etc/bash_completion" \
+                                  "$_git_exec_path/../../share/bash-completion/bash_completion" \
                                   "/mingw64/share/bash-completion/bash_completion" \
                                   "/mingw32/share/bash-completion/bash_completion" \
                                   "/usr/local/etc/bash_completion" \
                                   "/opt/homebrew/etc/bash_completion"; do
-                    if [ -f "$_comp_main" ]; then
+                    if [ -n "$_comp_main" ] && [ -f "$_comp_main" ]; then
                         source "$_comp_main"
                         break
                     fi
                 done
             fi
 
-            # Load git completion if __git_complete or _git is not defined
-            if ! declare -F __git_complete >/dev/null 2>&1 && ! declare -F _git >/dev/null 2>&1; then
-                for _git_comp_script in "/mingw64/share/git/completion/git-completion.bash" \
+            # Load git completion if __git_complete is missing (even if _git exists partially)
+            if ! declare -F __git_complete >/dev/null 2>&1; then
+                for _git_comp_script in "$_git_exec_path/../../share/git/completion/git-completion.bash" \
+                                        "$_git_exec_path/../../../share/git/completion/git-completion.bash" \
+                                        "$_git_exec_path/../../share/bash-completion/completions/git" \
+                                        "/mingw64/share/git/completion/git-completion.bash" \
                                         "/mingw32/share/git/completion/git-completion.bash" \
                                         "/usr/share/bash-completion/completions/git" \
                                         "/usr/share/git-core/git-completion.bash" \
                                         "/usr/lib/git-core/git-completion.bash" \
                                         "/etc/bash_completion.d/git-completion.bash" \
                                         "/opt/homebrew/etc/bash_completion.d/git-completion.bash"; do
-                    if [ -f "$_git_comp_script" ]; then
+                    if [ -n "$_git_comp_script" ] && [ -f "$_git_comp_script" ]; then
                         source "$_git_comp_script"
                         break
                     fi
                 done
             fi
 
+            # Ensure git completion binding is active
+            if declare -F __git_complete >/dev/null 2>&1 && declare -F _git >/dev/null 2>&1; then
+                __git_complete git _git 2>/dev/null
+            fi
+
             # Fallback _completion_loader if bash_completion package is missing
             if ! declare -F _completion_loader >/dev/null 2>&1; then
                 _completion_loader() {
                     local cmd="$1"
+                    local _gexec=""
+                    command -v git >/dev/null 2>&1 && _gexec="$(git --exec-path 2>/dev/null)"
                     if [[ "$cmd" == "git" ]] || ! declare -F __git_complete >/dev/null 2>&1; then
-                        for _git_comp_script in "/mingw64/share/git/completion/git-completion.bash" \
+                        for _git_comp_script in "$_gexec/../../share/git/completion/git-completion.bash" \
+                                                "$_gexec/../../../share/git/completion/git-completion.bash" \
+                                                "$_gexec/../../share/bash-completion/completions/git" \
+                                                "/mingw64/share/git/completion/git-completion.bash" \
                                                 "/mingw32/share/git/completion/git-completion.bash" \
                                                 "/usr/share/bash-completion/completions/git" \
                                                 "/usr/share/git-core/git-completion.bash" \
                                                 "/usr/lib/git-core/git-completion.bash" \
                                                 "/etc/bash_completion.d/git-completion.bash" \
                                                 "/opt/homebrew/etc/bash_completion.d/git-completion.bash"; do
-                            if [ -f "$_git_comp_script" ]; then
+                            if [ -n "$_git_comp_script" ] && [ -f "$_git_comp_script" ]; then
                                 source "$_git_comp_script"
                                 return 0
                             fi
                         done
                     fi
                     for _comp_dir in "/usr/share/bash-completion/completions" \
+                                     "$_gexec/../../share/bash-completion/completions" \
                                      "/mingw64/share/bash-completion/completions" \
                                      "/mingw32/share/bash-completion/completions"; do
-                        if [ -f "$_comp_dir/$cmd" ]; then
+                        if [ -n "$_comp_dir" ] && [ -f "$_comp_dir/$cmd" ]; then
                             source "$_comp_dir/$cmd"
                             return 0
                         fi
