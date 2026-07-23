@@ -954,16 +954,65 @@ if ! $_IS_CONTAINER; then
         if [[ -n "$BASH_VERSION" ]]; then
             _git_switch_branch() { _git_checkout_branch "$@"; }
             
-            # Ensure _completion_loader is defined on reload to prevent forgit completion errors
+            # Ensure Git completion and _completion_loader are available on reload (including Git Bash on Windows & macOS)
             if ! declare -F _completion_loader >/dev/null 2>&1; then
-                if [ -f /usr/share/bash-completion/bash_completion ]; then
-                    source /usr/share/bash-completion/bash_completion
-                elif [ -f /etc/bash_completion ]; then
-                    source /etc/bash_completion
-                fi
+                for _comp_main in "/usr/share/bash-completion/bash_completion" \
+                                  "/etc/bash_completion" \
+                                  "/mingw64/share/bash-completion/bash_completion" \
+                                  "/mingw32/share/bash-completion/bash_completion" \
+                                  "/usr/local/etc/bash_completion" \
+                                  "/opt/homebrew/etc/bash_completion"; do
+                    if [ -f "$_comp_main" ]; then
+                        source "$_comp_main"
+                        break
+                    fi
+                done
             fi
+
+            # Load git completion if __git_complete or _git is not defined
+            if ! declare -F __git_complete >/dev/null 2>&1 && ! declare -F _git >/dev/null 2>&1; then
+                for _git_comp_script in "/mingw64/share/git/completion/git-completion.bash" \
+                                        "/mingw32/share/git/completion/git-completion.bash" \
+                                        "/usr/share/bash-completion/completions/git" \
+                                        "/usr/share/git-core/git-completion.bash" \
+                                        "/usr/lib/git-core/git-completion.bash" \
+                                        "/etc/bash_completion.d/git-completion.bash" \
+                                        "/opt/homebrew/etc/bash_completion.d/git-completion.bash"; do
+                    if [ -f "$_git_comp_script" ]; then
+                        source "$_git_comp_script"
+                        break
+                    fi
+                done
+            fi
+
+            # Fallback _completion_loader if bash_completion package is missing
             if ! declare -F _completion_loader >/dev/null 2>&1; then
-                _completion_loader() { :; }
+                _completion_loader() {
+                    local cmd="$1"
+                    if [[ "$cmd" == "git" ]] || ! declare -F __git_complete >/dev/null 2>&1; then
+                        for _git_comp_script in "/mingw64/share/git/completion/git-completion.bash" \
+                                                "/mingw32/share/git/completion/git-completion.bash" \
+                                                "/usr/share/bash-completion/completions/git" \
+                                                "/usr/share/git-core/git-completion.bash" \
+                                                "/usr/lib/git-core/git-completion.bash" \
+                                                "/etc/bash_completion.d/git-completion.bash" \
+                                                "/opt/homebrew/etc/bash_completion.d/git-completion.bash"; do
+                            if [ -f "$_git_comp_script" ]; then
+                                source "$_git_comp_script"
+                                return 0
+                            fi
+                        done
+                    fi
+                    for _comp_dir in "/usr/share/bash-completion/completions" \
+                                     "/mingw64/share/bash-completion/completions" \
+                                     "/mingw32/share/bash-completion/completions"; do
+                        if [ -f "$_comp_dir/$cmd" ]; then
+                            source "$_comp_dir/$cmd"
+                            return 0
+                        fi
+                    done
+                    return 0
+                }
             fi
 
             [ -f "$PLUGINS_DIR/forgit/completions/git-forgit.bash" ] && source "$PLUGINS_DIR/forgit/completions/git-forgit.bash"
