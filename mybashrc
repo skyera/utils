@@ -166,8 +166,6 @@ export NEOVIM_BIN="$_NEOVIM_BIN"
 
 # Tool configs
 export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
-export NNN_FIFO="${TMPDIR:-/tmp}/nnn-fifo-${USER:-$UID}"
-export NNN_PLUG='p:preview-tui;f:finder;o:fzopen;d:diffs;v:imgview'
 # Safely prepend include and library paths without duplicates or trailing colons
 _add_path_to_var() {
     local var_name="$1"
@@ -873,16 +871,6 @@ alias tmuxfix="printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'"
 # lf wrapper: override directory color only for lf (scoped, not global)
 lf() {
     LS_COLORS="${LS_COLORS/di=01;34/di=01;36}" command lf "$@"
-}
-
-# nnn wrapper: ensure FIFO is set and prevent nested instances
-nnn() {
-    if [ -n "$NNNLVL" ] && [ "$NNNLVL" -ge 1 ]; then
-        echo "nnn is already running"
-        return
-    fi
-    export NNN_FIFO="${TMPDIR:-/tmp}/nnn-fifo-${USER:-$UID}"
-    command nnn "$@"
 }
 
 tpe() {

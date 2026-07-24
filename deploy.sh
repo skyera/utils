@@ -245,24 +245,6 @@ if ! $IS_WINDOWS; then
         mkdir -p "$RANGER_PLUGIN_DIR"
         git clone --depth 1 https://github.com/alexanderjeurissen/ranger_devicons "$RANGER_PLUGIN_DIR/ranger_devicons"
     fi
-
-    # nnn Plugins
-    NNN_PLUGIN_DIR="$HOME/.config/nnn/plugins"
-    mkdir -p "$NNN_PLUGIN_DIR"
-    if [ -d "/usr/share/nnn/plugins" ]; then
-        echo "Deploying nnn plugins..."
-        cp -r /usr/share/nnn/plugins/* "$NNN_PLUGIN_DIR/" 2>/dev/null || true
-    fi
-    if [ ! -f "$NNN_PLUGIN_DIR/preview-tui" ]; then
-        echo "Downloading nnn plugins..."
-        tmp_nnn=$(mktemp -d)
-        git clone --depth 1 https://github.com/jarun/nnn.git "$tmp_nnn" 2>/dev/null
-        if [ -d "$tmp_nnn/plugins" ]; then
-            cp -r "$tmp_nnn/plugins/"* "$NNN_PLUGIN_DIR/"
-        fi
-        rm -rf "$tmp_nnn"
-    fi
-    chmod +x "$NNN_PLUGIN_DIR"/* 2>/dev/null || true
 fi
 
 echo "Deployment complete! Please restart your shell or run 'source ~/.bashrc'."

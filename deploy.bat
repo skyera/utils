@@ -111,8 +111,6 @@ echo Setting Environment Variables...
 setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc"
 setx FZF_DEFAULT_COMMAND "fd --follow --hidden --exclude .git --ignore-file \"%APPDATA%\fd\ignore\""
 setx FZF_DEFAULT_OPTS "--preview \"bat --color=always {}\""
-setx NNN_FIFO "%TEMP%\nnn-fifo"
-setx NNN_PLUG "p:preview-tui;f:finder;o:fzopen;d:diffs;v:imgview"
 
 :: Set Yazi MIME detector path
 set "YAZI_FILE_PATH="
