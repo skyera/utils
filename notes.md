@@ -80,6 +80,34 @@ printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'
 tmux capture-pane -S - \; save-buffer - \; delete-buffer | xclip -selection clipboard
 ```
 
+#### Capture Pane to File
+```bash
+# Save visible content
+tmux capture-pane -p > output.txt
+
+# Save full scrollback history
+tmux capture-pane -p -S - > output.txt
+
+# Save with ANSI colors / formatting retained
+tmux capture-pane -e -p -S - > output.txt
+```
+
+From tmux command prompt (`Ctrl+b` then `:`):
+```text
+capture-pane -S - ; save-buffer output.txt
+```
+
+Option Explanations:
+* `-p`: Output content directly to stdout (allowing file redirection via `>`).
+* `-S -`: Start capture from the beginning of scrollback history (`-S -1000` captures last 1000 lines).
+* `-e`: Include ANSI color escape codes in output.
+
+Key binding in `~/.tmux.conf`:
+```tmux
+bind-key P command-prompt -p 'Save pane history to:' -I '~/tmux.log' 'capture-pane -S -; save-buffer "%1"; delete-buffer'
+```
+
+
 ### Terminal Images & Video
 ```
 catimg
