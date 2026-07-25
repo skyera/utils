@@ -678,6 +678,7 @@ _apply_overrides() {
         alias ll='eza -lh --icons=always --group-directories-first'
         alias la='eza -a --icons=always --group-directories-first'
         alias lt='eza --tree --icons=always'
+        alias lrt='eza -lh -s newest --icons=always --group-directories-first'
     fi
     alias gsu='git submodule update --init --recursive -f'
 }
