@@ -97,10 +97,18 @@ From tmux command prompt (`Ctrl+b` then `:`):
 capture-pane -S - ; save-buffer output.txt
 ```
 
-Option Explanations:
-* `-p`: Output content directly to stdout (allowing file redirection via `>`).
-* `-S -`: Start capture from the beginning of scrollback history (`-S -1000` captures last 1000 lines).
-* `-e`: Include ANSI color escape codes in output.
+Option & Line Range Explanations:
+* **Line Indexing Rules**:
+  * `0`: Top line of current visible pane screen.
+  * `-N`: Negative line numbers go back into scrollback history (e.g., `-500` captures last 500 lines).
+  * `-S -`: Start from beginning of scrollback history.
+  * `-E -`: End at bottom of visible pane.
+* **Flags**:
+  * `-p`: Output directly to stdout (allowing file redirection via `>`).
+  * `-S start-line`: Specify starting line.
+  * `-E end-line`: Specify ending line (e.g. `-S -1000 -E -200`).
+  * `-J`: Join wrapped lines to preserve long lines without artificial breaks.
+  * `-e`: Include ANSI color escape codes in output.
 
 Key binding in `~/.tmux.conf`:
 ```tmux
