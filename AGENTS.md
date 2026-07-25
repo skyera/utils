@@ -3,8 +3,8 @@
 For any issue, feature request, review, or modification task, the agent MUST follow this workflow:
 
 1.  **Research & Think**: Analyze the request (including any review notes), explore the relevant parts of the codebase, and identify the root cause or the optimal design for the change.
-2.  **Design & Plan**: Create a detailed plan of action. This plan must include a clear test plan outlining how the changes will be validated, tested, and verified. The complete plan must be presented to the user for approval before any files are modified. If the plan is simple, there is no need to write it to an implementation plan file; simply print it on the screen and ask for approval.
-3.  **Implement**: Once the plan is approved, perform surgical and idiomatic changes to the codebase.
+2.  **Design & Plan**: Formulate a clear plan of action and test strategy. Complex tasks may benefit from an implementation plan, but pre-approval from the user is not required before modifying files.
+3.  **Implement**: Perform surgical and idiomatic changes to the codebase directly.
 4.  **Verify**: Validate the changes through testing, manual verification, or relevant shell commands to ensure the solution is correct and does not introduce regressions.
 
 Verification is the only path to finality. Do not assume success.
