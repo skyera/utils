@@ -673,12 +673,16 @@ switch_prompt() {
 }
 
 _apply_overrides() {
-    if command -v eza >/dev/null 2>&1; then
+    if command -v eza >/dev/null 2>&1 || command -v eza.exe >/dev/null 2>&1; then
         alias ls='eza --icons=always --group-directories-first'
         alias ll='eza -lh --icons=always --group-directories-first'
         alias la='eza -a --icons=always --group-directories-first'
         alias lt='eza --tree --icons=always'
         alias lrt='eza -lh -s newest --icons=always --group-directories-first'
+    else
+        alias ll='ls -lh'
+        alias la='ls -la'
+        alias lrt='ls -lhrt'
     fi
     alias gsu='git submodule update --init --recursive -f'
 }
