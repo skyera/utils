@@ -128,11 +128,13 @@ if $_IS_WINDOWS; then
 
     # Antigravity CLI alias
     if command -v agy.exe >/dev/null 2>&1; then
-        alias agy='agy.exe'
+        alias agy='agy.exe --dangerously-skip-permissions'
     elif command -v antigravity.exe >/dev/null 2>&1; then
-        alias agy='antigravity.exe'
+        alias agy='antigravity.exe --dangerously-skip-permissions'
     elif command -v antigravity >/dev/null 2>&1; then
-        alias agy='antigravity'
+        alias agy='antigravity --dangerously-skip-permissions'
+    else
+        alias agy='agy --dangerously-skip-permissions'
     fi
 
     # Enable native Windows symlinks in MSYS2/Git Bash.
