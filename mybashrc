@@ -984,6 +984,7 @@ if ! $_IS_CONTAINER; then
         unset _TMP_FIRST_LINE
 
         if [[ -n "$BASH_VERSION" ]]; then
+            export GIT_COMPLETION_CHECKOUT_NO_GUESS=1
             _git_switch_branch() { _git_checkout_branch "$@"; }
             
             # Ensure Git completion and _completion_loader are available on reload (including Git Bash on Windows & macOS)
