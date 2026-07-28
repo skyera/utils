@@ -32,19 +32,19 @@ unalias git 2>/dev/null
 # Optimize git commands on WSL mounted Windows drives by routing to git.exe
 if [[ -n "$WSL_DISTRO_NAME" ]]; then
     git() {
-        # If called from prompt scripts, bypass the wrapper to use native git
-        # This keeps the shell prompt instantaneous (10ms) while optimizing manual CLI commands
+        # If called from prompt scripts or git completion, bypass the wrapper to use native git
+        # This keeps shell prompt and tab completion instantaneous while optimizing manual CLI commands
         local f
         if [[ -n "$BASH_VERSION" ]]; then
             for f in "${FUNCNAME[@]}"; do
-                if [[ "$f" == "__git_ps1" || "$f" == "_set_bash_prompt_vars" ]]; then
+                if [[ "$f" == "__git_ps1" || "$f" == "_set_bash_prompt_vars" || "$f" == __git* || "$f" == _git* ]]; then
                     command git "$@"
                     return
                 fi
             done
         elif [[ -n "$ZSH_VERSION" ]]; then
             for f in "${funcstack[@]}"; do
-                if [[ "$f" == "vcs_info" || "$f" == "precmd_vcs_info" ]]; then
+                if [[ "$f" == "vcs_info" || "$f" == "precmd_vcs_info" || "$f" == _git* ]]; then
                     command git "$@"
                     return
                 fi
@@ -1030,6 +1030,39 @@ if ! $_IS_CONTAINER; then
                 __git_complete git _git 2>/dev/null
                 __git_complete git.exe _git 2>/dev/null
             fi
+
+            # Prevent completion from taking optional index locks or writing stat cache on disk (critical for 20GB+ repos)
+            export GIT_OPTIONAL_LOCKS=0
+
+            # Override __git helper to force fast native execution and disable optional locks during completion
+            __git ()
+            {
+                GIT_OPTIONAL_LOCKS=0 command git ${__git_C_args:+"${__git_C_args[@]}"} ${__git_dir:+--git-dir="$__git_dir"} "$@" 2>/dev/null
+            }
+
+            # Override _git_add to support fast tab completion for `git add -f <prefix>` in large repos
+            _git_add ()
+            {
+                case "$cur" in
+                --chmod=*)
+                    __gitcomp "+x -x" "" "${cur##--chmod=}"
+                    return
+                    ;;
+                --*)
+                    __gitcomp_builtin add
+                    return
+                    ;;
+                esac
+
+                local complete_opt="--others --modified --directory --no-empty-directory"
+                if test -n "$(__git_find_on_cmdline "-u --update")"; then
+                    complete_opt="--modified"
+                fi
+                if test -n "$(__git_find_on_cmdline "-f --force")"; then
+                    complete_opt="$complete_opt --ignored"
+                fi
+                GIT_OPTIONAL_LOCKS=0 __git_complete_index_file "$complete_opt"
+            }
 
             # Fallback _completion_loader if bash_completion package is missing
             if ! declare -F _completion_loader >/dev/null 2>&1; then
