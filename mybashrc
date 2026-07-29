@@ -328,8 +328,9 @@ if [[ -n "$BASH_VERSION" ]]; then
                 exit_code=$1
             fi
             
-            # Dynamically adjust Git prompt features for WSL mounted drives or Git Bash on Windows to avoid severe lag
-            if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]] || $_IS_WINDOWS; then
+            # Dynamically adjust Git prompt features for WSL mounted drives, Windows, or GIT_PS1_FAST=true to avoid severe lag
+            export GIT_OPTIONAL_LOCKS=0
+            if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]] || $_IS_WINDOWS || [[ "$GIT_PS1_FAST" == "true" || "$GIT_PS1_FAST" == "1" ]]; then
                 GIT_PS1_SHOWDIRTYSTATE=""
                 GIT_PS1_SHOWSTASHSTATE=""
                 GIT_PS1_SHOWUNTRACKEDFILES=""
