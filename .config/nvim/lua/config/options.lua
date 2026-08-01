@@ -80,18 +80,9 @@ vim.g.fzf_command_prefix = "Fzf"
 vim.g.fzf_layout = { down = "40%" }
 vim.env.FZF_DEFAULT_OPTS = (vim.env.FZF_DEFAULT_OPTS or "") .. ' --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
 
--- Custom Frg and FzfRg live ripgrep command (includes hidden files, excludes .git)
+-- Custom Frg command
 vim.cmd([[
-  function! RipgrepFzf(query, fullscreen)
-    let command_fmt = 'rg --column --line-number --no-heading --color=always --smart-case --hidden --glob "!.git/*" -- %s || true'
-    let initial_command = printf(command_fmt, shellescape(a:query))
-    let reload_command = printf(command_fmt, '{q}')
-    let spec = {'options': ['--phony', '--query', a:query, '--bind', 'change:reload:'.reload_command]}
-    call fzf#vim#grep(initial_command, 1, fzf#vim#with_preview(spec), a:fullscreen)
-  endfunction
-
-  command! -nargs=* -bang FzfRg call RipgrepFzf(<q-args>, <bang>0)
-  command! -nargs=* -bang Frg call RipgrepFzf(<q-args>, <bang>0)
+  command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview(), <bang>0)
 ]])
 
 -- Theme settings
