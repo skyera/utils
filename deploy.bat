@@ -175,6 +175,13 @@ if not exist "%MPV_DIR%\scripts\autoload.lua" (
     powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri https://raw.githubusercontent.com/mpv-player/mpv/master/TOOLS/lua/autoload.lua -OutFile '%MPV_DIR%\scripts\autoload.lua'"
 )
 
+:: 7. mpv-webm script
+if not exist "%MPV_DIR%\scripts\webm.lua" (
+    echo Downloading webm.lua for mpv...
+    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri https://github.com/ekisu/mpv-webm/releases/download/latest/webm.lua -OutFile '%MPV_DIR%\scripts\webm.lua'"
+)
+
+
 
 
 

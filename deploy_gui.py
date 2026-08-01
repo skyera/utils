@@ -845,7 +845,6 @@ class DotfilesDeployGUI:
                 print(f"Error deploying sponsorblock components: {e}")
 
         # 6. autoload script
-
         autoload_dest = os.path.join(scripts_dir, "autoload.lua")
         if not os.path.exists(autoload_dest):
             try:
@@ -854,7 +853,14 @@ class DotfilesDeployGUI:
             except Exception as e:
                 print(f"Error downloading autoload.lua: {e}")
 
-
+        # 7. mpv-webm script
+        webm_dest = os.path.join(scripts_dir, "webm.lua")
+        if not os.path.exists(webm_dest):
+            try:
+                import urllib.request
+                urllib.request.urlretrieve("https://github.com/ekisu/mpv-webm/releases/download/latest/webm.lua", webm_dest)
+            except Exception as e:
+                print(f"Error downloading webm.lua: {e}")
 
     def deploy_file(self, src, dest, is_dir=False):
         """Core deployment logic for single file or directory, handling symlinks and conflicts safely"""

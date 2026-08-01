@@ -324,6 +324,14 @@ if [ ! -f "$MPV_DIR/scripts/autoload.lua" ]; then
     fi
 fi
 
-
+# 7. mpv-webm
+if [ ! -f "$MPV_DIR/scripts/webm.lua" ]; then
+    echo "Downloading webm.lua for mpv..."
+    if command -v curl >/dev/null 2>&1; then
+        curl -sLo "$MPV_DIR/scripts/webm.lua" "https://github.com/ekisu/mpv-webm/releases/download/latest/webm.lua"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO "$MPV_DIR/scripts/webm.lua" "https://github.com/ekisu/mpv-webm/releases/download/latest/webm.lua"
+    fi
+fi
 
 echo "Deployment complete! Please restart your shell or run 'source ~/.bashrc'."
