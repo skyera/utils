@@ -73,6 +73,111 @@ call :deploy_file "%REPO_DIR%\.config\yazi\theme.toml"  "%APPDATA%\yazi\config\t
 call :deploy_file "%REPO_DIR%\.config\yazi\keymap.toml" "%APPDATA%\yazi\config\keymap.toml"
 call :deploy_file "%REPO_DIR%\.config\yazi\yazi.toml"   "%APPDATA%\yazi\config\yazi.toml"
 
+:: MPV configuration and plugins (uosc, mpv-cut, thumbfast, autoload, quality-menu)
+call :deploy_file "%REPO_DIR%\.config\mpv\mpv.conf" "%APPDATA%\mpv\mpv.conf"
+set "MPV_DIR=%APPDATA%\mpv"
+set "UOSC_REPO=%MPV_DIR%\uosc"
+set "MPV_CUT_DIR=%MPV_DIR%\scripts\mpv-cut"
+set "THUMBFAST_REPO=%MPV_DIR%\thumbfast"
+set "QUALITY_MENU_REPO=%MPV_DIR%\quality-menu"
+set "SPONSORBLOCK_REPO=%MPV_DIR%\sponsorblock"
+
+
+if not exist "%MPV_DIR%\scripts" mkdir "%MPV_DIR%\scripts"
+if not exist "%MPV_DIR%\fonts" mkdir "%MPV_DIR%\fonts"
+if not exist "%MPV_DIR%\script-opts" mkdir "%MPV_DIR%\script-opts"
+
+where git >nul 2>nul
+if %ERRORLEVEL% equ 0 (
+    :: 1. uosc plugin
+    if not exist "%UOSC_REPO%" (
+        echo Cloning uosc for mpv...
+        git clone --depth 1 https://github.com/tomasklaen/uosc.git "%UOSC_REPO%"
+    )
+    if exist "%UOSC_REPO%" (
+        echo Deploying uosc components for mpv...
+        if exist "%UOSC_REPO%\src\uosc" (
+            if not exist "%MPV_DIR%\scripts\uosc" mkdir "%MPV_DIR%\scripts\uosc"
+            xcopy /Y /S /E "%UOSC_REPO%\src\uosc\*" "%MPV_DIR%\scripts\uosc\" >nul
+        )
+        if exist "%UOSC_REPO%\src\fonts" (
+            xcopy /Y /S /E "%UOSC_REPO%\src\fonts\*" "%MPV_DIR%\fonts\" >nul
+        )
+        if exist "%UOSC_REPO%\src\uosc.conf" (
+            if not exist "%MPV_DIR%\script-opts\uosc.conf" (
+                copy /Y "%UOSC_REPO%\src\uosc.conf" "%MPV_DIR%\script-opts\uosc.conf" >nul
+            )
+        )
+    )
+
+    :: 2. mpv-cut plugin
+    if not exist "%MPV_CUT_DIR%" (
+        echo Cloning mpv-cut for mpv...
+        git clone -b release --single-branch --depth 1 https://github.com/familyfriendlymikey/mpv-cut.git "%MPV_CUT_DIR%" 2>nul || git clone --depth 1 https://github.com/familyfriendlymikey/mpv-cut.git "%MPV_CUT_DIR%"
+    )
+
+    :: 3. thumbfast plugin
+    if not exist "%THUMBFAST_REPO%" (
+        echo Cloning thumbfast for mpv...
+        git clone --depth 1 https://github.com/po5/thumbfast.git "%THUMBFAST_REPO%"
+    )
+    if exist "%THUMBFAST_REPO%" (
+        echo Deploying thumbfast for mpv...
+        if exist "%THUMBFAST_REPO%\thumbfast.lua" (
+            copy /Y "%THUMBFAST_REPO%\thumbfast.lua" "%MPV_DIR%\scripts\thumbfast.lua" >nul
+        )
+        if exist "%THUMBFAST_REPO%\thumbfast.conf" (
+            if not exist "%MPV_DIR%\script-opts\thumbfast.conf" (
+                copy /Y "%THUMBFAST_REPO%\thumbfast.conf" "%MPV_DIR%\script-opts\thumbfast.conf" >nul
+            )
+        )
+    )
+
+    :: 4. quality-menu plugin
+    if not exist "%QUALITY_MENU_REPO%" (
+        echo Cloning quality-menu for mpv...
+        git clone --depth 1 https://github.com/christoph-heinrich/mpv-quality-menu.git "%QUALITY_MENU_REPO%"
+    )
+    if exist "%QUALITY_MENU_REPO%" (
+        echo Deploying quality-menu for mpv...
+        if exist "%QUALITY_MENU_REPO%\quality-menu.lua" (
+            copy /Y "%QUALITY_MENU_REPO%\quality-menu.lua" "%MPV_DIR%\scripts\quality-menu.lua" >nul
+        )
+        if exist "%QUALITY_MENU_REPO%\quality-menu.conf" (
+            if not exist "%MPV_DIR%\script-opts\quality-menu.conf" (
+                copy /Y "%QUALITY_MENU_REPO%\quality-menu.conf" "%MPV_DIR%\script-opts\quality-menu.conf" >nul
+            )
+        )
+    )
+
+    :: 5. sponsorblock plugin
+    if not exist "%SPONSORBLOCK_REPO%" (
+
+        echo Cloning sponsorblock for mpv...
+        git clone --depth 1 https://github.com/po5/mpv_sponsorblock.git "%SPONSORBLOCK_REPO%"
+    )
+    if exist "%SPONSORBLOCK_REPO%" (
+        echo Deploying sponsorblock for mpv...
+        if exist "%SPONSORBLOCK_REPO%\sponsorblock.lua" (
+            copy /Y "%SPONSORBLOCK_REPO%\sponsorblock.lua" "%MPV_DIR%\scripts\sponsorblock.lua" >nul
+        )
+        if exist "%SPONSORBLOCK_REPO%\sponsorblock_shared" (
+            if not exist "%MPV_DIR%\scripts\sponsorblock_shared" mkdir "%MPV_DIR%\scripts\sponsorblock_shared"
+            xcopy /Y /S /E "%SPONSORBLOCK_REPO%\sponsorblock_shared\*" "%MPV_DIR%\scripts\sponsorblock_shared\" >nul
+        )
+    )
+)
+
+:: 6. autoload script
+
+if not exist "%MPV_DIR%\scripts\autoload.lua" (
+    echo Downloading autoload.lua for mpv...
+    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri https://raw.githubusercontent.com/mpv-player/mpv/master/TOOLS/lua/autoload.lua -OutFile '%MPV_DIR%\scripts\autoload.lua'"
+)
+
+
+
+
 :: Neovim configuration selection
 if "%NVIM_CHOICE%"=="lua" (
     :: Deploy Neovim Lua configuration

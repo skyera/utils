@@ -84,6 +84,7 @@ class DotfilesDeployGUI:
                     {"src": ".config/ranger/commands.py", "dest": {"Unix": "~/.config/ranger/commands.py", "Windows": "%APPDATA%/ranger/commands.py"}},
                     {"src": ".config/ranger/scope.sh", "dest": {"Unix": "~/.config/ranger/scope.sh", "Windows": "%APPDATA%/ranger/scope.sh"}},
                     {"src": ".config/ranger/colorschemes", "dest": {"Unix": "~/.config/ranger/colorschemes", "Windows": "%APPDATA%/ranger/colorschemes"}, "is_dir": True},
+                    {"src": ".config/mpv/mpv.conf", "dest": {"Unix": "~/.config/mpv/mpv.conf", "Windows": "%APPDATA%/mpv/mpv.conf"}},
                 ]
             }
         ]
@@ -732,6 +733,129 @@ class DotfilesDeployGUI:
                 except Exception as e:
                     print(f"Error appending sourcing to {config_path}: {e}")
 
+    def _post_deploy_mpv(self, dest):
+        """Clone uosc from GitHub and deploy its components into mpv directory"""
+        if "mpv" not in dest.lower():
+            return
+        mpv_dir = os.path.dirname(dest)
+        uosc_repo = os.path.join(mpv_dir, "uosc")
+        if not os.path.exists(uosc_repo):
+            try:
+                import subprocess
+                subprocess.run(["git", "clone", "--depth", "1", "https://github.com/tomasklaen/uosc.git", uosc_repo], check=True)
+            except Exception as e:
+                print(f"Error cloning uosc: {e}")
+
+        if os.path.exists(uosc_repo):
+            try:
+                scripts_dir = os.path.join(mpv_dir, "scripts")
+                fonts_dir = os.path.join(mpv_dir, "fonts")
+                script_opts_dir = os.path.join(mpv_dir, "script-opts")
+                os.makedirs(scripts_dir, exist_ok=True)
+                os.makedirs(fonts_dir, exist_ok=True)
+                os.makedirs(script_opts_dir, exist_ok=True)
+
+                src_uosc = os.path.join(uosc_repo, "src", "uosc")
+                if os.path.exists(src_uosc):
+                    dest_uosc = os.path.join(scripts_dir, "uosc")
+                    if os.path.exists(dest_uosc):
+                        shutil.rmtree(dest_uosc)
+                    shutil.copytree(src_uosc, dest_uosc)
+
+                src_fonts = os.path.join(uosc_repo, "src", "fonts")
+                if os.path.exists(src_fonts):
+                    for font_file in os.listdir(src_fonts):
+                        shutil.copy2(os.path.join(src_fonts, font_file), os.path.join(fonts_dir, font_file))
+
+                src_conf = os.path.join(uosc_repo, "src", "uosc.conf")
+                dest_conf = os.path.join(script_opts_dir, "uosc.conf")
+                if os.path.exists(src_conf) and not os.path.exists(dest_conf):
+                    shutil.copy2(src_conf, dest_conf)
+            except Exception as e:
+                print(f"Error deploying uosc components: {e}")
+
+        # 2. mpv-cut plugin
+        mpv_cut_dir = os.path.join(scripts_dir, "mpv-cut")
+        if not os.path.exists(mpv_cut_dir):
+            try:
+                subprocess.run(["git", "clone", "-b", "release", "--single-branch", "--depth", "1", "https://github.com/familyfriendlymikey/mpv-cut.git", mpv_cut_dir], check=True)
+            except Exception as e:
+                print(f"Error cloning mpv-cut: {e}")
+
+        # 3. thumbfast plugin
+        thumbfast_repo = os.path.join(mpv_dir, "thumbfast")
+        if not os.path.exists(thumbfast_repo):
+            try:
+                subprocess.run(["git", "clone", "--depth", "1", "https://github.com/po5/thumbfast.git", thumbfast_repo], check=True)
+            except Exception as e:
+                print(f"Error cloning thumbfast: {e}")
+
+        if os.path.exists(thumbfast_repo):
+            try:
+                src_lua = os.path.join(thumbfast_repo, "thumbfast.lua")
+                if os.path.exists(src_lua):
+                    shutil.copy2(src_lua, os.path.join(scripts_dir, "thumbfast.lua"))
+                src_conf = os.path.join(thumbfast_repo, "thumbfast.conf")
+                dest_conf = os.path.join(script_opts_dir, "thumbfast.conf")
+                if os.path.exists(src_conf) and not os.path.exists(dest_conf):
+                    shutil.copy2(src_conf, dest_conf)
+            except Exception as e:
+                print(f"Error deploying thumbfast components: {e}")
+
+        # 4. quality-menu plugin
+        qm_repo = os.path.join(mpv_dir, "quality-menu")
+        if not os.path.exists(qm_repo):
+            try:
+                subprocess.run(["git", "clone", "--depth", "1", "https://github.com/christoph-heinrich/mpv-quality-menu.git", qm_repo], check=True)
+            except Exception as e:
+                print(f"Error cloning quality-menu: {e}")
+
+        if os.path.exists(qm_repo):
+            try:
+                src_lua = os.path.join(qm_repo, "quality-menu.lua")
+                if os.path.exists(src_lua):
+                    shutil.copy2(src_lua, os.path.join(scripts_dir, "quality-menu.lua"))
+                src_conf = os.path.join(qm_repo, "quality-menu.conf")
+                dest_conf = os.path.join(script_opts_dir, "quality-menu.conf")
+                if os.path.exists(src_conf) and not os.path.exists(dest_conf):
+                    shutil.copy2(src_conf, dest_conf)
+            except Exception as e:
+                print(f"Error deploying quality-menu components: {e}")
+
+        # 5. sponsorblock plugin
+        sb_repo = os.path.join(mpv_dir, "sponsorblock")
+        if not os.path.exists(sb_repo):
+            try:
+                subprocess.run(["git", "clone", "--depth", "1", "https://github.com/po5/mpv_sponsorblock.git", sb_repo], check=True)
+            except Exception as e:
+                print(f"Error cloning sponsorblock: {e}")
+
+        if os.path.exists(sb_repo):
+            try:
+                src_lua = os.path.join(sb_repo, "sponsorblock.lua")
+                if os.path.exists(src_lua):
+                    shutil.copy2(src_lua, os.path.join(scripts_dir, "sponsorblock.lua"))
+                src_shared = os.path.join(sb_repo, "sponsorblock_shared")
+                if os.path.exists(src_shared):
+                    dest_shared = os.path.join(scripts_dir, "sponsorblock_shared")
+                    if os.path.exists(dest_shared):
+                        shutil.rmtree(dest_shared)
+                    shutil.copytree(src_shared, dest_shared)
+            except Exception as e:
+                print(f"Error deploying sponsorblock components: {e}")
+
+        # 6. autoload script
+
+        autoload_dest = os.path.join(scripts_dir, "autoload.lua")
+        if not os.path.exists(autoload_dest):
+            try:
+                import urllib.request
+                urllib.request.urlretrieve("https://raw.githubusercontent.com/mpv-player/mpv/master/TOOLS/lua/autoload.lua", autoload_dest)
+            except Exception as e:
+                print(f"Error downloading autoload.lua: {e}")
+
+
+
     def deploy_file(self, src, dest, is_dir=False):
         """Core deployment logic for single file or directory, handling symlinks and conflicts safely"""
         if not os.path.lexists(src):
@@ -804,6 +928,10 @@ class DotfilesDeployGUI:
             # Post-deployment sourcing hook for mybashrc
             if dest_basename == ".mybashrc" or dest_basename == "mybashrc":
                 self._post_deploy_shell_config(dest)
+            
+            # Post-deployment hook for mpv uosc plugin
+            if "mpv" in dest.lower():
+                self._post_deploy_mpv(dest)
             
             return True, f"Deployed to {dest}"
         except Exception as e:

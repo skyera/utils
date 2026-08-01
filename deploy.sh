@@ -121,6 +121,9 @@ deploy_file "$REPO_DIR/.config/lf/colors"           "$HOME/.config/lf/colors"
 deploy_file "$REPO_DIR/.config/git/ignore"          "$HOME/.config/git/ignore"
 deploy_file "$REPO_DIR/.config/fd/ignore"           "$HOME/.config/fd/ignore"
 
+# MPV configuration
+deploy_file "$REPO_DIR/.config/mpv/mpv.conf" "$HOME/.config/mpv/mpv.conf"
+
 # Yazi configuration
 echo "Deploying Yazi configuration..."
 deploy_file "$REPO_DIR/.config/yazi/theme.toml"             "$HOME/.config/yazi/theme.toml"
@@ -131,6 +134,7 @@ if [ -f "$REPO_DIR/.config/yazi/yazi.toml" ]; then
 fi
 
 # Binaries
+
 echo "Deploying binaries to ~/bin/..."
 for f in "$REPO_DIR/bin/"*; do
     if [ -f "$f" ]; then
@@ -237,14 +241,89 @@ install_plugin() {
 install_plugin "junegunn/fzf-git.sh"
 install_plugin "wfxr/forgit"
 
-# Ranger Plugins
-if ! $IS_WINDOWS; then
-    RANGER_PLUGIN_DIR="$HOME/.config/ranger/plugins"
-    if [ ! -d "$RANGER_PLUGIN_DIR/ranger_devicons" ]; then
-        echo "Installing ranger_devicons..."
-        mkdir -p "$RANGER_PLUGIN_DIR"
-        git clone --depth 1 https://github.com/alexanderjeurissen/ranger_devicons "$RANGER_PLUGIN_DIR/ranger_devicons"
+# MPV Plugins (uosc, mpv-cut, thumbfast, autoload, quality-menu)
+MPV_DIR="$HOME/.config/mpv"
+UOSC_REPO_DIR="$MPV_DIR/uosc"
+MPV_CUT_DIR="$MPV_DIR/scripts/mpv-cut"
+THUMBFAST_REPO_DIR="$MPV_DIR/thumbfast"
+QUALITY_MENU_REPO_DIR="$MPV_DIR/quality-menu"
+
+mkdir -p "$MPV_DIR/scripts" "$MPV_DIR/fonts" "$MPV_DIR/script-opts"
+
+if command -v git >/dev/null 2>&1; then
+    # 1. uosc
+    if [ ! -d "$UOSC_REPO_DIR" ]; then
+        echo "Cloning uosc for mpv..."
+        git clone --depth 1 https://github.com/tomasklaen/uosc.git "$UOSC_REPO_DIR"
+    fi
+    if [ -d "$UOSC_REPO_DIR" ]; then
+        echo "Deploying uosc components for mpv..."
+        [ -d "$UOSC_REPO_DIR/src/uosc" ] && cp -r "$UOSC_REPO_DIR/src/uosc" "$MPV_DIR/scripts/"
+        [ -d "$UOSC_REPO_DIR/src/fonts" ] && cp -r "$UOSC_REPO_DIR/src/fonts/"* "$MPV_DIR/fonts/"
+        if [ -f "$UOSC_REPO_DIR/src/uosc.conf" ] && [ ! -f "$MPV_DIR/script-opts/uosc.conf" ]; then
+            cp "$UOSC_REPO_DIR/src/uosc.conf" "$MPV_DIR/script-opts/uosc.conf"
+        fi
+    fi
+
+    # 2. mpv-cut
+    if [ ! -d "$MPV_CUT_DIR" ]; then
+        echo "Cloning mpv-cut for mpv..."
+        git clone -b release --single-branch --depth 1 https://github.com/familyfriendlymikey/mpv-cut.git "$MPV_CUT_DIR" 2>/dev/null || git clone --depth 1 https://github.com/familyfriendlymikey/mpv-cut.git "$MPV_CUT_DIR"
+    fi
+
+    # 3. thumbfast
+    if [ ! -d "$THUMBFAST_REPO_DIR" ]; then
+        echo "Cloning thumbfast for mpv..."
+        git clone --depth 1 https://github.com/po5/thumbfast.git "$THUMBFAST_REPO_DIR"
+    fi
+    if [ -d "$THUMBFAST_REPO_DIR" ]; then
+        echo "Deploying thumbfast for mpv..."
+        [ -f "$THUMBFAST_REPO_DIR/thumbfast.lua" ] && cp "$THUMBFAST_REPO_DIR/thumbfast.lua" "$MPV_DIR/scripts/thumbfast.lua"
+        if [ -f "$THUMBFAST_REPO_DIR/thumbfast.conf" ] && [ ! -f "$MPV_DIR/script-opts/thumbfast.conf" ]; then
+            cp "$THUMBFAST_REPO_DIR/thumbfast.conf" "$MPV_DIR/script-opts/thumbfast.conf"
+        fi
+    fi
+
+    # 4. quality-menu
+    if [ ! -d "$QUALITY_MENU_REPO_DIR" ]; then
+        echo "Cloning quality-menu for mpv..."
+        git clone --depth 1 https://github.com/christoph-heinrich/mpv-quality-menu.git "$QUALITY_MENU_REPO_DIR"
+    fi
+    if [ -d "$QUALITY_MENU_REPO_DIR" ]; then
+        echo "Deploying quality-menu for mpv..."
+        [ -f "$QUALITY_MENU_REPO_DIR/quality-menu.lua" ] && cp "$QUALITY_MENU_REPO_DIR/quality-menu.lua" "$MPV_DIR/scripts/quality-menu.lua"
+        if [ -f "$QUALITY_MENU_REPO_DIR/quality-menu.conf" ] && [ ! -f "$MPV_DIR/script-opts/quality-menu.conf" ]; then
+            cp "$QUALITY_MENU_REPO_DIR/quality-menu.conf" "$MPV_DIR/script-opts/quality-menu.conf"
+        fi
+    fi
+
+    # 5. sponsorblock
+    SPONSORBLOCK_REPO_DIR="$MPV_DIR/sponsorblock"
+    if [ ! -d "$SPONSORBLOCK_REPO_DIR" ]; then
+        echo "Cloning sponsorblock for mpv..."
+        git clone --depth 1 https://github.com/po5/mpv_sponsorblock.git "$SPONSORBLOCK_REPO_DIR"
+    fi
+    if [ -d "$SPONSORBLOCK_REPO_DIR" ]; then
+        echo "Deploying sponsorblock for mpv..."
+        [ -f "$SPONSORBLOCK_REPO_DIR/sponsorblock.lua" ] && cp "$SPONSORBLOCK_REPO_DIR/sponsorblock.lua" "$MPV_DIR/scripts/sponsorblock.lua"
+        if [ -d "$SPONSORBLOCK_REPO_DIR/sponsorblock_shared" ]; then
+            mkdir -p "$MPV_DIR/scripts/sponsorblock_shared"
+            cp -r "$SPONSORBLOCK_REPO_DIR/sponsorblock_shared/"* "$MPV_DIR/scripts/sponsorblock_shared/"
+        fi
     fi
 fi
+
+# 6. autoload
+
+if [ ! -f "$MPV_DIR/scripts/autoload.lua" ]; then
+    echo "Downloading autoload.lua for mpv..."
+    if command -v curl >/dev/null 2>&1; then
+        curl -sLo "$MPV_DIR/scripts/autoload.lua" https://raw.githubusercontent.com/mpv-player/mpv/master/TOOLS/lua/autoload.lua
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO "$MPV_DIR/scripts/autoload.lua" https://raw.githubusercontent.com/mpv-player/mpv/master/TOOLS/lua/autoload.lua
+    fi
+fi
+
+
 
 echo "Deployment complete! Please restart your shell or run 'source ~/.bashrc'."
