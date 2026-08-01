@@ -731,9 +731,10 @@ fhist() {
 }
 
 fkill() {
-    local pid
+    local pid sig="${1:-9}"
+    sig="${sig#-}"
     pid=$(ps -ef | fzf -m --header-lines=1 --header='[Process List] (TAB to multi-select)' | awk '{print $2}')
-    [ -n "$pid" ] && echo "$pid" | xargs kill -${1:-9}
+    [ -n "$pid" ] && echo "$pid" | xargs kill -"$sig"
 }
 
 up() {
@@ -903,7 +904,8 @@ lf() {
 }
 
 tpe() {
-    local file="/tmp/tmux_capture_$(date +%Y%m%d_%H%M%S)_$$"
+    local tmpdir="${TMPDIR:-/tmp}"
+    local file="${tmpdir}/tmux_capture_$(date +%Y%m%d_%H%M%S)_$$"
     tmux capture-pane -Jp -S - -E - > "$file"
     local editor=$(command -v nvim || command -v vim || echo vi)
     "$editor" "$file"
@@ -927,8 +929,11 @@ export FORGIT_INSTALL_DIR="$HOME/.local/share/forgit"
 
 if ! $_IS_CONTAINER; then
     # Cache directory for generated init scripts
-    CACHE_DIR="$HOME/.cache/bash"
+    _shell_name="bash"
+    [[ -n "$ZSH_VERSION" ]] && _shell_name="zsh"
+    CACHE_DIR="$HOME/.cache/${_shell_name}"
     [ -d "$CACHE_DIR" ] || mkdir -p "$CACHE_DIR"
+    unset _shell_name
 
     if [[ -n "$BASH_VERSION" ]]; then
         # Zoxide caching
