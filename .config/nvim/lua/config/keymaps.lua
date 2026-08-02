@@ -26,7 +26,7 @@ vim.keymap.set("n", "<M-l>", ":TmuxNavigateRight<cr>", { silent = true })
 
 -- Original FZF Mappings
 vim.keymap.set("n", "<leader>f", ":FzfFiles<CR>", { silent = true })
-vim.keymap.set("n", "<leader>g", ":FzfRg<CR>", { silent = true })
+vim.keymap.set("n", "<leader>g", ":FzfRG<CR>", { silent = true })
 vim.keymap.set("n", "<leader>b", ":FzfBuffers<CR>", { silent = true })
 vim.keymap.set("n", "<leader>t", ":FzfTags<CR>", { silent = true })
 vim.keymap.set("n", "<leader>l", ":FzfLines<CR>", { silent = true })
