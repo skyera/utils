@@ -56,6 +56,8 @@ elseif vim.fn.has("mac") == 1 then
 end
 
 -- Plugin Globals
+vim.g.lf_map_keys = 0
+vim.g.ranger_map_keys = 0
 vim.g.winManagerWindowLayout = 'FileExplorer|TagList'
 vim.g.Tlist_Show_One_File = 1
 vim.g.LookupFile_MinPatLength = 3

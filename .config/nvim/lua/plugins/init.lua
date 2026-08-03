@@ -165,10 +165,12 @@ return {
   {
     "francoiscabrol/ranger.vim",
     dependencies = { "rbgrouleff/bclose.vim" },
+    init = function() vim.g.ranger_map_keys = 0 end,
     enabled = function() return vim.fn.has("win32") == 0 and vim.fn.has("gui_running") == 0 end,
   },
   {
     "ptzz/lf.vim",
+    init = function() vim.g.lf_map_keys = 0 end,
     enabled = function() return vim.fn.has("gui_running") == 0 end,
   },
   {
