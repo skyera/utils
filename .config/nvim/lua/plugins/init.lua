@@ -30,14 +30,15 @@ return {
     config = function()
       require("telescope").setup({
         defaults = {
-          layout_strategy = "horizontal",
+          layout_strategy = "vertical",
           layout_config = {
-            horizontal = {
+            vertical = {
               prompt_position = "top",
-              preview_width = 0.55,
+              mirror = true,
+              preview_height = 0.5,
             },
             width = 0.87,
-            height = 0.80,
+            height = 0.90,
           },
         },
       })
