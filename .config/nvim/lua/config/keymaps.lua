@@ -49,8 +49,6 @@ if vim.fn.has("gui_running") == 0 then
   vim.keymap.set("n", "<leader>lf", ":Lf<CR>", { silent = true })
 end
 
-vim.keymap.set("n", "<leader>sc", ":Telescope colorscheme<CR>", { silent = true })
-
 -- Vimwiki Shortcuts
 vim.keymap.set("n", "<leader>wt", "<Plug>VimwikiMakeDiaryNote", { desc = "Vimwiki Today" })
 vim.keymap.set("n", "<leader>x", "<Plug>VimwikiToggleListItem", { desc = "Vimwiki Toggle Checkbox" })

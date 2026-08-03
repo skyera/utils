@@ -35,10 +35,14 @@ return {
         },
       })
       local builtin = require("telescope.builtin")
-      vim.keymap.set("n", "<leader>sf", builtin.find_files, {})
-      vim.keymap.set("n", "<leader>sg", builtin.live_grep, {})
-      vim.keymap.set("n", "<leader>sb", builtin.buffers, {})
-      vim.keymap.set("n", "<leader>sh", builtin.help_tags, {})
+      vim.keymap.set("n", "<leader>sf", builtin.find_files, { desc = "Search Files (Telescope)" })
+      vim.keymap.set("n", "<leader>sg", builtin.live_grep, { desc = "Search Live Grep (Telescope)" })
+      vim.keymap.set("n", "<leader>sb", builtin.buffers, { desc = "Search Buffers (Telescope)" })
+      vim.keymap.set("n", "<leader>sh", builtin.help_tags, { desc = "Search Help Tags (Telescope)" })
+      vim.keymap.set("n", "<leader>sw", builtin.grep_string, { desc = "Search Word under cursor (Telescope)" })
+      vim.keymap.set("n", "<leader>sr", builtin.oldfiles, { desc = "Search Recent Files (Telescope)" })
+      vim.keymap.set("n", "<leader>sc", builtin.colorscheme, { desc = "Search Colorschemes (Telescope)" })
+      vim.keymap.set("n", "<leader>sk", builtin.keymaps, { desc = "Search Keymaps (Telescope)" })
     end,
   },
 

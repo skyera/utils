@@ -372,6 +372,10 @@ EOF
     nnoremap <leader>sg <cmd>Telescope live_grep<cr>
     nnoremap <leader>sb <cmd>Telescope buffers<cr>
     nnoremap <leader>sh <cmd>Telescope help_tags<cr>
+    nnoremap <leader>sw <cmd>Telescope grep_string<cr>
+    nnoremap <leader>sr <cmd>Telescope oldfiles<cr>
+    nnoremap <leader>sc <cmd>Telescope colorscheme<cr>
+    nnoremap <leader>sk <cmd>Telescope keymaps<cr>
 
     " --- Nvim-Tree ---
     lua vim.g.loaded_netrw = 1
