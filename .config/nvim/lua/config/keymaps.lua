@@ -24,14 +24,14 @@ vim.keymap.set("n", "<M-j>", ":TmuxNavigateDown<cr>", { silent = true })
 vim.keymap.set("n", "<M-k>", ":TmuxNavigateUp<cr>", { silent = true })
 vim.keymap.set("n", "<M-l>", ":TmuxNavigateRight<cr>", { silent = true })
 
--- Original FZF Mappings
-vim.keymap.set("n", "<leader>f", ":FzfFiles<CR>", { silent = true })
-vim.keymap.set("n", "<leader>g", ":FzfRG<CR>", { silent = true })
-vim.keymap.set("n", "<leader>b", ":FzfBuffers<CR>", { silent = true })
-vim.keymap.set("n", "<leader>t", ":FzfTags<CR>", { silent = true })
-vim.keymap.set("n", "<leader>l", ":FzfLines<CR>", { silent = true })
-vim.keymap.set("n", "<leader>lb", ":FzfBLines<CR>", { silent = true })
-vim.keymap.set("n", "<leader>tb", ":FzfBTags<CR>", { silent = true })
+-- fzf.vim Mappings (using <leader>F / <leader>g / <leader>b to avoid conflict with <leader>f* fzf-lua)
+vim.keymap.set("n", "<leader>F", ":FzfFiles<CR>", { silent = true, desc = "FZF Files (Vim)" })
+vim.keymap.set("n", "<leader>g", ":FzfRG<CR>", { silent = true, desc = "FZF Ripgrep (Vim)" })
+vim.keymap.set("n", "<leader>b", ":FzfBuffers<CR>", { silent = true, desc = "FZF Buffers (Vim)" })
+vim.keymap.set("n", "<leader>t", ":FzfTags<CR>", { silent = true, desc = "FZF Tags (Vim)" })
+vim.keymap.set("n", "<leader>l", ":FzfLines<CR>", { silent = true, desc = "FZF Lines (Vim)" })
+vim.keymap.set("n", "<leader>lb", ":FzfBLines<CR>", { silent = true, desc = "FZF Buffer Lines (Vim)" })
+vim.keymap.set("n", "<leader>tb", ":FzfBTags<CR>", { silent = true, desc = "FZF Buffer Tags (Vim)" })
 
 -- NERDTree Mappings
 vim.keymap.set("n", "<leader>nn", ":NERDTreeToggle<cr>")

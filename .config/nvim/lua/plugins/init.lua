@@ -45,11 +45,30 @@ return {
   -- Navigation (Fzf-lua)
   {
     "ibhagwan/fzf-lua",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
-      require("fzf-lua").setup({ keymap = { fzf = { ["ctrl-q"] = "select-all+accept" } } })
-      vim.keymap.set("n", "<leader>pf", ":FzfLua files<CR>", { silent = true })
-      vim.keymap.set("n", "<leader>pg", ":FzfLua live_grep<CR>", { silent = true })
-      vim.keymap.set("n", "<leader>pb", ":FzfLua buffers<CR>", { silent = true })
+      local fzf = require("fzf-lua")
+      fzf.setup({
+        keymap = {
+          fzf = {
+            ["ctrl-q"] = "select-all+accept",
+          },
+        },
+      })
+      -- Recommended Best Practice <leader>f* Mappings (Find Prefix)
+      vim.keymap.set("n", "<leader>ff", fzf.files, { silent = true, desc = "Find Files" })
+      vim.keymap.set("n", "<leader>fg", fzf.live_grep, { silent = true, desc = "Find Live Grep" })
+      vim.keymap.set("n", "<leader>fb", fzf.buffers, { silent = true, desc = "Find Buffers" })
+      vim.keymap.set("n", "<leader>fh", fzf.help_tags, { silent = true, desc = "Find Help Tags" })
+      vim.keymap.set("n", "<leader>fw", fzf.grep_cword, { silent = true, desc = "Find Word under cursor" })
+      vim.keymap.set("n", "<leader>fr", fzf.oldfiles, { silent = true, desc = "Find Recent Files (MRU)" })
+      vim.keymap.set("n", "<leader>fl", fzf.lines, { silent = true, desc = "Find Buffer Lines" })
+      vim.keymap.set("n", "<leader>fc", fzf.colorschemes, { silent = true, desc = "Find Colorschemes" })
+
+      -- Legacy <leader>p* Aliases (Project Prefix)
+      vim.keymap.set("n", "<leader>pf", fzf.files, { silent = true, desc = "FZF Files" })
+      vim.keymap.set("n", "<leader>pg", fzf.live_grep, { silent = true, desc = "FZF Live Grep" })
+      vim.keymap.set("n", "<leader>pb", fzf.buffers, { silent = true, desc = "FZF Buffers" })
     end,
   },
 

@@ -223,7 +223,8 @@ command! -nargs=* -bang FzfRG call RipgrepFzf(<q-args>, <bang>0)
 command! -nargs=* -bang FRG call RipgrepFzf(<q-args>, <bang>0)
 command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview(), <bang>0)
 
-nnoremap <silent> <leader>f :FzfFiles<CR>
+" fzf.vim Mappings (using <leader>F for files to avoid conflict with <leader>f* fzf-lua)
+nnoremap <silent> <leader>F :FzfFiles<CR>
 nnoremap <silent> <leader>g :FzfRG<CR>
 nnoremap <silent> <leader>b :FzfBuffers<CR>
 nnoremap <silent> <leader>t :FzfTags<CR>
@@ -388,6 +389,17 @@ EOF
     lua << EOF
     require('fzf-lua').setup({ keymap = { fzf = { ["ctrl-q"] = "select-all+accept" } } })
 EOF
+    " Recommended Best Practice <leader>f* Mappings
+    nnoremap <silent> <leader>ff :lua require('fzf-lua').files()<CR>
+    nnoremap <silent> <leader>fg :lua require('fzf-lua').live_grep()<CR>
+    nnoremap <silent> <leader>fb :lua require('fzf-lua').buffers()<CR>
+    nnoremap <silent> <leader>fh :lua require('fzf-lua').help_tags()<CR>
+    nnoremap <silent> <leader>fw :lua require('fzf-lua').grep_cword()<CR>
+    nnoremap <silent> <leader>fr :lua require('fzf-lua').oldfiles()<CR>
+    nnoremap <silent> <leader>fl :lua require('fzf-lua').lines()<CR>
+    nnoremap <silent> <leader>fc :lua require('fzf-lua').colorschemes()<CR>
+
+    " Legacy <leader>p* Aliases
     nnoremap <silent> <leader>pf :lua require('fzf-lua').files()<CR>
     nnoremap <silent> <leader>pg :lua require('fzf-lua').live_grep()<CR>
     nnoremap <silent> <leader>pb :lua require('fzf-lua').buffers()<CR>
