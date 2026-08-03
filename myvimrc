@@ -361,9 +361,11 @@ if has('nvim')
     lua << EOF
     require('telescope').setup({
       defaults = {
-        layout_strategy = 'bottom_pane',
+        layout_strategy = 'horizontal',
         layout_config = {
-          bottom_pane = { height = 0.5, prompt_position = "bottom" },
+          horizontal = { prompt_position = "top", preview_width = 0.55 },
+          width = 0.87,
+          height = 0.80,
         },
       },
     })

@@ -30,8 +30,15 @@ return {
     config = function()
       require("telescope").setup({
         defaults = {
-          layout_strategy = "bottom_pane",
-          layout_config = { bottom_pane = { height = 0.5, prompt_position = "bottom" } },
+          layout_strategy = "horizontal",
+          layout_config = {
+            horizontal = {
+              prompt_position = "top",
+              preview_width = 0.55,
+            },
+            width = 0.87,
+            height = 0.80,
+          },
         },
       })
       local builtin = require("telescope.builtin")
