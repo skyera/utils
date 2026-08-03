@@ -97,8 +97,8 @@ return {
         view = { width = 30, preserve_window_proportions = true },
         actions = { open_file = { resize_window = false } },
       })
-      vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<cr>")
-      vim.keymap.set("n", "<leader>n", ":NvimTreeFindFile<cr>")
+      vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<cr>", { desc = "Toggle NvimTree" })
+      vim.keymap.set("n", "<leader>E", ":NvimTreeFindFile<cr>", { desc = "Find file in NvimTree" })
     end,
   },
 
