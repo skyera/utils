@@ -80,6 +80,7 @@ vim.g.tagbar_type_typescript = {
 -- FZF Configuration (fzf.vim)
 vim.g.fzf_command_prefix = "Fzf"
 vim.g.fzf_layout = { window = { width = 0.9, height = 0.9 } }
+vim.g.fzf_preview_window = { "down:50%", "ctrl-/" }
 vim.env.FZF_DEFAULT_OPTS = (vim.env.FZF_DEFAULT_OPTS or "") .. ' --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
 
 -- Custom Frg and interactive FzfRG live ripgrep command
@@ -89,12 +90,12 @@ vim.cmd([[
     let initial_command = printf(command_fmt, shellescape(a:query))
     let reload_command = printf(command_fmt, '{q}')
     let spec = {'options': ['--phony', '--query', a:query, '--bind', 'change:reload:'.reload_command]}
-    call fzf#vim#grep(initial_command, 1, fzf#vim#with_preview(spec), a:fullscreen)
+    call fzf#vim#grep(initial_command, 1, fzf#vim#with_preview(spec, 'down:50%'), a:fullscreen)
   endfunction
 
   command! -nargs=* -bang FzfRG call RipgrepFzf(<q-args>, <bang>0)
   command! -nargs=* -bang FRG call RipgrepFzf(<q-args>, <bang>0)
-  command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview(), <bang>0)
+  command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview({}, 'down:50%'), <bang>0)
 ]])
 
 -- Theme settings

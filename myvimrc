@@ -208,6 +208,7 @@ nnoremap <silent> <M-l> :TmuxNavigateRight<cr>
 " --- FZF ---
 let g:fzf_command_prefix = 'Fzf'
 let g:fzf_layout = { 'window': { 'width': 0.9, 'height': 0.9 } }
+let g:fzf_preview_window = ['down:50%', 'ctrl-/']
 let $FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS . ' --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
 
 " Interactive Live Ripgrep (:FzfRG / :FRG) - searches hidden files, excludes .git
@@ -216,12 +217,12 @@ function! RipgrepFzf(query, fullscreen)
   let initial_command = printf(command_fmt, shellescape(a:query))
   let reload_command = printf(command_fmt, '{q}')
   let spec = {'options': ['--phony', '--query', a:query, '--bind', 'change:reload:'.reload_command]}
-  call fzf#vim#grep(initial_command, 1, fzf#vim#with_preview(spec), a:fullscreen)
+  call fzf#vim#grep(initial_command, 1, fzf#vim#with_preview(spec, 'down:50%'), a:fullscreen)
 endfunction
 
 command! -nargs=* -bang FzfRG call RipgrepFzf(<q-args>, <bang>0)
 command! -nargs=* -bang FRG call RipgrepFzf(<q-args>, <bang>0)
-command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview(), <bang>0)
+command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview({}, 'down:50%'), <bang>0)
 
 " fzf.vim Mappings (using <leader>F for files to avoid conflict with <leader>f* fzf-lua)
 nnoremap <silent> <leader>F :FzfFiles<CR>
