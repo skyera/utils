@@ -30,12 +30,13 @@ return {
     config = function()
       require("telescope").setup({
         defaults = {
+          sorting_strategy = "ascending",
           layout_strategy = "vertical",
           layout_config = {
             vertical = {
               prompt_position = "top",
-              mirror = true,
-              preview_height = 0.50, -- 50% height reserved for preview
+              mirror = true,        -- Places Results above Preview (Top->Bottom: Prompt -> Results -> Preview)
+              preview_height = 0.50, -- 50% height reserved for preview at bottom
               preview_cutoff = 0,    -- Always scale by percent without hiding
             },
             width = 0.90,  -- 90% of editor width
