@@ -77,9 +77,9 @@ vim.g.tagbar_type_typescript = {
   kinds = { 'c:classes', 'n:modules', 'f:functions', 'v:variables', 'v:varlambdas', 'm:members', 'i:interfaces', 'e:enums' }
 }
 
--- FZF Configuration
+-- FZF Configuration (fzf.vim)
 vim.g.fzf_command_prefix = "Fzf"
-vim.g.fzf_layout = { down = "40%" }
+vim.g.fzf_layout = { window = { width = 0.9, height = 0.9 } }
 vim.env.FZF_DEFAULT_OPTS = (vim.env.FZF_DEFAULT_OPTS or "") .. ' --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
 
 -- Custom Frg and interactive FzfRG live ripgrep command
