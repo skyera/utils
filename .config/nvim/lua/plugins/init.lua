@@ -35,10 +35,11 @@ return {
             vertical = {
               prompt_position = "top",
               mirror = true,
-              preview_height = 0.5,
+              preview_height = 0.50, -- 50% height reserved for preview
+              preview_cutoff = 0,    -- Always scale by percent without hiding
             },
-            width = 0.87,
-            height = 0.90,
+            width = 0.90,  -- 90% of editor width
+            height = 0.90, -- 90% of editor height
           },
         },
       })
@@ -61,6 +62,14 @@ return {
     config = function()
       local fzf = require("fzf-lua")
       fzf.setup({
+        winopts = {
+          height = 0.90, -- 90% of editor height
+          width = 0.90,  -- 90% of editor width
+          preview = {
+            layout = "vertical",
+            vertical = "down:50%", -- 50% bottom preview window
+          },
+        },
         keymap = {
           fzf = {
             ["ctrl-q"] = "select-all+accept",

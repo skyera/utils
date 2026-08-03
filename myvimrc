@@ -363,8 +363,8 @@ if has('nvim')
       defaults = {
         layout_strategy = 'vertical',
         layout_config = {
-          vertical = { prompt_position = "top", mirror = true, preview_height = 0.5 },
-          width = 0.87,
+          vertical = { prompt_position = "top", mirror = true, preview_height = 0.50, preview_cutoff = 0 },
+          width = 0.90,
           height = 0.90,
         },
       },
@@ -393,7 +393,17 @@ EOF
 
     " --- FZF-Lua ---
     lua << EOF
-    require('fzf-lua').setup({ keymap = { fzf = { ["ctrl-q"] = "select-all+accept" } } })
+    require('fzf-lua').setup({
+      winopts = {
+        height = 0.90,
+        width = 0.90,
+        preview = {
+          layout = "vertical",
+          vertical = "down:50%",
+        },
+      },
+      keymap = { fzf = { ["ctrl-q"] = "select-all+accept" } },
+    })
 EOF
     " Recommended Best Practice <leader>f* Mappings
     nnoremap <silent> <leader>ff :lua require('fzf-lua').files()<CR>
