@@ -209,7 +209,7 @@ nnoremap <silent> <M-l> :TmuxNavigateRight<cr>
 let g:fzf_command_prefix = 'Fzf'
 let g:fzf_layout = { 'window': { 'width': 0.9, 'height': 0.9 } }
 let g:fzf_preview_window = ['down:50%', 'ctrl-/']
-let $FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS . ' --layout=reverse --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
+let $FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS . ' --layout=reverse --bind "ctrl-q:select-all+accept,ctrl-a:select-all,ctrl-d:deselect-all"'
 
 " Interactive Live Ripgrep (:FzfRG / :FRG) - searches hidden files, excludes .git
 function! RipgrepFzf(query, fullscreen)

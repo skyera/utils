@@ -81,7 +81,7 @@ vim.g.tagbar_type_typescript = {
 vim.g.fzf_command_prefix = "Fzf"
 vim.g.fzf_layout = { window = { width = 0.9, height = 0.9 } }
 vim.g.fzf_preview_window = { "down:50%", "ctrl-/" }
-vim.env.FZF_DEFAULT_OPTS = (vim.env.FZF_DEFAULT_OPTS or "") .. ' --layout=reverse --bind "ctrl-a:select-all,ctrl-d:deselect-all"'
+vim.env.FZF_DEFAULT_OPTS = (vim.env.FZF_DEFAULT_OPTS or "") .. ' --layout=reverse --bind "ctrl-q:select-all+accept,ctrl-a:select-all,ctrl-d:deselect-all"'
 
 -- Custom Frg and interactive FzfRG live ripgrep command
 vim.cmd([[
