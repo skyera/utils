@@ -70,6 +70,9 @@ return {
             vertical = "down:50%", -- 50% bottom preview window
           },
         },
+        fzf_opts = {
+          ["--layout"] = "reverse",
+        },
         keymap = {
           fzf = {
             ["ctrl-q"] = "select-all+accept",
