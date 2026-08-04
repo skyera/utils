@@ -11,6 +11,7 @@ return {
     lazy = false,
     opts = {
       bigfile = { enabled = true },
+      indent = { enabled = true },
       picker = { enabled = true },
       dashboard = {
         enabled = true,
