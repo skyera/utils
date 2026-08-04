@@ -224,7 +224,7 @@ command! -nargs=* -bang FzfRG call RipgrepFzf(<q-args>, <bang>0)
 command! -nargs=* -bang FRG call RipgrepFzf(<q-args>, <bang>0)
 command! -bang -nargs=* Frg call fzf#vim#grep("rg --column --line-number --no-heading --color=always --smart-case ".<q-args>, 1, fzf#vim#with_preview({}, 'down:50%'), <bang>0)
 
-" fzf.vim Mappings (using <leader>F for files to avoid conflict with <leader>f* fzf-lua)
+" fzf.vim Mappings (supporting <leader>F/<leader>g, <leader>V*, and lowercase <leader>v*)
 nnoremap <silent> <leader>F :FzfFiles<CR>
 nnoremap <silent> <leader>g :FzfRG<CR>
 nnoremap <silent> <leader>b :FzfBuffers<CR>
@@ -232,6 +232,24 @@ nnoremap <silent> <leader>t :FzfTags<CR>
 nnoremap <silent> <leader>l :FzfLines<CR>
 nnoremap <silent> <leader>lb :FzfBLines<CR>
 nnoremap <silent> <leader>tb :FzfBTags<CR>
+
+" <leader>V* namespace mappings
+nnoremap <silent> <leader>Vf :FzfFiles<CR>
+nnoremap <silent> <leader>Vg :FzfRG<CR>
+nnoremap <silent> <leader>Vb :FzfBuffers<CR>
+nnoremap <silent> <leader>Vt :FzfTags<CR>
+nnoremap <silent> <leader>Vl :FzfLines<CR>
+nnoremap <silent> <leader>Vlb :FzfBLines<CR>
+nnoremap <silent> <leader>Vtb :FzfBTags<CR>
+
+" Lowercase <leader>v* aliases (faster typing, avoids Shift delay and accidental Visual mode trigger)
+nnoremap <silent> <leader>vf :FzfFiles<CR>
+nnoremap <silent> <leader>vg :FzfRG<CR>
+nnoremap <silent> <leader>vb :FzfBuffers<CR>
+nnoremap <silent> <leader>vt :FzfTags<CR>
+nnoremap <silent> <leader>vl :FzfLines<CR>
+nnoremap <silent> <leader>vlb :FzfBLines<CR>
+nnoremap <silent> <leader>vtb :FzfBTags<CR>
 
 " --- ALE (Linting/Fixing) ---
 let g:ale_fixers = {
