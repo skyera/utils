@@ -1,108 +1,146 @@
 local wezterm = require("wezterm")
 local config = wezterm.config_builder()
 
+-- Launch Menu Options
 config.launch_menu = {
-    { label = "PowerShell", args = { "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" } },
+    { label = "PowerShell", args = { "powershell.exe", "-NoLogo" } },
     { label = "Command Prompt", args = { "cmd.exe" } },
-    { label = "Git Bash", args = { "C:\\Program Files\\Git\\bin\\bash.exe", "-l" } },
+    { label = "Git Bash", args = { "bash.exe", "-l" } },
     { label = "WSL", args = { "wsl.exe" } },
-    { label = "centre", args = {"ssh", "zliu@192.168.1.44"} },
-    { label = "pi4" , args = {"ssh", "pi@192.168.1.10"} },
-    { label="jet", args={"ssh", "zliu@192.168.1.5"}},
-    { label="pi0", args={"ssh", "pi@192.168.1.49"} },
-    { label="pi3", args={"ssh", "pi@192.168.1.48"} },
-    { label="pad", args={"ssh", "zliu@pad"} },
-    { label="pi5", args={"ssh", "pi@pi5"} }
+    { label = "centre", args = { "ssh", "zliu@192.168.1.44" } },
+    { label = "pi4", args = { "ssh", "pi@192.168.1.10" } },
+    { label = "jet", args = { "ssh", "zliu@192.168.1.5" } },
+    { label = "pi0", args = { "ssh", "pi@192.168.1.49" } },
+    { label = "pi3", args = { "ssh", "pi@192.168.1.48" } },
+    { label = "pad", args = { "ssh", "zliu@pad" } },
+    { label = "pi5", args = { "ssh", "pi@pi5" } },
 }
 
-local os = wezterm.target_triple
-
-if os:find("windows") then
-    config.default_prog = { "cmd.exe" }
-elseif os:find("darwin") then
+-- Default Shell per OS
+local target = wezterm.target_triple
+if target:find("windows") then
+    config.default_prog = { "powershell.exe", "-NoLogo" }
+elseif target:find("darwin") then
     config.default_prog = { "/bin/zsh" }
 else
     config.default_prog = { "bash" }
 end
--- config.color_scheme = "Tokyo Night"
--- config.color_scheme = "Catppuccin Mocha"
+
+-- Appearance & Theme
 config.color_scheme = "Gruvbox Dark"
--- config.window_background_opacity = 0.9
--- config.text_background_opacity = 0.8
 config.window_close_confirmation = "NeverPrompt"
 config.use_fancy_tab_bar = false
-config.window_padding = { left = 2, right = 2, top = 0, bottom = 0 }
+config.window_padding = { left = 4, right = 4, top = 4, bottom = 4 }
 config.audible_bell = "Disabled"
-config.enable_kitty_keyboard = false
+config.enable_kitty_keyboard = true
 
+-- Font Configuration
 config.font = wezterm.font_with_fallback({
     'Hack Nerd Font',
     'JetBrains Mono',
+    'Segoe UI Emoji',
+    'Microsoft YaHei',
 })
-
 config.font_size = 10.0
--- config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
+
+-- Tab Bar & Scroll Bar
 config.enable_tab_bar = true
 config.enable_scroll_bar = true
 config.tab_max_width = 32
 config.colors = {
     tab_bar = {
+        background = '#1d2021',
         active_tab = {
             fg_color = '#282828',
             bg_color = '#fe8019',
-        }
+            intensity = 'Bold',
+        },
+        inactive_tab = {
+            fg_color = '#a89984',
+            bg_color = '#3c3836',
+        },
+        inactive_tab_hover = {
+            fg_color = '#fbf1c7',
+            bg_color = '#504945',
+        },
+        new_tab = {
+            fg_color = '#a89984',
+            bg_color = '#282828',
+        },
+        new_tab_hover = {
+            fg_color = '#fe8019',
+            bg_color = '#3c3836',
+        },
     }
 }
 
+-- Leader Key Setup (Ctrl + /)
 config.leader = { key = "/", mods = "CTRL", timeout_milliseconds = 2000 }
 
+-- Keybindings
 config.keys = {
-    {key='"', mods="CTRL|SHIFT", action=wezterm.action.SplitVertical{domain="CurrentPaneDomain"}},
-    {key='%', mods="CTRL|SHIFT", action=wezterm.action.SplitHorizontal{domain="CurrentPaneDomain"}},
+    -- Pane Splitting (Both Ctrl+Shift and Leader variants)
+    { key = '"', mods = "CTRL|SHIFT", action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }) },
+    { key = '%', mods = "CTRL|SHIFT", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+    { key = '-', mods = "LEADER", action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }) },
+    { key = '|', mods = "LEADER|SHIFT", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
 
-    {
-        key = ',',
-        mods = 'LEADER',
-        action = wezterm.action.PromptInputLine {
-            description = 'Enter new name for tab',
-            action = wezterm.action_callback(
-                function(window, pane, line)
-                    if line then
-                        window:active_tab():set_title(line)
-                    end
-                end
-                ),
-        },
-    },
+    -- Pane Navigation (Leader + hjkl)
+    { key = 'h', mods = 'LEADER', action = wezterm.action.ActivatePaneDirection('Left') },
+    { key = 'j', mods = 'LEADER', action = wezterm.action.ActivatePaneDirection('Down') },
+    { key = 'k', mods = 'LEADER', action = wezterm.action.ActivatePaneDirection('Up') },
+    { key = 'l', mods = 'LEADER', action = wezterm.action.ActivatePaneDirection('Right') },
+
+    -- Pane Management
+    { key = 'x', mods = 'LEADER', action = wezterm.action.CloseCurrentPane({ confirm = true }) },
+    { key = 'z', mods = 'LEADER', action = wezterm.action.TogglePaneZoomState },
+
+    -- Tab Management
+    { key = 'c', mods = 'LEADER', action = wezterm.action.SpawnTab('CurrentPaneDomain') },
+    { key = ',', mods = 'LEADER', action = wezterm.action.PromptInputLine({
+        description = 'Enter new name for tab',
+        action = wezterm.action_callback(function(window, pane, line)
+            if line then
+                window:active_tab():set_title(line)
+            end
+        end),
+    }) },
+
+    -- Quick Tab Navigation (Leader + 1..9)
+    { key = '1', mods = 'LEADER', action = wezterm.action.ActivateTab(0) },
+    { key = '2', mods = 'LEADER', action = wezterm.action.ActivateTab(1) },
+    { key = '3', mods = 'LEADER', action = wezterm.action.ActivateTab(2) },
+    { key = '4', mods = 'LEADER', action = wezterm.action.ActivateTab(3) },
+    { key = '5', mods = 'LEADER', action = wezterm.action.ActivateTab(4) },
+    { key = '6', mods = 'LEADER', action = wezterm.action.ActivateTab(5) },
+    { key = '7', mods = 'LEADER', action = wezterm.action.ActivateTab(6) },
+    { key = '8', mods = 'LEADER', action = wezterm.action.ActivateTab(7) },
+    { key = '9', mods = 'LEADER', action = wezterm.action.ActivateTab(8) },
 }
 
+-- Status Bar Update
 local hostname = wezterm.hostname()
 
 wezterm.on("update-status", function(window, pane)
-    local overrides = window:get_config_overrides() or {}
-    local dimensions = pane:get_dimensions()
-    local show_scroll_bar = dimensions.scrollback_rows > dimensions.viewport_rows and not pane:is_alt_screen_active()
+    local palette = window:effective_config().resolved_palette
+    local bg = palette.background or "#282828"
+    local yellow = palette.ansi[4] or "#fabd2f"
+    local fg = palette.foreground or "#ebdbb2"
 
-    if overrides.enable_scroll_bar ~= show_scroll_bar then
-        overrides.enable_scroll_bar = show_scroll_bar
-        window:set_config_overrides(overrides)
+    local leader = ""
+    if window:leader_is_active() then
+        leader = " LEAD "
     end
-  
-  local bg = window:effective_config().resolved_palette.background
-  local leader = ""
-  if window:leader_is_active() then
-    leader = " LEAD "
-  end
 
-  window:set_right_status(wezterm.format {
-    { Background = { Color = bg } },
-    { Foreground = { Color = "#fabd2f" } }, -- Gruvbox Yellow
-    { Attribute = { Intensity = "Bold" } },
-    { Text = leader },
-    { Foreground = { Color = "#ffffff" } },
-    { Attribute = { Intensity = "Normal" } },
-    { Text = " " .. hostname .. " | " .. wezterm.strftime("%H:%M") .. " " },
-  })
+    window:set_right_status(wezterm.format({
+        { Background = { Color = bg } },
+        { Foreground = { Color = yellow } },
+        { Attribute = { Intensity = "Bold" } },
+        { Text = leader },
+        { Foreground = { Color = fg } },
+        { Attribute = { Intensity = "Normal" } },
+        { Text = " " .. hostname .. " | " .. wezterm.strftime("%H:%M") .. " " },
+    }))
 end)
 
 return config

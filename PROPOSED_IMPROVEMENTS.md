@@ -21,4 +21,4 @@ Based on the codebase review, here are the suggested enhancements categorized by
 - [x] **Git-Fuzzy Script**: Add a `bin/git-fuzzy` script that uses FZF to browse branches, commits, and stashes interactively.
 
 ## 5. Terminal (`.wezterm.lua`)
-- [ ] **Performance & UI Tweaks**: Add keybindings for workspace switching and automatic theme switching based on system dark/light mode.
+- [x] **Performance & UI Tweaks**: Fixed `update-status` layout thrashing loop, enabled Kitty keyboard protocol, added tmux-style leader bindings (`LEADER` + `hjkl`/`x`/`z`/`1-9`), updated Windows default shell to PowerShell, and refined Gruvbox tab bar colors.
