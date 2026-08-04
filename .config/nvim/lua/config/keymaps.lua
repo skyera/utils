@@ -43,6 +43,17 @@ vim.keymap.set("n", "<leader>vl", ":FzfLines<CR>", { silent = true, desc = "FZF 
 vim.keymap.set("n", "<leader>vlb", ":FzfBLines<CR>", { silent = true, desc = "FZF Buffer Lines (Vim)" })
 vim.keymap.set("n", "<leader>vtb", ":FzfBTags<CR>", { silent = true, desc = "FZF Buffer Tags (Vim)" })
 
+-- Snacks.picker Mappings (<leader>s* namespace)
+vim.keymap.set("n", "<leader>sf", function() Snacks.picker.files() end, { desc = "Find Files (Snacks)" })
+vim.keymap.set("n", "<leader>sg", function() Snacks.picker.grep() end, { desc = "Live Grep (Snacks)" })
+vim.keymap.set("n", "<leader>sb", function() Snacks.picker.buffers() end, { desc = "Buffers (Snacks)" })
+vim.keymap.set("n", "<leader>sr", function() Snacks.picker.recent() end, { desc = "Recent Files (Snacks)" })
+vim.keymap.set("n", "<leader>sh", function() Snacks.picker.help() end, { desc = "Help Tags (Snacks)" })
+vim.keymap.set("n", "<leader>su", function() Snacks.picker.undo() end, { desc = "Undo Tree (Snacks)" })
+vim.keymap.set("n", "<leader>sG", function() Snacks.picker.git_status() end, { desc = "Git Status (Snacks)" })
+vim.keymap.set("n", "<leader>sn", function() Snacks.picker.notifications() end, { desc = "Notifications History (Snacks)" })
+vim.keymap.set("n", "<leader>sp", function() Snacks.picker.pickers() end, { desc = "All Pickers List (Snacks)" })
+
 -- NERDTree Mappings
 vim.keymap.set("n", "<leader>nn", ":NERDTreeToggle<cr>")
 vim.keymap.set("n", "<leader>nb", ":NERDTreeFromBookmark ")

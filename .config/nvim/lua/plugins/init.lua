@@ -51,11 +51,17 @@ return {
       words = { enabled = true },
     },
     keys = {
-      -- Snacks Picker & Utilities
+      -- Snacks Picker Mappings
+      { "<leader>sf", function() Snacks.picker.files() end, desc = "Find Files (Snacks)" },
+      { "<leader>sg", function() Snacks.picker.grep() end, desc = "Live Grep (Snacks)" },
+      { "<leader>sb", function() Snacks.picker.buffers() end, desc = "Buffers (Snacks)" },
+      { "<leader>sr", function() Snacks.picker.recent() end, desc = "Recent Files (Snacks)" },
+      { "<leader>sh", function() Snacks.picker.help() end, desc = "Help Tags (Snacks)" },
       { "<leader>su", function() Snacks.picker.undo() end, desc = "Undo Tree (Snacks)" },
+      { "<leader>sG", function() Snacks.picker.git_status() end, desc = "Git Status (Snacks)" },
       { "<leader>sn", function() Snacks.picker.notifications() end, desc = "Notifications History (Snacks)" },
-      { "<leader>sg", function() Snacks.picker.git_status() end, desc = "Git Status (Snacks)" },
-      { "<leader>sp", function() Snacks.picker.pickers() end, desc = "Pickers List (Snacks)" },
+      { "<leader>sp", function() Snacks.picker.pickers() end, desc = "All Pickers List (Snacks)" },
+      -- Snacks Utilities
       { "<leader>h",  function() Snacks.dashboard() end, desc = "Open Dashboard" },
       { "<leader>z",  function() Snacks.zen() end, desc = "Toggle Zen Mode" },
       { "<leader>Z",  function() Snacks.zen.zoom() end, desc = "Toggle Zoom" },
