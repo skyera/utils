@@ -11,16 +11,16 @@ return {
     lazy = false,
     opts = {
       bigfile = { enabled = true },
+      picker = { enabled = true },
       dashboard = {
         enabled = true,
         preset = {
-          pick = "fzf-lua",
           keys = {
-            { icon = " ", key = "f", desc = "Find File", action = ":lua require('fzf-lua').files()" },
+            { icon = " ", key = "f", desc = "Find File", action = ":lua Snacks.picker.files()" },
             { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
-            { icon = " ", key = "g", desc = "Find Text", action = ":lua require('fzf-lua').live_grep()" },
-            { icon = " ", key = "r", desc = "Recent Files", action = ":lua require('fzf-lua').oldfiles()" },
-            { icon = " ", key = "c", desc = "Neovim Config", action = ":lua require('fzf-lua').files({ cwd = vim.fn.stdpath('config') })" },
+            { icon = " ", key = "g", desc = "Find Text", action = ":lua Snacks.picker.grep()" },
+            { icon = " ", key = "r", desc = "Recent Files", action = ":lua Snacks.picker.recent()" },
+            { icon = " ", key = "c", desc = "Neovim Config", action = ":lua Snacks.picker.files({ cwd = vim.fn.stdpath('config') })" },
             { icon = "󰒲 ", key = "l", desc = "Lazy Plugins", action = ":Lazy" },
             { icon = " ", key = "q", desc = "Quit", action = ":qa" },
           },
@@ -51,6 +51,11 @@ return {
       words = { enabled = true },
     },
     keys = {
+      -- Snacks Picker & Utilities
+      { "<leader>su", function() Snacks.picker.undo() end, desc = "Undo Tree (Snacks)" },
+      { "<leader>sn", function() Snacks.picker.notifications() end, desc = "Notifications History (Snacks)" },
+      { "<leader>sg", function() Snacks.picker.git_status() end, desc = "Git Status (Snacks)" },
+      { "<leader>sp", function() Snacks.picker.pickers() end, desc = "Pickers List (Snacks)" },
       { "<leader>h",  function() Snacks.dashboard() end, desc = "Open Dashboard" },
       { "<leader>z",  function() Snacks.zen() end, desc = "Toggle Zen Mode" },
       { "<leader>Z",  function() Snacks.zen.zoom() end, desc = "Toggle Zoom" },
@@ -84,7 +89,7 @@ return {
     end,
   },
 
-  -- Navigation (Telescope)
+  -- Navigation (Telescope - mapped under <leader>t*)
   {
     "nvim-telescope/telescope.nvim",
     dependencies = { "nvim-lua/plenary.nvim" },
@@ -106,14 +111,14 @@ return {
         },
       })
       local builtin = require("telescope.builtin")
-      vim.keymap.set("n", "<leader>sf", builtin.find_files, { desc = "Search Files (Telescope)" })
-      vim.keymap.set("n", "<leader>sg", builtin.live_grep, { desc = "Search Live Grep (Telescope)" })
-      vim.keymap.set("n", "<leader>sb", builtin.buffers, { desc = "Search Buffers (Telescope)" })
-      vim.keymap.set("n", "<leader>sh", builtin.help_tags, { desc = "Search Help Tags (Telescope)" })
-      vim.keymap.set("n", "<leader>sw", builtin.grep_string, { desc = "Search Word under cursor (Telescope)" })
-      vim.keymap.set("n", "<leader>sr", builtin.oldfiles, { desc = "Search Recent Files (Telescope)" })
-      vim.keymap.set("n", "<leader>sc", builtin.colorscheme, { desc = "Search Colorschemes (Telescope)" })
-      vim.keymap.set("n", "<leader>sk", builtin.keymaps, { desc = "Search Keymaps (Telescope)" })
+      vim.keymap.set("n", "<leader>tf", builtin.find_files, { desc = "Search Files (Telescope)" })
+      vim.keymap.set("n", "<leader>tg", builtin.live_grep, { desc = "Search Live Grep (Telescope)" })
+      vim.keymap.set("n", "<leader>tb", builtin.buffers, { desc = "Search Buffers (Telescope)" })
+      vim.keymap.set("n", "<leader>th", builtin.help_tags, { desc = "Search Help Tags (Telescope)" })
+      vim.keymap.set("n", "<leader>tw", builtin.grep_string, { desc = "Search Word under cursor (Telescope)" })
+      vim.keymap.set("n", "<leader>tr", builtin.oldfiles, { desc = "Search Recent Files (Telescope)" })
+      vim.keymap.set("n", "<leader>tc", builtin.colorscheme, { desc = "Search Colorschemes (Telescope)" })
+      vim.keymap.set("n", "<leader>tk", builtin.keymaps, { desc = "Search Keymaps (Telescope)" })
     end,
   },
 
