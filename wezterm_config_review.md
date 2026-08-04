@@ -124,6 +124,16 @@ if os:find("windows") then
 
 ---
 
+### 9. Color Scheme Name Normalization (`GruvboxDark`)
+
+**File:** [`.wezterm.lua`](file:///C:/test/utils/.wezterm.lua#L29)
+
+**Issue:** WezTerm's built-in theme registry registers Gruvbox dark as `"GruvboxDark"`, `"Gruvbox (Gogh)"`, or `"Gruvbox Dark (Gogh)"`. Setting `color_scheme = "Gruvbox Dark"` with a space causes WezTerm to fail theme lookup at runtime, resulting in startup warnings or window instantiation failures.
+
+**Fix:** Standardize scheme name to built-in `"GruvboxDark"`.
+
+---
+
 ## Summary of Applied Changes
 
 The `.wezterm.lua` file has been refactored and updated with:
@@ -131,5 +141,5 @@ The `.wezterm.lua` file has been refactored and updated with:
 2. Full tmux-style pane and tab keybindings under `LEADER` (`CTRL+/`).
 3. Modern PowerShell default shell on Windows.
 4. Progressive keyboard enhancement enabled (`enable_kitty_keyboard = true`).
-5. Unified Gruvbox styling across tab bar and dynamic status bar.
+5. Unified Gruvbox styling (`GruvboxDark`) across tab bar and dynamic status bar.
 6. Expanded font fallback chain for Emoji & CJK text rendering.

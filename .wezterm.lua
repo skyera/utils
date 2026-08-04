@@ -27,7 +27,7 @@ else
 end
 
 -- Appearance & Theme
-config.color_scheme = "Gruvbox Dark"
+config.color_scheme = "GruvboxDark"
 config.window_close_confirmation = "NeverPrompt"
 config.use_fancy_tab_bar = false
 config.window_padding = { left = 4, right = 4, top = 4, bottom = 4 }
