@@ -54,6 +54,10 @@ vim.keymap.set("n", "<leader>sG", function() Snacks.picker.git_status() end, { d
 vim.keymap.set("n", "<leader>sn", function() Snacks.picker.notifications() end, { desc = "Notifications History (Snacks)" })
 vim.keymap.set("n", "<leader>sp", function() Snacks.picker.pickers() end, { desc = "All Pickers List (Snacks)" })
 
+-- Terminal Toggle (Ctrl-/ or Ctrl-_ works in Normal and Terminal modes)
+vim.keymap.set({ "n", "t" }, "<c-/>", function() Snacks.terminal() end, { desc = "Toggle Terminal" })
+vim.keymap.set({ "n", "t" }, "<c-_>", function() Snacks.terminal() end, { desc = "Toggle Terminal" })
+
 -- NERDTree Mappings
 vim.keymap.set("n", "<leader>nn", ":NERDTreeToggle<cr>")
 vim.keymap.set("n", "<leader>nb", ":NERDTreeFromBookmark ")
