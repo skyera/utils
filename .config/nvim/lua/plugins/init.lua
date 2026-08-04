@@ -235,7 +235,11 @@ return {
   "tpope/vim-commentary",
   "tpope/vim-unimpaired",
   "tpope/vim-fugitive",
-  "jiangmiao/auto-pairs",
+  {
+    "windwp/nvim-autopairs",
+    event = "InsertEnter",
+    config = true,
+  },
   "godlygeek/tabular",
   "christoomey/vim-tmux-navigator",
   "tmhedberg/SimpylFold",
