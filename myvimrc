@@ -145,7 +145,7 @@ runtime macros/matchit.vim
 
 " --- Font Settings ---
 if has('win32')
-    set guifont=Hack\ Nerd\ Font\ Mono:h12
+    set guifont=Hack\ Nerd\ Font\ Mono:h11
 elseif has('linux')
     if has('nvim')
         set guifont=Hack\ Nerd\ Font:h10

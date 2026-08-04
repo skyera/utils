@@ -48,7 +48,7 @@ end
 
 -- Font settings
 if vim.fn.has("win32") == 1 then
-  vim.opt.guifont = "Hack Nerd Font Mono:h12"
+  vim.opt.guifont = "Hack Nerd Font Mono:h11"
 elseif vim.fn.has("linux") == 1 then
   vim.opt.guifont = "Hack Nerd Font:h10"
 elseif vim.fn.has("mac") == 1 then

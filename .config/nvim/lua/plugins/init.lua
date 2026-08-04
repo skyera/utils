@@ -11,7 +11,7 @@ return {
     lazy = false,
     opts = {
       bigfile = { enabled = true },
-      indent = { enabled = true },
+      indent = { enabled = true, only_scope = true },
       picker = { enabled = true },
       dashboard = {
         enabled = true,
