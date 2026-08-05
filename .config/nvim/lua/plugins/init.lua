@@ -11,8 +11,7 @@ return {
     lazy = false,
     opts = {
       bigfile = { enabled = true },
-      indent = { enabled = true, only_scope = true },
-      picker = { enabled = true },
+      bufdelete = { enabled = true },
       dashboard = {
         enabled = true,
         preset = {
@@ -46,14 +45,33 @@ return {
           { section = "startup" },
         },
       },
+      explorer = { enabled = true },
+      git = { enabled = true },
+      indent = { enabled = true, only_scope = true },
+      input = { enabled = true },
+      lazygit = { enabled = true },
       notifier = { enabled = true, timeout = 3000 },
+      picker = { enabled = true },
       quickfile = { enabled = true },
+      scratch = { enabled = true },
       statuscolumn = { enabled = true },
       terminal = { enabled = true },
       words = { enabled = true },
+      zen = { enabled = true },
     },
+    init = function()
+      vim.api.nvim_create_autocmd("User", {
+        pattern = "VeryLazy",
+        callback = function()
+          -- Expose Snacks debug helpers globally
+          _G.dd = function(...) Snacks.debug.inspect(...) end
+          _G.bt = function() Snacks.debug.backtrace() end
+          vim.print = _G.dd
+        end,
+      })
+    end,
     keys = {
-      -- Snacks Picker Mappings
+      -- Snacks Picker Mappings (<leader>s* namespace)
       { "<leader>sf", function() Snacks.picker.files() end, desc = "Find Files (Snacks)" },
       { "<leader>sg", function() Snacks.picker.grep() end, desc = "Live Grep (Snacks)" },
       { "<leader>sb", function() Snacks.picker.buffers() end, desc = "Buffers (Snacks)" },
@@ -63,6 +81,11 @@ return {
       { "<leader>sG", function() Snacks.picker.git_status() end, desc = "Git Status (Snacks)" },
       { "<leader>sn", function() Snacks.picker.notifications() end, desc = "Notifications History (Snacks)" },
       { "<leader>sp", function() Snacks.picker.pickers() end, desc = "All Pickers List (Snacks)" },
+      { "<leader>sl", function() Snacks.picker.lines() end, desc = "Search Buffer Lines (Snacks)" },
+      { "<leader>sw", function() Snacks.picker.grep_word() end, desc = "Search Cursor Word (Snacks)" },
+      { "<leader>sk", function() Snacks.picker.keymaps() end, desc = "Search Keymaps (Snacks)" },
+      { "<leader>sc", function() Snacks.picker.command_history() end, desc = "Command History (Snacks)" },
+      { "<leader>se", function() Snacks.picker.explorer() end, desc = "File Explorer Picker (Snacks)" },
       -- Snacks Utilities
       { "<leader>h",  function() Snacks.dashboard() end, desc = "Open Dashboard" },
       { "<leader>z",  function() Snacks.zen() end, desc = "Toggle Zen Mode" },
@@ -74,8 +97,10 @@ return {
       { "<leader>cR", function() Snacks.rename.rename_file() end, desc = "Rename File" },
       { "<leader>gB", function() Snacks.gitbrowse() end, desc = "Git Browse" },
       { "<leader>gb", function() Snacks.git.blame_line() end, desc = "Git Blame Line" },
+      { "<leader>lg", function() Snacks.lazygit() end, desc = "Toggle Lazygit (Snacks)" },
       { "<leader>un", function() Snacks.notifier.hide() end, desc = "Dismiss All Notifications" },
-      { "<c-/>",      function() Snacks.terminal() end, desc = "Toggle Terminal" },
+      { "<c-/>",      function() Snacks.terminal() end, mode = { "n", "t" }, desc = "Toggle Terminal" },
+      { "<c-_>",      function() Snacks.terminal() end, mode = { "n", "t" }, desc = "Toggle Terminal" },
     },
   },
   {
