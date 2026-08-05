@@ -409,7 +409,7 @@ EOF
     })
 EOF
     nnoremap <leader>e :NvimTreeToggle<cr>
-    nnoremap <leader>n :NvimTreeFindFile<cr>
+
 
     " --- FZF-Lua ---
     lua << EOF
