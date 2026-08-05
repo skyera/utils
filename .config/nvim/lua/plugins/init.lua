@@ -99,6 +99,12 @@ return {
       { "<leader>gb", function() Snacks.git.blame_line() end, desc = "Git Blame Line" },
       { "<leader>lg", function() Snacks.lazygit() end, desc = "Toggle Lazygit (Snacks)" },
       { "<leader>un", function() Snacks.notifier.hide() end, desc = "Dismiss All Notifications" },
+      -- Snacks Toggles (<leader>u* namespace)
+      { "<leader>us", function() Snacks.toggle.spell() end, desc = "Toggle Spelling" },
+      { "<leader>uw", function() Snacks.toggle.wrap() end, desc = "Toggle Line Wrap" },
+      { "<leader>uL", function() Snacks.toggle.number() end, desc = "Toggle Line Numbers" },
+      { "<leader>ud", function() Snacks.toggle.diagnostics() end, desc = "Toggle Diagnostics" },
+      { "<leader>uC", function() Snacks.toggle.conceal() end, desc = "Toggle Conceal" },
       { "<c-/>",      function() Snacks.terminal() end, mode = { "n", "t" }, desc = "Toggle Terminal" },
       { "<c-_>",      function() Snacks.terminal() end, mode = { "n", "t" }, desc = "Toggle Terminal" },
     },
