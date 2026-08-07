@@ -429,6 +429,56 @@ def list_themes():
             pass
 
 
+def apply_theme_to_windows_registry(session: str, color_list: List[str]):
+    """Applies color scheme directly to Windows Registry if running on Windows."""
+    try:
+        import winreg
+    except ImportError:
+        print("Warning: 'winreg' module is only available on native Windows Python.")
+        return False
+
+    reg_session = sanitize_session_name(session)
+    key_path = f"Software\\SimonTatham\\PuTTY\\Sessions\\{reg_session}"
+
+    try:
+        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path)
+        for idx, rgb in enumerate(color_list):
+            winreg.SetValueEx(key, f"Colour{idx}", 0, winreg.REG_SZ, rgb)
+        winreg.CloseKey(key)
+        print(f"Successfully applied color scheme to Windows Registry: HKCU\\{key_path}")
+        return True
+    except Exception as e:
+        print(f"Error modifying Windows Registry: {e}")
+        return False
+
+
+def apply_theme_to_linux_putty(session: str, color_list: List[str]):
+    """Applies color scheme to Linux/Unix ~/.putty/sessions/ file."""
+    putty_dir = os.path.expanduser("~/.putty/sessions")
+    os.makedirs(putty_dir, exist_ok=True)
+
+    sanitized = sanitize_session_name(session)
+    session_file = os.path.join(putty_dir, sanitized)
+
+    existing_lines = []
+    if os.path.exists(session_file):
+        with open(session_file, "r", encoding="utf-8", errors="ignore") as f:
+            existing_lines = f.readlines()
+
+    # Filter out existing Colour entries
+    new_lines = [line for line in existing_lines if not re.match(r"^Colour\d+=", line.strip())]
+
+    # Append new Colour entries
+    for idx, rgb in enumerate(color_list):
+        new_lines.append(f"Colour{idx}={rgb}\n")
+
+    with open(session_file, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+
+    print(f"Successfully saved color scheme to Linux PuTTY session file: {session_file}")
+    return True
+
+
 def prompt_theme_actions(selected_key: str):
     """Prompts user for actions (apply, export, saved sessions) on a selected theme."""
     theme_data = PRESET_THEMES[selected_key]
