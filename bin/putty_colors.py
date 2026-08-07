@@ -661,12 +661,105 @@ def select_theme_interactively() -> Optional[str]:
         return None
 
 
+def show_current_putty_color_info(session: str = "Default Settings"):
+    """Reads session colors from Windows Registry or Linux PuTTY files and identifies active color scheme."""
+    colors = {}
+    
+    if sys.platform == "win32":
+        try:
+            import winreg
+            reg_session = sanitize_session_name(session)
+            key_path = f"Software\\SimonTatham\\PuTTY\\Sessions\\{reg_session}"
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path)
+            for idx in range(22):
+                try:
+                    val, _ = winreg.QueryValueEx(key, f"Colour{idx}")
+                    colors[idx] = val
+                except OSError:
+                    pass
+            winreg.CloseKey(key)
+        except Exception:
+            pass
+    else:
+        putty_dir = os.path.expanduser("~/.putty/sessions")
+        sanitized = sanitize_session_name(session)
+        session_file = os.path.join(putty_dir, sanitized)
+        if os.path.exists(session_file):
+            try:
+                with open(session_file, "r", encoding="utf-8", errors="ignore") as f:
+                    for line in f:
+                        line = line.strip()
+                        m = re.match(r'^Colour(\d+)=(.*)$', line)
+                        if m:
+                            colors[int(m.group(1))] = m.group(2).strip()
+            except Exception:
+                pass
+
+    if len(colors) < 22:
+        print(f"Could not read complete color scheme for PuTTY session '{session}'.")
+        return
+
+    color_list = [colors[i] for i in range(22)]
+    
+    themes = load_all_themes()
+    matched_theme = None
+    for k, t_data in themes.items():
+        if t_data["colors"] == color_list:
+            matched_theme = t_data
+            break
+
+    print(f"\n--- PuTTY Session Configuration Info: \033[1m{session}\033[0m ---")
+    if matched_theme:
+        print(f"Detected Color Scheme : \033[32;1m{matched_theme['name']}\033[0m (from {matched_theme['author']})")
+    else:
+        print(f"Detected Color Scheme : Custom Palette")
+
+    def bg_rgb(rgb_str):
+        r, g, b = [int(x) for x in rgb_str.split(",")]
+        return f"\033[48;2;{r};{g};{b}m"
+
+    def fg_rgb(rgb_str):
+        r, g, b = [int(x) for x in rgb_str.split(",")]
+        return f"\033[38;2;{r};{g};{b}m"
+
+    def reset():
+        return "\033[0m"
+
+    fg = color_list[0]
+    bg = color_list[2]
+
+    print(f"Default Foreground    : {fg}")
+    print(f"Default Background    : {bg}")
+    print(f"\nBackground / Foreground demo:")
+    print(f"{bg_rgb(bg)}{fg_rgb(fg)}  Sample Text: The quick brown fox jumps over the lazy dog  {reset()}")
+    
+    print("\nANSI 16-Color Palette:")
+    normal_indices = [6, 8, 10, 12, 14, 16, 18, 20]
+    bright_indices = [7, 9, 11, 13, 15, 17, 19, 21]
+
+    sys.stdout.write("Normal: ")
+    for idx in normal_indices:
+        rgb = color_list[idx]
+        sys.stdout.write(f"{bg_rgb(rgb)}   {reset()} ")
+    print()
+
+    sys.stdout.write("Bright: ")
+    for idx in bright_indices:
+        rgb = color_list[idx]
+        sys.stdout.write(f"{bg_rgb(rgb)}   {reset()} ")
+    print("\n")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="PuTTY Color Scheme Utility - Easily preview, export, or apply color schemes.",
         epilog="Running 'putty_colors' without subcommands launches the interactive theme picker."
     )
     subparsers = parser.add_subparsers(dest="command")
+
+    # info / current
+    info_parser = subparsers.add_parser("info", help="Display color scheme info of a PuTTY session")
+    info_parser.add_argument("-s", "--session", default="Default Settings", help="PuTTY session name (default: Default Settings)")
 
     # list
     subparsers.add_parser("list", help="List all available preset & .reg themes")
@@ -703,7 +796,10 @@ def main():
 
     themes = load_all_themes()
 
-    if args.command == "list":
+    if args.command == "info":
+        show_current_putty_color_info(args.session)
+
+    elif args.command == "list":
         list_themes()
 
     elif args.command == "sessions":
