@@ -449,30 +449,85 @@ def get_all_putty_sessions() -> List[str]:
     return sessions
 
 
-def apply_live_osc_colors(theme_key: str):
-    """Sends ANSI OSC sequences to immediately change active terminal colors on the fly."""
+def get_session_color_scheme(session: str) -> Tuple[str, str]:
+    """Inspects a PuTTY session and returns (theme_name, author_or_source)."""
+    colors = {}
+    if sys.platform == "win32":
+        try:
+            import winreg
+            reg_session = sanitize_session_name(session)
+            key_path = f"Software\\SimonTatham\\PuTTY\\Sessions\\{reg_session}"
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path)
+            for idx in range(22):
+                try:
+                    val, _ = winreg.QueryValueEx(key, f"Colour{idx}")
+                    colors[idx] = val
+                except OSError:
+                    pass
+            winreg.CloseKey(key)
+        except Exception:
+            pass
+    else:
+        putty_dir = os.path.expanduser("~/.putty/sessions")
+        sanitized = sanitize_session_name(session)
+        session_file = os.path.join(putty_dir, sanitized)
+        if os.path.exists(session_file):
+            try:
+                with open(session_file, "r", encoding="utf-8", errors="ignore") as f:
+                    for line in f:
+                        line = line.strip()
+                        m = re.match(r'^Colour(\d+)=(.*)$', line)
+                        if m:
+                            colors[int(m.group(1))] = m.group(2).strip()
+            except Exception:
+                pass
+
+    if len(colors) < 22:
+        return ("Default / Unset", "PuTTY Default")
+
+    color_list = [colors[i] for i in range(22)]
     themes = load_all_themes()
-    theme = themes.get(theme_key.lower())
-    if not theme:
-        print(f"Error: Unknown theme '{theme_key}'.")
-        return
-    colors = theme["colors"]
-    fg_rgb = [int(x) for x in colors[0].split(',')]
-    bg_rgb = [int(x) for x in colors[2].split(',')]
+    for k, t_data in themes.items():
+        if t_data["colors"] == color_list:
+            return (t_data["name"], t_data["author"])
+
+    return ("Custom Palette", "User Defined")
+
+
+def list_saved_sessions_with_schemes():
+    """Lists all saved PuTTY sessions along with their detected color schemes."""
+    sessions = get_all_putty_sessions()
     
-    sys.stdout.write(f"\033]10;rgb:{fg_rgb[0]:02x}/{fg_rgb[1]:02x}/{fg_rgb[2]:02x}\007")
-    sys.stdout.write(f"\033]11;rgb:{bg_rgb[0]:02x}/{bg_rgb[1]:02x}/{bg_rgb[2]:02x}\007")
-    
-    ansi_map = [6, 8, 10, 12, 14, 16, 18, 20, 7, 9, 11, 13, 15, 17, 19, 21]
-    for ansi_idx, color_idx in enumerate(ansi_map):
-        r, g, b = [int(x) for x in colors[color_idx].split(',')]
-        sys.stdout.write(f"\033]4;{ansi_idx};rgb:{r:02x}/{g:02x}/{b:02x}\007")
-    sys.stdout.flush()
-    print(f"Instantly changed active terminal window colors to '{theme['name']}'.")
+    session_list = ["Default Settings"]
+    for s in sessions:
+        if s != "Default Settings":
+            session_list.append(s)
+
+    print(f"\nSaved PuTTY Sessions & Active Color Schemes ({len(session_list)} Sessions):\n")
+    print(f" {'#':<4} {'SESSION NAME':<30} {'DETECTED COLOR SCHEME':<26} {'AUTHOR / SOURCE':<20}")
+    print("-" * 84)
+
+    for idx, s_name in enumerate(session_list, 1):
+        scheme_name, author = get_session_color_scheme(s_name)
+        print(f" [{idx:2d}] {s_name:<30} {scheme_name:<26} {author:<20}")
+
+    if sys.stdin.isatty():
+        print("\nSelect session number to inspect details (or 0/Enter to exit): ", end="")
+        try:
+            choice = input().strip()
+            if not choice or choice == "0":
+                return
+            s_idx = int(choice) - 1
+            if 0 <= s_idx < len(session_list):
+                show_current_putty_color_info(session_list[s_idx])
+            else:
+                print("Invalid session number.")
+        except Exception:
+            pass
 
 
 def select_session_interactively(title: str = "Select PuTTY Session") -> Optional[str]:
-    """Displays a numbered selection list of all existing saved PuTTY sessions."""
+    """Displays a numbered selection list of all existing saved PuTTY sessions with their active schemes."""
     existing = get_all_putty_sessions()
     
     session_options = ["Default Settings"]
@@ -482,7 +537,8 @@ def select_session_interactively(title: str = "Select PuTTY Session") -> Optiona
 
     print(f"\n{title}:")
     for idx, name in enumerate(session_options, 1):
-        print(f" [{idx:2d}] {name}")
+        scheme_name, author = get_session_color_scheme(name)
+        print(f" [{idx:2d}] {name:<28} -> {scheme_name} ({author})")
     print(" [ M] Type custom session name manually")
     print(" [ 0] Cancel")
     print("\nSelect session number: ", end="")
@@ -803,13 +859,7 @@ def main():
         list_themes()
 
     elif args.command == "sessions":
-        sessions = get_all_putty_sessions()
-        if not sessions:
-            print("No saved PuTTY sessions found.")
-        else:
-            print("Saved PuTTY Sessions:")
-            for s in sessions:
-                print(f" - {s}")
+        list_saved_sessions_with_schemes()
 
     elif args.command == "preview":
         theme_key = args.theme
