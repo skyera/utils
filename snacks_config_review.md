@@ -2,61 +2,60 @@
 
 ## Overview
 
-A comprehensive review of `folke/snacks.nvim` configuration and keybindings across the Neovim setup (`.config/nvim/lua/plugins/init.lua` and `.config/nvim/lua/config/keymaps.lua`).
+A comprehensive review of `folke/snacks.nvim` configuration and keybindings across the Neovim setup ([`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua) and [`.config/nvim/lua/config/keymaps.lua`](file:///home/zliu/test/utils/.config/nvim/lua/config/keymaps.lua)).
 
-`snacks.nvim` is a modern, high-performance plugin collection for Neovim providing integrated features such as a dashboard, picker, terminal, notifier, scratch buffer, zen mode, bigfile handling, indent guides, quickfile, statuscolumn, words (LSP reference highlighting), and Git utilities.
+`snacks.nvim` is a modern, high-performance plugin collection for Neovim providing integrated features such as a dashboard, picker, floating terminal, notifier, scratch buffer, zen mode, bigfile handling, smooth scrolling, focus dimming, indent guides, quickfile, statuscolumn, words (LSP reference highlighting), file rename, git utilities, and debug helpers.
 
-While the existing setup established basic picker mappings and dashboard configuration, it suffered from **duplicate keymap definitions across multiple files**, **unconfigured active modules (`bufdelete`, `git`, `scratch`, `zen`, `lazygit`, `explorer`, `input`)**, **missing global debug helpers (`_G.dd`, `_G.bt`)**, and **absent high-value picker mappings** (`lines`, `grep_word`, `keymaps`, `command_history`, `explorer`, `lazygit`).
-
-Below are all identified issues, ranked by priority, followed by the applied refactoring.
+While the original setup established basic picker mappings and dashboard configuration, a detailed code audit identified several areas for structural, functional, and ergonomic enhancement. Below are all findings and applied improvements.
 
 ---
 
-## 🔴 P1 — Critical Issues & Redundancies
+## 🔴 P1 — Critical Structural Cleanups
 
-### 1. Duplicate Keymap Declarations Across Multiple Files
+### 1. Keymap Duplication Resolution
 
-**Files:** [`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua#L75-L105) & [`.config/nvim/lua/config/keymaps.lua`](file:///home/zliu/test/utils/.config/nvim/lua/config/keymaps.lua#L46-L60)
+**Files:** [`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua#L73-L110) & [`.config/nvim/lua/config/keymaps.lua`](file:///home/zliu/test/utils/.config/nvim/lua/config/keymaps.lua#L46-L48)
 
-**Issue:**
-All `<leader>s*` picker mappings (`sf`, `sg`, `sb`, `sr`, `sh`, `su`, `sG`, `sn`, `sp`) and terminal mappings (`<c-/>`) were defined in **two separate places**:
-1. Inside the `keys = { ... }` table of the `snacks.nvim` spec in `plugins/init.lua`.
-2. Inside `keymaps.lua` using imperative `vim.keymap.set(...)` statements.
+**Analysis:**
+Keymaps were previously split between `keymaps.lua` (imperative `vim.keymap.set`) and `plugins/init.lua` (`keys` table in `lazy.nvim` spec). Maintaining keybindings in two places creates split-brain configuration and risks keymap drift. Furthermore, defining mappings inside `keys` in `lazy.nvim` enables proper lazy-loading triggers and cleaner lifecycle management.
 
-Maintaining duplicate keymap definitions across two files creates split-brain configuration, increases code debt, and risks keymap drift. Furthermore, `keymaps.lua` is loaded at startup before `lazy.nvim` initializes plugins, whereas `keys` in `lazy.nvim` automatically handles plugin lazy-loading and keymap registration seamlessly.
-
-**Fix:** Consolidated all `snacks.nvim` keymap declarations into `plugins/init.lua` under the `keys` table spec, and removed the duplicate calls from `keymaps.lua` with a reference comment.
+**Resolution:**
+All `snacks.nvim` keymap declarations are centralized inside `plugins/init.lua` under the `keys` table spec, with a clear reference comment retained in `keymaps.lua`.
 
 ---
 
-## 🟠 P2 — Suboptimal Module Configuration & Missing Native Integrations
+## 🟠 P2 — Module Configuration & Native Integrations
 
-### 2. Unconfigured Active Modules (`bufdelete`, `git`, `scratch`, `zen`, `lazygit`, `explorer`, `input`)
+### 2. Comprehensive Module Activation in `opts`
 
-**File:** [`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua#L12-L55)
+**File:** [`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua#L12-L61)
 
-**Issue:**
-Keybindings were bound for functions like `Snacks.bufdelete()` (`<leader>bd`), `Snacks.scratch()` (`<leader>.`), `Snacks.zen()` (`<leader>z`), and `Snacks.gitbrowse()` (`<leader>gB`), but their module declarations were absent from the `opts = { ... }` table.
+**Analysis:**
+Several active utilities (such as `dim`, `scroll`, `gitbrowse`, `rename`, `bufdelete`, `scratch`, `zen`, `lazygit`, `explorer`, `input`) were missing explicit entries in the `opts = { ... }` configuration table.
 
-While `snacks.nvim` can load some modules on-demand when invoked, explicitly defining module configs in `opts`:
-- Ensures predictable module initialization and lifecycle management.
-- Enables custom styling, option overrides, and feature toggles (such as `lazygit` terminal styling or `scratch` buffer defaults).
+Explicitly specifying module states in `opts`:
+- Guarantees predictable module initialization.
+- Exposes module-level customization (e.g., custom notification timeouts, scroll animation curves, focus dimming).
 
-**Fix:** Explicitly added module tables into `opts`:
+**Configured Modules:**
 ```lua
 opts = {
   bigfile = { enabled = true },
   bufdelete = { enabled = true },
-  dashboard = { enabled = true, ... },
+  dashboard = { enabled = true, preset = { ... }, sections = { ... } },
+  dim = { enabled = true },
   explorer = { enabled = true },
   git = { enabled = true },
+  gitbrowse = { enabled = true },
   indent = { enabled = true, only_scope = true },
   input = { enabled = true },
   lazygit = { enabled = true },
   notifier = { enabled = true, timeout = 3000 },
   picker = { enabled = true },
   quickfile = { enabled = true },
+  rename = { enabled = true },
   scratch = { enabled = true },
+  scroll = { enabled = true },
   statuscolumn = { enabled = true },
   terminal = { enabled = true },
   words = { enabled = true },
@@ -66,14 +65,14 @@ opts = {
 
 ---
 
-### 3. Missing Global Debug Helpers (`_G.dd`, `_G.bt`) and `VeryLazy` Initialization
+### 3. Global Debug Helpers & `VeryLazy` Lifecycle Hook
 
-**File:** [`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua#L62-L73)
+**File:** [`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua#L62-L72)
 
-**Issue:**
-`snacks.nvim` provides modern debugging and inspection utilities (`Snacks.debug.inspect` and `Snacks.debug.backtrace`), as well as notification integrations. Without registering global aliases during Neovim initialization, developers cannot easily call `dd(...)` or inspect data structures interactively in Lua code.
+**Analysis:**
+`snacks.nvim` provides modern debugging utilities (`Snacks.debug.inspect` and `Snacks.debug.backtrace`). Exposing global aliases allows rapid inspection in Lua code.
 
-**Fix:** Added an `init()` callback in `plugins/init.lua` with a `VeryLazy` autocommand:
+**Implementation:**
 ```lua
 init = function()
   vim.api.nvim_create_autocmd("User", {
@@ -89,35 +88,67 @@ end
 
 ---
 
-## 🟡 P3 — Missing Power-User Mappings & Ergonomics
+## 🟡 P3 — Expanded Picker & Power-User Mappings
 
-### 4. Absent High-Value Picker & Utility Keybindings
+### 4. Advanced Pickers, LSP References, and UI Toggles
 
-**File:** [`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua#L75-L105)
+**File:** [`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua#L73-L110)
 
-**Issue:**
-Several high-utility `Snacks` pickers and tools were missing dedicated keymaps:
-- `Snacks.picker.lines()`: Search lines within current buffer.
-- `Snacks.picker.grep_word()`: Search for word under cursor project-wide.
-- `Snacks.picker.keymaps()`: Interactive keymap finder.
-- `Snacks.picker.command_history()`: Command-line history picker.
-- `Snacks.picker.explorer()`: Modern file tree picker.
-- `Snacks.lazygit()`: Integrated floating Lazygit overlay terminal.
+The keymap suite is expanded to support full IDE feature parity:
 
-**Fix:** Expanded `keys` in `plugins/init.lua` to include:
-- `{ "<leader>sl", function() Snacks.picker.lines() end, desc = "Search Buffer Lines (Snacks)" }`
-- `{ "<leader>sw", function() Snacks.picker.grep_word() end, desc = "Search Cursor Word (Snacks)" }`
-- `{ "<leader>sk", function() Snacks.picker.keymaps() end, desc = "Search Keymaps (Snacks)" }`
-- `{ "<leader>sc", function() Snacks.picker.command_history() end, desc = "Command History (Snacks)" }`
-- `{ "<leader>se", function() Snacks.picker.explorer() end, desc = "File Explorer Picker (Snacks)" }`
-- `{ "<leader>lg", function() Snacks.lazygit() end, desc = "Toggle Lazygit (Snacks)" }`
-- Added terminal mode fallback `<c-_>` alongside `<c-/>` for full terminal emulator compatibility.
+- **Pickers (`<leader>s*` namespace):**
+  - `<leader>sf` → `Snacks.picker.files()` (Find Files)
+  - `<leader>sg` → `Snacks.picker.grep()` (Live Grep)
+  - `<leader>sb` → `Snacks.picker.buffers()` (Open Buffers)
+  - `<leader>sr` → `Snacks.picker.recent()` (Recent Files)
+  - `<leader>sh` → `Snacks.picker.help()` (Help Tags)
+  - `<leader>su` → `Snacks.picker.undo()` (Undo Tree)
+  - `<leader>sG` → `Snacks.picker.git_status()` (Git Status)
+  - `<leader>sn` → `Snacks.picker.notifications()` (Notification History)
+  - `<leader>sp` → `Snacks.picker.pickers()` (Available Pickers)
+  - `<leader>sl` → `Snacks.picker.lines()` (Buffer Lines)
+  - `<leader>sw` → `Snacks.picker.grep_word()` (Grep Word under Cursor)
+  - `<leader>sk` → `Snacks.picker.keymaps()` (Keymaps Finder)
+  - `<leader>sc` → `Snacks.picker.command_history()` (Command History)
+  - `<leader>sC` → `Snacks.picker.commands()` (Vim Commands)
+  - `<leader>se` → `Snacks.picker.explorer()` (File Explorer)
+  - `<leader>sd` → `Snacks.picker.diagnostics()` (Workspace Diagnostics)
+  - `<leader>sD` → `Snacks.picker.diagnostics_buffer()` (Buffer Diagnostics)
+  - `<leader>ss` → `Snacks.picker.lsp_symbols()` (LSP Document Symbols)
+  - `<leader>sS` → `Snacks.picker.lsp_workspace_symbols()` (LSP Workspace Symbols)
+  - `<leader>sq` → `Snacks.picker.qflist()` (Quickfix List)
+  - `<leader>sm` → `Snacks.picker.marks()` (Marks)
+  - `<leader>sj` → `Snacks.picker.jumps()` (Jumplist)
+
+- **LSP Reference Navigation (`Snacks.words`):**
+  - `]]` → Jump to next symbol reference.
+  - `[[` → Jump to previous symbol reference.
+
+- **Utilities & Git:**
+  - `<leader>h` → `Snacks.dashboard()`
+  - `<leader>z` / `<leader>Z` → Zen Mode & Zoom
+  - `<leader>.` / `<leader>S` → Scratch Buffer / Select Scratch
+  - `<leader>bd` → Delete Buffer safely (`Snacks.bufdelete`)
+  - `<leader>cR` → LSP File Rename (`Snacks.rename.rename_file`)
+  - `<leader>gB` → Git Browse (`Snacks.gitbrowse`)
+  - `<leader>gb` → Git Blame Line (`Snacks.git.blame_line`)
+  - `<leader>gL` → Git Log (`Snacks.picker.git_log`)
+  - `<leader>lg` → Lazygit Floating Terminal (`Snacks.lazygit`)
+  - `<c-/>` / `<c-_>` → Toggle Terminal
+
+- **UI Toggles (`<leader>u*` namespace):**
+  - `<leader>us` → Toggle Spell Check
+  - `<leader>uw` → Toggle Line Wrap
+  - `<leader>uL` → Toggle Line Numbers
+  - `<leader>ud` → Toggle Diagnostics
+  - `<leader>uC` → Toggle Conceal
+  - `<leader>ui` → Toggle Indent Guides
+  - `<leader>uD` → Toggle Focus Dimming
+  - `<leader>ub` → Toggle Background (Dark/Light)
 
 ---
 
 ## 🔵 P4 — Multi-Picker Ecosystem Matrix
-
-### Picker Namespace Mapping Comparison
 
 The workspace cleanly organizes multiple search ecosystems via non-overlapping leader namespaces:
 
@@ -134,13 +165,24 @@ The workspace cleanly organizes multiple search ecosystems via non-overlapping l
 | **Grep Word** | `<leader>sw` | `<leader>fw` | `<leader>tw` | — |
 | **Keymaps** | `<leader>sk` | — | `<leader>tk` | — |
 | **Explorer** | `<leader>se` | — | — | — |
+| **Diagnostics** | `<leader>sd` / `<leader>sD` | — | — | — |
+| **LSP Symbols** | `<leader>ss` / `<leader>sS` | — | — | — |
 | **Lazygit** | `<leader>lg` | — | — | — |
 
 ---
 
-## Summary of Applied Changes
+## Verification
 
-1. **Eliminated Keymap Duplication**: Removed duplicate `Snacks` mappings from `keymaps.lua` and unified them under `plugins/init.lua`'s `keys` spec.
-2. **Explicit Module Activation**: Enabled `bufdelete`, `explorer`, `git`, `input`, `lazygit`, `scratch`, and `zen` explicitly in `opts`.
-3. **Global Debug Setup**: Created `init()` callback with `VeryLazy` listener for `_G.dd`, `_G.bt`, and `vim.print` override.
-4. **Expanded Picker Workflows**: Added `<leader>sl`, `<leader>sw`, `<leader>sk`, `<leader>sc`, `<leader>se`, and `<leader>lg` for comprehensive search and Git integration.
+ Verification was conducted by running Lua syntax validation and headless Neovim execution:
+
+1. **Lua Syntax Validation**:
+   ```bash
+   luac -p .config/nvim/lua/plugins/init.lua .config/nvim/lua/config/keymaps.lua
+   ```
+   *Result:* Exit code `0` (Passed).
+
+2. **Headless Neovim Initialization**:
+   ```bash
+   nvim --headless "+qa"
+   ```
+   *Result:* Clean initialization without Lua errors or missing module exceptions.
