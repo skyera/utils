@@ -73,10 +73,16 @@ call :deploy_file "%REPO_DIR%\.config\yazi\theme.toml"  "%APPDATA%\yazi\config\t
 call :deploy_file "%REPO_DIR%\.config\yazi\keymap.toml" "%APPDATA%\yazi\config\keymap.toml"
 call :deploy_file "%REPO_DIR%\.config\yazi\yazi.toml"   "%APPDATA%\yazi\config\yazi.toml"
 
-:: PuTTY theme collection deployment
+:: PuTTY theme collection deployment (Directory Junction / Incremental Copy)
 if exist "%REPO_DIR%\.config\putty\themes" (
-    if not exist "%APPDATA%\putty\themes" mkdir "%APPDATA%\putty\themes"
-    xcopy /Y /S /E "%REPO_DIR%\.config\putty\themes\*" "%APPDATA%\putty\themes\"
+    if not exist "%APPDATA%\putty" mkdir "%APPDATA%\putty"
+    if not exist "%APPDATA%\putty\themes" (
+        mklink /J "%APPDATA%\putty\themes" "%REPO_DIR%\.config\putty\themes" >nul 2>&1
+    )
+    if not exist "%APPDATA%\putty\themes" (
+        robocopy "%REPO_DIR%\.config\putty\themes" "%APPDATA%\putty\themes" /E /XO /NDL /NFL /NJH /NJS >nul 2>&1
+        if errorlevel 8 xcopy /D /Y /S /E /I "%REPO_DIR%\.config\putty\themes\*" "%APPDATA%\putty\themes\" >nul
+    )
 )
 
 :: PowerShell fzf keybindings deployment
