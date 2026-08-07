@@ -494,8 +494,10 @@ def interactive_menu():
 
     print("Options for selected theme:")
     print(" [1] Apply to PuTTY 'Default Settings'")
-    print(" [2] Apply to custom PuTTY session")
-    print(" [3] Export as Windows Registry (.reg) file")
+    print(" [2] Select from existing saved PuTTY sessions")
+    print(" [3] Apply to ALL saved PuTTY sessions")
+    print(" [4] Apply to custom PuTTY session (type manually)")
+    print(" [5] Export as Windows Registry (.reg) file")
     print(" [0] Cancel")
     print("\nChoice: ", end="")
 
@@ -508,13 +510,62 @@ def interactive_menu():
                 apply_theme_to_windows_registry(session, theme_colors)
             else:
                 apply_theme_to_linux_putty(session, theme_colors)
-                # Also generate .reg file in current dir for convenience
                 reg_file = f"{selected_key}_default.reg"
                 with open(reg_file, "w", encoding="utf-8") as f:
                     f.write(generate_reg_content(session, theme_colors))
                 print(f"Also generated Windows Registry file: {reg_file}")
 
         elif opt == "2":
+            sessions = get_all_putty_sessions()
+            if not sessions:
+                print("No existing saved PuTTY sessions found.")
+                session = input("Enter PuTTY Session Name manually [Default Settings]: ").strip() or "Default Settings"
+                target_sessions = [session]
+            else:
+                print("\nExisting Saved PuTTY Sessions:")
+                for s_idx, s_name in enumerate(sessions, 1):
+                    print(f" [{s_idx:2d}] {s_name}")
+                print(" [ A] Apply to ALL existing sessions")
+                print(" [ 0] Cancel")
+                print("\nSelect session number: ", end="")
+                s_choice = input().strip()
+                if s_choice.upper() == "A":
+                    target_sessions = sessions
+                elif s_choice == "0" or not s_choice:
+                    print("Cancelled.")
+                    return
+                else:
+                    try:
+                        s_i = int(s_choice) - 1
+                        if 0 <= s_i < len(sessions):
+                            target_sessions = [sessions[s_i]]
+                        else:
+                            print("Invalid session selection.")
+                            return
+                    except ValueError:
+                        print("Invalid input.")
+                        return
+
+            for s_item in target_sessions:
+                if sys.platform == "win32":
+                    apply_theme_to_windows_registry(s_item, theme_colors)
+                else:
+                    apply_theme_to_linux_putty(s_item, theme_colors)
+            print(f"Applied '{PRESET_THEMES[selected_key]['name']}' theme to {len(target_sessions)} session(s).")
+
+        elif opt == "3":
+            sessions = get_all_putty_sessions()
+            if "Default Settings" not in sessions:
+                sessions.append("Default Settings")
+            print(f"Applying '{PRESET_THEMES[selected_key]['name']}' theme to ALL {len(sessions)} saved PuTTY sessions...")
+            for s_item in sessions:
+                if sys.platform == "win32":
+                    apply_theme_to_windows_registry(s_item, theme_colors)
+                else:
+                    apply_theme_to_linux_putty(s_item, theme_colors)
+            print("Done! Applied to all saved sessions.")
+
+        elif opt == "4":
             session = input("Enter PuTTY Session Name: ").strip()
             if not session:
                 session = "Default Settings"
@@ -527,7 +578,7 @@ def interactive_menu():
                     f.write(generate_reg_content(session, theme_colors))
                 print(f"Also generated Windows Registry file: {reg_file}")
 
-        elif opt == "3":
+        elif opt == "5":
             session = input("Enter Session Name [Default Settings]: ").strip() or "Default Settings"
             out_name = f"{selected_key}.reg"
             out_file = input(f"Output file path [{out_name}]: ").strip() or out_name
