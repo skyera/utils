@@ -622,12 +622,51 @@ def interactive_menu():
     list_themes()
 
 
-def main():
-    parser = argparse.ArgumentParser(description="PuTTY Color Scheme Utility - Easily preview, export, or apply color schemes.")
-    subparsers = parser.add_subparsers(dest="command")
+def select_theme_interactively() -> Optional[str]:
+    """Selects a theme interactively via fzf (if available) or numbered list."""
+    if sys.stdin.isatty():
+        if sys.platform == "win32":
+            has_fzf = shutil.which("fzf") or shutil.which("fzf.exe")
+        else:
+            has_fzf = shutil.which("fzf")
 
-    # fzf
-    subparsers.add_parser("fzf", help="Launch fzf theme picker with live ANSI preview")
+        if has_fzf:
+            key = fzf_theme_picker()
+            if key:
+                return key
+
+    themes = load_all_themes()
+    theme_keys = sorted(themes.keys(), key=lambda k: themes[k]["name"].lower())
+
+    print(f"Available PuTTY Color Schemes ({len(themes)} Themes):\n")
+    print(f" {'#':<4} {'KEY':<30} {'NAME':<25} {'SOURCE':<20}")
+    print("-" * 82)
+    for idx, key in enumerate(theme_keys, 1):
+        data = themes[key]
+        print(f" [{idx:3d}] {key:<30} {data['name']:<25} {data['author']:<20}")
+
+    print("\nSelect theme number (or 0/Enter to cancel): ", end="")
+    try:
+        choice = input().strip()
+        if not choice or choice == "0":
+            return None
+        idx = int(choice) - 1
+        if 0 <= idx < len(theme_keys):
+            return theme_keys[idx]
+        else:
+            print("Invalid selection.")
+            return None
+    except Exception:
+        print("Invalid input.")
+        return None
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="PuTTY Color Scheme Utility - Easily preview, export, or apply color schemes.",
+        epilog="Running 'putty_colors' without subcommands launches the interactive theme picker."
+    )
+    subparsers = parser.add_subparsers(dest="command")
 
     # list
     subparsers.add_parser("list", help="List all available preset & .reg themes")
@@ -637,27 +676,24 @@ def main():
 
     # preview
     preview_parser = subparsers.add_parser("preview", help="Preview a color scheme in terminal")
-    preview_parser.add_argument("theme", nargs="?", default=None, help="Theme key (e.g. dracula, cyberpunk, nord)")
+    preview_parser.add_argument("theme", nargs="?", default=None, help="Theme key (optional, prompts to select if omitted)")
     preview_parser.add_argument("--raw", action="store_true", help="Output raw preview block (for fzf preview window)")
-
-    # export
-    export_parser = subparsers.add_parser("export", help="Export color scheme to Windows Registry .reg file")
-    export_parser.add_argument("theme", help="Theme key")
-    export_parser.add_argument("-s", "--session", default="Default Settings", help="PuTTY session name (default: Default Settings)")
-    export_parser.add_argument("-o", "--output", help="Output .reg filename")
 
     # apply
     apply_parser = subparsers.add_parser("apply", help="Apply color scheme to PuTTY session")
-    apply_parser.add_argument("theme", help="Theme key")
+    apply_parser.add_argument("theme", nargs="?", default=None, help="Theme key (optional, prompts to select if omitted)")
     apply_parser.add_argument("-s", "--session", default="Default Settings", help="PuTTY session name (default: Default Settings)")
     apply_parser.add_argument("-a", "--all", action="store_true", help="Apply theme to ALL saved PuTTY sessions")
 
     # live
     live_parser = subparsers.add_parser("live", help="Instantly change colors in active open PuTTY terminal window")
-    live_parser.add_argument("theme", help="Theme key")
+    live_parser.add_argument("theme", nargs="?", default=None, help="Theme key (optional, prompts to select if omitted)")
 
-    # interactive
-    subparsers.add_parser("interactive", help="Run interactive theme selector menu")
+    # export
+    export_parser = subparsers.add_parser("export", help="Export color scheme to Windows Registry .reg file")
+    export_parser.add_argument("theme", nargs="?", default=None, help="Theme key (optional, prompts to select if omitted)")
+    export_parser.add_argument("-s", "--session", default="Default Settings", help="PuTTY session name (default: Default Settings)")
+    export_parser.add_argument("-o", "--output", help="Output .reg filename")
 
     args = parser.parse_args()
 
@@ -665,13 +701,9 @@ def main():
         interactive_menu()
         return
 
-    if args.command == "fzf":
-        selected_key = fzf_theme_picker()
-        if selected_key:
-            render_preview(selected_key)
-            prompt_theme_actions(selected_key)
+    themes = load_all_themes()
 
-    elif args.command == "list":
+    if args.command == "list":
         list_themes()
 
     elif args.command == "sessions":
@@ -687,19 +719,28 @@ def main():
         theme_key = args.theme
         raw_mode = getattr(args, "raw", False)
         if not theme_key:
-            theme_key = fzf_theme_picker()
+            theme_key = select_theme_interactively()
             if not theme_key:
                 return
         render_preview(theme_key, raw=raw_mode)
 
     elif args.command == "live":
-        apply_live_osc_colors(args.theme)
+        theme_key = args.theme
+        if not theme_key:
+            theme_key = select_theme_interactively()
+            if not theme_key:
+                return
+        apply_live_osc_colors(theme_key)
 
     elif args.command == "export":
-        themes = load_all_themes()
-        theme_key = args.theme.lower()
+        theme_key = args.theme
+        if not theme_key:
+            theme_key = select_theme_interactively()
+            if not theme_key:
+                return
+        theme_key = theme_key.lower()
         if theme_key not in themes:
-            print(f"Error: Unknown theme '{args.theme}'. Use 'list' to view available themes.")
+            print(f"Error: Unknown theme '{theme_key}'. Use 'list' to view available themes.")
             sys.exit(1)
         colors = themes[theme_key]["colors"]
         session = args.session
@@ -710,10 +751,14 @@ def main():
         print(f"Exported '{themes[theme_key]['name']}' theme for session '{session}' to {os.path.abspath(out_file)}")
 
     elif args.command == "apply":
-        themes = load_all_themes()
-        theme_key = args.theme.lower()
+        theme_key = args.theme
+        if not theme_key:
+            theme_key = select_theme_interactively()
+            if not theme_key:
+                return
+        theme_key = theme_key.lower()
         if theme_key not in themes:
-            print(f"Error: Unknown theme '{args.theme}'. Use 'list' to view available themes.")
+            print(f"Error: Unknown theme '{theme_key}'. Use 'list' to view available themes.")
             sys.exit(1)
         colors = themes[theme_key]["colors"]
 
@@ -737,10 +782,7 @@ def main():
                 out_file = f"{theme_key}_{sanitize_session_name(session)}.reg"
                 with open(out_file, "w", encoding="utf-8") as f:
                     f.write(generate_reg_content(session, colors))
-                print(f"Generated Windows Registry file: {os.path.abspath(os.path.abspath(out_file))}")
-
-    elif args.command == "interactive":
-        interactive_menu()
+                print(f"Generated Windows Registry file: {os.path.abspath(out_file)}")
 
 
 if __name__ == "__main__":
