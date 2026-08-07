@@ -919,6 +919,9 @@ alias fzstash='git-fuzzy stash'
 alias fzbranch='git-fuzzy branch'
 alias git-clean-branches='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -d'
 alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -D'
+alias putty-colors='putty_colors.py'
+alias putty_colors='putty_colors.py'
+
 
 # =============================================================================
 # SOURCES
