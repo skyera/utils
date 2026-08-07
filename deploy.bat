@@ -79,6 +79,10 @@ if exist "%REPO_DIR%\.config\putty\themes" (
     xcopy /Y /S /E "%REPO_DIR%\.config\putty\themes\*" "%APPDATA%\putty\themes\"
 )
 
+:: PowerShell fzf keybindings deployment
+call :deploy_file "%REPO_DIR%\.config\powershell\fzf_keybindings.ps1" "%APPDATA%\powershell\fzf_keybindings.ps1"
+powershell -NoProfile -Command "if (Test-Path $PROFILE) { if (-not (Select-String -Path $PROFILE -Pattern 'fzf_keybindings\.ps1' -Quiet)) { Add-Content -Path $PROFILE -Value '`n. \"$env:APPDATA\powershell\fzf_keybindings.ps1\"' } } else { New-Item -ItemType File -Path $PROFILE -Force | Out-Null; Set-Content -Path $PROFILE -Value '. \"$env:APPDATA\powershell\fzf_keybindings.ps1\"' }" 2>nul
+
 :: MPV configuration and plugins (uosc, mpv-cut, thumbfast, autoload, quality-menu)
 call :deploy_file "%REPO_DIR%\.config\mpv\mpv.conf" "%APPDATA%\mpv\mpv.conf"
 set "MPV_DIR=%APPDATA%\mpv"
