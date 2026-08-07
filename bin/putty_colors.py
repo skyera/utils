@@ -402,65 +402,136 @@ def render_preview(theme_key: str):
 
 
 def list_themes():
-    """Lists all available preset color schemes."""
+    """Lists all available preset color schemes and allows interactive selection."""
+    theme_keys = list(PRESET_THEMES.keys())
     print("Available PuTTY Color Schemes:\n")
-    print(f"{'KEY':<20} {'NAME':<20} {'AUTHOR':<25}")
-    print("-" * 65)
-    for key, data in PRESET_THEMES.items():
-        print(f"{key:<20} {data['name']:<20} {data['author']:<25}")
-    print("\nUse 'putty_colors preview <key>' to preview a scheme.")
-    print("Use 'putty_colors export <key> [-s SESSION] [-o FILE.reg]' to export a .reg registry file.")
-    print("Use 'putty_colors apply <key> [-s SESSION]' to apply directly.")
+    print(f" {'#':<3} {'KEY':<18} {'NAME':<20} {'AUTHOR':<25}")
+    print("-" * 70)
+    for idx, key in enumerate(theme_keys, 1):
+        data = PRESET_THEMES[key]
+        print(f" [{idx:2d}] {key:<18} {data['name']:<20} {data['author']:<25}")
+
+    # Allow interactive selection if standard input is TTY
+    if sys.stdin.isatty():
+        print("\nSelect theme number to preview & manage (or 0/Enter to exit): ", end="")
+        try:
+            choice = input().strip()
+            if not choice or choice == "0":
+                return
+            idx = int(choice) - 1
+            if 0 <= idx < len(theme_keys):
+                selected_key = theme_keys[idx]
+                render_preview(selected_key)
+                prompt_theme_actions(selected_key)
+            else:
+                print("Invalid selection.")
+        except Exception:
+            pass
 
 
-def apply_theme_to_windows_registry(session: str, color_list: List[str]):
-    """Applies color scheme directly to Windows Registry if running on Windows."""
+def prompt_theme_actions(selected_key: str):
+    """Prompts user for actions (apply, export, saved sessions) on a selected theme."""
+    theme_data = PRESET_THEMES[selected_key]
+    theme_colors = theme_data["colors"]
+    
+    print(f"\nActions for '{theme_data['name']}':")
+    print(" [1] Apply to PuTTY 'Default Settings'")
+    print(" [2] Select from existing saved PuTTY sessions")
+    print(" [3] Apply to ALL saved PuTTY sessions")
+    print(" [4] Apply to custom PuTTY session (type manually)")
+    print(" [5] Export as Windows Registry (.reg) file")
+    print(" [0] Exit / Cancel")
+    print("\nChoice: ", end="")
+
     try:
-        import winreg
-    except ImportError:
-        print("Warning: 'winreg' module is only available on native Windows Python.")
-        return False
+        opt = input().strip().upper()
+        if opt == "0" or not opt:
+            return
 
-    reg_session = sanitize_session_name(session)
-    key_path = f"Software\\SimonTatham\\PuTTY\\Sessions\\{reg_session}"
+        if opt == "1":
+            session = "Default Settings"
+            if sys.platform == "win32":
+                apply_theme_to_windows_registry(session, theme_colors)
+            else:
+                apply_theme_to_linux_putty(session, theme_colors)
+                reg_file = f"{selected_key}_default.reg"
+                with open(reg_file, "w", encoding="utf-8") as f:
+                    f.write(generate_reg_content(session, theme_colors))
+                print(f"Also generated Windows Registry file: {reg_file}")
 
-    try:
-        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path)
-        for idx, rgb in enumerate(color_list):
-            winreg.SetValueEx(key, f"Colour{idx}", 0, winreg.REG_SZ, rgb)
-        winreg.CloseKey(key)
-        print(f"Successfully applied color scheme to Windows Registry: HKCU\\{key_path}")
-        return True
+        elif opt == "2":
+            sessions = get_all_putty_sessions()
+            if not sessions:
+                print("No existing saved PuTTY sessions found.")
+                session = input("Enter PuTTY Session Name manually [Default Settings]: ").strip() or "Default Settings"
+                target_sessions = [session]
+            else:
+                print("\nExisting Saved PuTTY Sessions:")
+                for s_idx, s_name in enumerate(sessions, 1):
+                    print(f" [{s_idx:2d}] {s_name}")
+                print(" [ A] Apply to ALL existing sessions")
+                print(" [ 0] Cancel")
+                print("\nSelect session number: ", end="")
+                s_choice = input().strip()
+                if s_choice.upper() == "A":
+                    target_sessions = sessions
+                elif s_choice == "0" or not s_choice:
+                    return
+                else:
+                    try:
+                        s_i = int(s_choice) - 1
+                        if 0 <= s_i < len(sessions):
+                            target_sessions = [sessions[s_i]]
+                        else:
+                            print("Invalid session selection.")
+                            return
+                    except ValueError:
+                        print("Invalid input.")
+                        return
+
+            for s_item in target_sessions:
+                if sys.platform == "win32":
+                    apply_theme_to_windows_registry(s_item, theme_colors)
+                else:
+                    apply_theme_to_linux_putty(s_item, theme_colors)
+            print(f"Applied '{theme_data['name']}' theme to {len(target_sessions)} session(s).")
+
+        elif opt == "3":
+            sessions = get_all_putty_sessions()
+            if "Default Settings" not in sessions:
+                sessions.append("Default Settings")
+            print(f"Applying '{theme_data['name']}' theme to ALL {len(sessions)} saved PuTTY sessions...")
+            for s_item in sessions:
+                if sys.platform == "win32":
+                    apply_theme_to_windows_registry(s_item, theme_colors)
+                else:
+                    apply_theme_to_linux_putty(s_item, theme_colors)
+            print("Done! Applied to all saved sessions.")
+
+        elif opt == "4":
+            session = input("Enter PuTTY Session Name: ").strip()
+            if not session:
+                session = "Default Settings"
+            if sys.platform == "win32":
+                apply_theme_to_windows_registry(session, theme_colors)
+            else:
+                apply_theme_to_linux_putty(session, theme_colors)
+                reg_file = f"{selected_key}_{sanitize_session_name(session)}.reg"
+                with open(reg_file, "w", encoding="utf-8") as f:
+                    f.write(generate_reg_content(session, theme_colors))
+                print(f"Also generated Windows Registry file: {reg_file}")
+
+        elif opt == "5":
+            session = input("Enter Session Name [Default Settings]: ").strip() or "Default Settings"
+            out_name = f"{selected_key}.reg"
+            out_file = input(f"Output file path [{out_name}]: ").strip() or out_name
+            with open(out_file, "w", encoding="utf-8") as f:
+                f.write(generate_reg_content(session, theme_colors))
+            print(f"Exported .reg file to: {os.path.abspath(out_file)}")
+            print("On Windows, double-click this .reg file to import the theme into PuTTY.")
+
     except Exception as e:
-        print(f"Error modifying Windows Registry: {e}")
-        return False
-
-
-def apply_theme_to_linux_putty(session: str, color_list: List[str]):
-    """Applies color scheme to Linux/Unix ~/.putty/sessions/ file."""
-    putty_dir = os.path.expanduser("~/.putty/sessions")
-    os.makedirs(putty_dir, exist_ok=True)
-
-    sanitized = sanitize_session_name(session)
-    session_file = os.path.join(putty_dir, sanitized)
-
-    existing_lines = []
-    if os.path.exists(session_file):
-        with open(session_file, "r", encoding="utf-8", errors="ignore") as f:
-            existing_lines = f.readlines()
-
-    # Filter out existing Colour entries
-    new_lines = [line for line in existing_lines if not re.match(r"^Colour\d+=", line.strip())]
-
-    # Append new Colour entries
-    for idx, rgb in enumerate(color_list):
-        new_lines.append(f"Colour{idx}={rgb}\n")
-
-    with open(session_file, "w", encoding="utf-8") as f:
-        f.writelines(new_lines)
-
-    print(f"Successfully saved color scheme to Linux PuTTY session file: {session_file}")
-    return True
+        print(f"Operation failed: {e}")
 
 
 def interactive_menu():
@@ -494,113 +565,13 @@ def interactive_menu():
             continue
 
         render_preview(selected_key)
+        prompt_theme_actions(selected_key)
 
-        print(f"Actions for '{PRESET_THEMES[selected_key]['name']}':")
-        print(" [1] Apply to PuTTY 'Default Settings'")
-        print(" [2] Select from existing saved PuTTY sessions")
-        print(" [3] Apply to ALL saved PuTTY sessions")
-        print(" [4] Apply to custom PuTTY session (type manually)")
-        print(" [5] Export as Windows Registry (.reg) file")
-        print(" [P] Preview another theme / Back to list")
-        print(" [0] Exit")
-        print("\nChoice: ", end="")
-
+        print("\nPress Enter to return to main menu...", end="")
         try:
-            opt = input().strip().upper()
-            if opt == "P":
-                continue
-            if opt == "0":
-                print("Exiting.")
-                return
-
-            theme_colors = PRESET_THEMES[selected_key]["colors"]
-            if opt == "1":
-                session = "Default Settings"
-                if sys.platform == "win32":
-                    apply_theme_to_windows_registry(session, theme_colors)
-                else:
-                    apply_theme_to_linux_putty(session, theme_colors)
-                    reg_file = f"{selected_key}_default.reg"
-                    with open(reg_file, "w", encoding="utf-8") as f:
-                        f.write(generate_reg_content(session, theme_colors))
-                    print(f"Also generated Windows Registry file: {reg_file}")
-
-            elif opt == "2":
-                sessions = get_all_putty_sessions()
-                if not sessions:
-                    print("No existing saved PuTTY sessions found.")
-                    session = input("Enter PuTTY Session Name manually [Default Settings]: ").strip() or "Default Settings"
-                    target_sessions = [session]
-                else:
-                    print("\nExisting Saved PuTTY Sessions:")
-                    for s_idx, s_name in enumerate(sessions, 1):
-                        print(f" [{s_idx:2d}] {s_name}")
-                    print(" [ A] Apply to ALL existing sessions")
-                    print(" [ 0] Cancel")
-                    print("\nSelect session number: ", end="")
-                    s_choice = input().strip()
-                    if s_choice.upper() == "A":
-                        target_sessions = sessions
-                    elif s_choice == "0" or not s_choice:
-                        continue
-                    else:
-                        try:
-                            s_i = int(s_choice) - 1
-                            if 0 <= s_i < len(sessions):
-                                target_sessions = [sessions[s_i]]
-                            else:
-                                print("Invalid session selection.")
-                                continue
-                        except ValueError:
-                            print("Invalid input.")
-                            continue
-
-                for s_item in target_sessions:
-                    if sys.platform == "win32":
-                        apply_theme_to_windows_registry(s_item, theme_colors)
-                    else:
-                        apply_theme_to_linux_putty(s_item, theme_colors)
-                print(f"Applied '{PRESET_THEMES[selected_key]['name']}' theme to {len(target_sessions)} session(s).")
-
-            elif opt == "3":
-                sessions = get_all_putty_sessions()
-                if "Default Settings" not in sessions:
-                    sessions.append("Default Settings")
-                print(f"Applying '{PRESET_THEMES[selected_key]['name']}' theme to ALL {len(sessions)} saved PuTTY sessions...")
-                for s_item in sessions:
-                    if sys.platform == "win32":
-                        apply_theme_to_windows_registry(s_item, theme_colors)
-                    else:
-                        apply_theme_to_linux_putty(s_item, theme_colors)
-                print("Done! Applied to all saved sessions.")
-
-            elif opt == "4":
-                session = input("Enter PuTTY Session Name: ").strip()
-                if not session:
-                    session = "Default Settings"
-                if sys.platform == "win32":
-                    apply_theme_to_windows_registry(session, theme_colors)
-                else:
-                    apply_theme_to_linux_putty(session, theme_colors)
-                    reg_file = f"{selected_key}_{sanitize_session_name(session)}.reg"
-                    with open(reg_file, "w", encoding="utf-8") as f:
-                        f.write(generate_reg_content(session, theme_colors))
-                    print(f"Also generated Windows Registry file: {reg_file}")
-
-            elif opt == "5":
-                session = input("Enter Session Name [Default Settings]: ").strip() or "Default Settings"
-                out_name = f"{selected_key}.reg"
-                out_file = input(f"Output file path [{out_name}]: ").strip() or out_name
-                with open(out_file, "w", encoding="utf-8") as f:
-                    f.write(generate_reg_content(session, theme_colors))
-                print(f"Exported .reg file to: {os.path.abspath(out_file)}")
-                print("On Windows, double-click this .reg file to import the theme into PuTTY.")
-
-            print("\nPress Enter to return to main menu...", end="")
             input()
-
-        except Exception as e:
-            print(f"Operation failed: {e}")
+        except Exception:
+            return
 
 
 def get_all_putty_sessions() -> List[str]:
