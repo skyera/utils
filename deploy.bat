@@ -73,6 +73,12 @@ call :deploy_file "%REPO_DIR%\.config\yazi\theme.toml"  "%APPDATA%\yazi\config\t
 call :deploy_file "%REPO_DIR%\.config\yazi\keymap.toml" "%APPDATA%\yazi\config\keymap.toml"
 call :deploy_file "%REPO_DIR%\.config\yazi\yazi.toml"   "%APPDATA%\yazi\config\yazi.toml"
 
+:: PuTTY theme collection deployment
+if exist "%REPO_DIR%\.config\putty\themes" (
+    if not exist "%APPDATA%\putty\themes" mkdir "%APPDATA%\putty\themes"
+    xcopy /Y /S /E "%REPO_DIR%\.config\putty\themes\*" "%APPDATA%\putty\themes\"
+)
+
 :: MPV configuration and plugins (uosc, mpv-cut, thumbfast, autoload, quality-menu)
 call :deploy_file "%REPO_DIR%\.config\mpv\mpv.conf" "%APPDATA%\mpv\mpv.conf"
 set "MPV_DIR=%APPDATA%\mpv"

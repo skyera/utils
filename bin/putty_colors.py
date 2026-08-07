@@ -1,306 +1,239 @@
 #!/usr/bin/env python3
 """
-putty_colors.py - Easily manage, preview, export, and apply PuTTY color schemes.
+putty_colors.py - Easily manage, preview, export, and apply PuTTY color schemes for Windows.
 
-Supports Windows Registry (.reg generation or direct winreg modification)
-and Linux/Unix PuTTY session files (~/.putty/sessions/).
+Supports 650+ color themes from:
+- Preset Themes (Dracula, Nord, One Dark, Tokyo Night, Catppuccin, Gruvbox, Solarized, Monokai Pro, etc.)
+- AlexAkulov/putty-color-themes (.reg files)
+- mbadolato/iTerm2-Color-Schemes (putty .reg files)
+
+Features fzf live preview integration, Windows Registry direct winreg modification,
+and .reg registry patch file generation.
 """
 
 import sys
 import os
 import re
 import argparse
+import subprocess
+import shutil
 from typing import Dict, List, Tuple, Optional
 
 # Preset color themes (22 RGB entries for PuTTY Colour0..Colour21)
-# Format: List of 22 "R,G,B" strings
 PRESET_THEMES: Dict[str, Dict[str, any]] = {
     "dracula": {
         "name": "Dracula",
         "author": "Zeno Rocha",
         "colors": [
-            "248,248,242",  # 0: FG
-            "255,255,255",  # 1: Bold FG
-            "40,42,54",     # 2: BG
-            "68,71,90",     # 3: Bold BG
-            "40,42,54",     # 4: Cursor Text
-            "248,248,242",  # 5: Cursor Color
-            "0,0,0",        # 6: Black
-            "98,114,164",   # 7: Bright Black
-            "255,85,85",    # 8: Red
-            "255,110,110",  # 9: Bright Red
-            "80,250,123",   # 10: Green
-            "105,255,148",  # 11: Bright Green
-            "241,250,140",  # 12: Yellow
-            "255,255,165",  # 13: Bright Yellow
-            "189,147,249",  # 14: Blue
-            "214,172,255",  # 15: Bright Blue
-            "255,121,198",  # 16: Magenta
-            "255,146,223",  # 17: Bright Magenta
-            "139,233,253",  # 18: Cyan
-            "164,255,255",  # 19: Bright Cyan
-            "191,191,191",  # 20: White
-            "255,255,255",  # 21: Bright White
+            "248,248,242", "255,255,255", "40,42,54", "68,71,90",
+            "40,42,54", "248,248,242", "0,0,0", "98,114,164",
+            "255,85,85", "255,110,110", "80,250,123", "105,255,148",
+            "241,250,140", "255,255,165", "189,147,249", "214,172,255",
+            "255,121,198", "255,146,223", "139,233,253", "164,255,255",
+            "191,191,191", "255,255,255"
         ]
     },
     "nord": {
         "name": "Nord",
         "author": "Arctic Ice Studio",
         "colors": [
-            "216,222,233",  # 0
-            "235,238,245",  # 1
-            "46,52,64",     # 2
-            "59,66,82",     # 3
-            "46,52,64",     # 4
-            "216,222,233",  # 5
-            "59,66,82",     # 6
-            "76,86,106",    # 7
-            "191,97,106",   # 8
-            "191,97,106",   # 9
-            "163,190,140",  # 10
-            "163,190,140",  # 11
-            "235,203,139",  # 12
-            "235,203,139",  # 13
-            "129,161,193",  # 14
-            "136,192,208",  # 15
-            "180,142,173",  # 16
-            "180,142,173",  # 17
-            "136,192,208",  # 18
-            "143,188,187",  # 19
-            "229,233,240",  # 20
-            "236,239,244",  # 21
+            "216,222,233", "235,238,245", "46,52,64", "59,66,82",
+            "46,52,64", "216,222,233", "59,66,82", "76,86,106",
+            "191,97,106", "191,97,106", "163,190,140", "163,190,140",
+            "235,203,139", "235,203,139", "129,161,193", "136,192,208",
+            "180,142,173", "180,142,173", "136,192,208", "143,188,187",
+            "229,233,240", "236,239,244"
         ]
     },
     "onedark": {
         "name": "One Dark",
         "author": "Atom",
         "colors": [
-            "171,178,191",  # 0
-            "220,223,228",  # 1
-            "40,44,52",     # 2
-            "62,68,81",     # 3
-            "40,44,52",     # 4
-            "82,139,255",   # 5
-            "40,44,52",     # 6
-            "92,99,112",    # 7
-            "224,108,117",  # 8
-            "224,108,117",  # 9
-            "152,195,121",  # 10
-            "152,195,121",  # 11
-            "229,192,123",  # 12
-            "229,192,123",  # 13
-            "97,175,239",   # 14
-            "97,175,239",   # 15
-            "198,120,221",  # 16
-            "198,120,221",  # 17
-            "86,182,194",   # 18
-            "86,182,194",   # 19
-            "171,178,191",  # 20
-            "255,255,255",  # 21
+            "171,178,191", "220,223,228", "40,44,52", "62,68,81",
+            "40,44,52", "82,139,255", "40,44,52", "92,99,112",
+            "224,108,117", "224,108,117", "152,195,121", "152,195,121",
+            "229,192,123", "229,192,123", "97,175,239", "97,175,239",
+            "198,120,221", "198,120,221", "86,182,194", "86,182,194",
+            "171,178,191", "255,255,255"
         ]
     },
     "gruvbox-dark": {
         "name": "Gruvbox Dark",
         "author": "morhetz",
         "colors": [
-            "235,219,178",  # 0
-            "251,241,199",  # 1
-            "40,40,40",     # 2
-            "60,56,54",     # 3
-            "40,40,40",     # 4
-            "235,219,178",  # 5
-            "40,40,40",     # 6
-            "146,131,116",  # 7
-            "204,36,29",    # 8
-            "251,73,52",    # 9
-            "152,151,26",   # 10
-            "184,187,38",   # 11
-            "215,153,33",   # 12
-            "250,189,47",   # 13
-            "69,133,136",   # 14
-            "131,165,152",  # 15
-            "177,98,134",   # 16
-            "211,134,155",  # 17
-            "104,157,106",  # 18
-            "142,192,124",  # 19
-            "168,153,132",  # 20
-            "235,219,178",  # 21
+            "235,219,178", "251,241,199", "40,40,40", "60,56,54",
+            "40,40,40", "235,219,178", "40,40,40", "146,131,116",
+            "204,36,29", "251,73,52", "152,151,26", "184,187,38",
+            "215,153,33", "250,189,47", "69,133,136", "131,165,152",
+            "177,98,134", "211,134,155", "104,157,106", "142,192,124",
+            "168,153,132", "235,219,178"
         ]
     },
     "tokyonight": {
         "name": "Tokyo Night",
         "author": "folke",
         "colors": [
-            "192,202,245",  # 0
-            "205,214,244",  # 1
-            "26,27,38",     # 2
-            "36,40,59",     # 3
-            "26,27,38",     # 4
-            "192,202,245",  # 5
-            "21,22,30",     # 6
-            "65,72,104",    # 7
-            "247,118,142",  # 8
-            "247,118,142",  # 9
-            "158,206,106",  # 10
-            "158,206,106",  # 11
-            "224,175,104",  # 12
-            "224,175,104",  # 13
-            "122,162,247",  # 14
-            "122,162,247",  # 15
-            "187,154,247",  # 16
-            "187,154,247",  # 17
-            "125,207,255",  # 18
-            "125,207,255",  # 19
-            "169,177,214",  # 20
-            "192,202,245",  # 21
+            "192,202,245", "205,214,244", "26,27,38", "36,40,59",
+            "26,27,38", "192,202,245", "21,22,30", "65,72,104",
+            "247,118,142", "247,118,142", "158,206,106", "158,206,106",
+            "224,175,104", "224,175,104", "122,162,247", "122,162,247",
+            "187,154,247", "187,154,247", "125,207,255", "125,207,255",
+            "169,177,214", "192,202,245"
         ]
     },
     "catppuccin-mocha": {
         "name": "Catppuccin Mocha",
         "author": "Catppuccin Org",
         "colors": [
-            "205,214,244",  # 0
-            "245,224,220",  # 1
-            "30,30,46",     # 2
-            "49,50,68",     # 3
-            "30,30,46",     # 4
-            "245,224,220",  # 5
-            "69,71,90",     # 6
-            "88,91,112",    # 7
-            "243,139,168",  # 8
-            "243,139,168",  # 9
-            "166,227,161",  # 10
-            "166,227,161",  # 11
-            "249,226,175",  # 12
-            "249,226,175",  # 13
-            "137,180,250",  # 14
-            "137,180,250",  # 15
-            "245,194,231",  # 16
-            "245,194,231",  # 17
-            "148,226,213",  # 18
-            "148,226,213",  # 19
-            "186,194,222",  # 20
-            "166,173,200",  # 21
+            "205,214,244", "245,224,220", "30,30,46", "49,50,68",
+            "30,30,46", "245,224,220", "69,71,90", "88,91,112",
+            "243,139,168", "243,139,168", "166,227,161", "166,227,161",
+            "249,226,175", "249,226,175", "137,180,250", "137,180,250",
+            "245,194,231", "245,194,231", "148,226,213", "148,226,213",
+            "186,194,222", "166,173,200"
         ]
     },
     "solarized-dark": {
         "name": "Solarized Dark",
         "author": "Ethan Schoonover",
         "colors": [
-            "131,148,150",  # 0
-            "147,161,161",  # 1
-            "0,43,54",      # 2
-            "7,54,66",      # 3
-            "0,43,54",      # 4
-            "131,148,150",  # 5
-            "7,54,66",      # 6
-            "0,43,54",      # 7
-            "220,50,47",    # 8
-            "203,75,22",    # 9
-            "133,153,0",    # 10
-            "88,110,117",   # 11
-            "181,137,0",    # 12
-            "101,123,131",  # 13
-            "38,139,210",   # 14
-            "131,148,150",  # 15
-            "211,54,130",   # 16
-            "108,113,196",  # 17
-            "42,161,152",   # 18
-            "147,161,161",  # 19
-            "238,232,213",  # 20
-            "253,246,227",  # 21
+            "131,148,150", "147,161,161", "0,43,54", "7,54,66",
+            "0,43,54", "131,148,150", "7,54,66", "0,43,54",
+            "220,50,47", "203,75,22", "133,153,0", "88,110,117",
+            "181,137,0", "101,123,131", "38,139,210", "131,148,150",
+            "211,54,130", "108,113,196", "42,161,152", "147,161,161",
+            "238,232,213", "253,246,227"
         ]
     },
     "monokai": {
         "name": "Monokai Pro",
         "author": "Wimer Hazenberg",
         "colors": [
-            "252,252,250",  # 0
-            "255,255,255",  # 1
-            "45,42,46",     # 2
-            "64,61,65",     # 3
-            "45,42,46",     # 4
-            "252,252,250",  # 5
-            "45,42,46",     # 6
-            "114,110,115",  # 7
-            "255,97,136",   # 8
-            "255,97,136",   # 9
-            "169,220,118",  # 10
-            "169,220,118",  # 11
-            "255,216,102",  # 12
-            "255,216,102",  # 13
-            "252,152,103",  # 14
-            "252,152,103",  # 15
-            "171,157,242",  # 16
-            "171,157,242",  # 17
-            "120,220,232",  # 18
-            "120,220,232",  # 19
-            "252,252,250",  # 20
-            "255,255,255",  # 21
+            "252,252,250", "255,255,255", "45,42,46", "64,61,65",
+            "45,42,46", "252,252,250", "45,42,46", "114,110,115",
+            "255,97,136", "255,97,136", "169,220,118", "169,220,118",
+            "255,216,102", "255,216,102", "252,152,103", "252,152,103",
+            "171,157,242", "171,157,242", "120,220,232", "120,220,232",
+            "252,252,250", "255,255,255"
         ]
     },
     "solarized-light": {
         "name": "Solarized Light",
         "author": "Ethan Schoonover",
         "colors": [
-            "101,123,131",  # 0
-            "7,54,66",      # 1
-            "253,246,227",  # 2
-            "238,232,213",  # 3
-            "253,246,227",  # 4
-            "101,123,131",  # 5
-            "7,54,66",      # 6
-            "0,43,54",      # 7
-            "220,50,47",    # 8
-            "203,75,22",    # 9
-            "133,153,0",    # 10
-            "88,110,117",   # 11
-            "181,137,0",    # 12
-            "101,123,131",  # 13
-            "38,139,210",   # 14
-            "131,148,150",  # 15
-            "211,54,130",   # 16
-            "108,113,196",  # 17
-            "42,161,152",   # 18
-            "147,161,161",  # 19
-            "238,232,213",  # 20
-            "253,246,227",  # 21
+            "101,123,131", "7,54,66", "253,246,227", "238,232,213",
+            "253,246,227", "101,123,131", "7,54,66", "0,43,54",
+            "220,50,47", "203,75,22", "133,153,0", "88,110,117",
+            "181,137,0", "101,123,131", "38,139,210", "131,148,150",
+            "211,54,130", "108,113,196", "42,161,152", "147,161,161",
+            "238,232,213", "253,246,227"
         ]
     },
     "gruvbox-light": {
         "name": "Gruvbox Light",
         "author": "morhetz",
         "colors": [
-            "60,56,54",     # 0
-            "40,40,40",     # 1
-            "251,241,199",  # 2
-            "235,219,178",  # 3
-            "251,241,199",  # 4
-            "60,56,54",     # 5
-            "251,241,199",  # 6
-            "146,131,116",  # 7
-            "204,36,29",    # 8
-            "157,0,6",      # 9
-            "152,151,26",   # 10
-            "121,116,14",   # 11
-            "215,153,33",   # 12
-            "181,118,20",   # 13
-            "69,133,136",   # 14
-            "7,102,102",    # 15
-            "177,98,134",   # 16
-            "143,63,113",   # 17
-            "104,157,106",  # 18
-            "66,123,88",    # 19
-            "124,111,100",  # 20
-            "60,56,54",     # 21
+            "60,56,54", "40,40,40", "251,241,199", "235,219,178",
+            "251,241,199", "60,56,54", "251,241,199", "146,131,116",
+            "204,36,29", "157,0,6", "152,151,26", "121,116,14",
+            "215,153,33", "181,118,20", "69,133,136", "7,102,102",
+            "177,98,134", "143,63,113", "104,157,106", "66,123,88",
+            "124,111,100", "60,56,54"
         ]
     }
 }
 
+_THEME_CACHE: Optional[Dict[str, Dict[str, any]]] = None
+
+
+def parse_reg_file(filepath: str) -> Optional[Dict[str, any]]:
+    """Parses a PuTTY .reg file and returns theme dict with 22 RGB color strings."""
+    if not os.path.exists(filepath):
+        return None
+
+    try:
+        content = ""
+        for enc in ["utf-8", "utf-16", "utf-16-le", "latin-1"]:
+            try:
+                with open(filepath, "r", encoding=enc) as f:
+                    content = f.read()
+                if "Colour" in content:
+                    break
+            except Exception:
+                continue
+
+        colors = {}
+        for line in content.splitlines():
+            line = line.strip()
+            m = re.match(r'^"Colour(\d+)"="([^"]+)"', line)
+            if m:
+                colors[int(m.group(1))] = m.group(2).strip()
+
+        if len(colors) >= 22:
+            color_list = [colors[i] for i in range(22)]
+            basename = os.path.splitext(os.path.basename(filepath))[0]
+            clean_name = re.sub(r'^\d+\.\s*', '', basename).strip()
+            
+            parent_dir = os.path.basename(os.path.dirname(filepath))
+            if parent_dir == "putty":
+                author = "iTerm2 Schemes"
+            elif parent_dir == "AlexAkulov":
+                author = "AlexAkulov Schemes"
+            else:
+                author = parent_dir or "Custom .reg"
+
+            return {
+                "name": clean_name,
+                "author": author,
+                "colors": color_list,
+                "path": filepath
+            }
+    except Exception:
+        pass
+    return None
+
+
+def load_all_themes() -> Dict[str, Dict[str, any]]:
+    """Loads built-in presets and scans all .reg files from themes directory."""
+    global _THEME_CACHE
+    if _THEME_CACHE is not None:
+        return _THEME_CACHE
+
+    themes = {}
+    
+    # 1. Load Built-in Presets
+    for k, v in PRESET_THEMES.items():
+        themes[k.lower()] = v
+
+    # 2. Search Directories for .reg theme files
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_dir = os.path.abspath(os.path.join(script_dir, ".."))
+    
+    search_dirs = [
+        os.path.join(repo_dir, ".config", "putty", "themes"),
+        os.path.expanduser("~/.config/putty/themes"),
+        os.path.expandvars(r"%APPDATA%\putty\themes")
+    ]
+
+    for s_dir in search_dirs:
+        if os.path.exists(s_dir):
+            for root, _, files in os.walk(s_dir):
+                for f in files:
+                    if f.endswith(".reg"):
+                        full_path = os.path.join(root, f)
+                        theme_data = parse_reg_file(full_path)
+                        if theme_data:
+                            key_name = theme_data["name"].lower()
+                            key_name = re.sub(r'[^a-z0-9]+', '-', key_name).strip('-')
+                            if key_name not in themes:
+                                themes[key_name] = theme_data
+
+    _THEME_CACHE = themes
+    return _THEME_CACHE
+
 
 def sanitize_session_name(session: str) -> str:
     """Escapes session name for PuTTY Registry / configuration keys."""
-    # PuTTY escapes session names in registry: space -> %20, / -> %2F, \ -> %5C, : -> %3A, % -> %25, ~ -> %7E
     escaped = ""
     for ch in session:
         if ch == ' ':
@@ -334,33 +267,17 @@ def generate_reg_content(session: str, color_list: List[str]) -> str:
     return "\n".join(lines)
 
 
-def hex_to_rgb(hex_str: str) -> Tuple[int, int, int]:
-    """Converts hex string (#RRGGBB or RRGGBB) to RGB tuple."""
-    clean_hex = hex_str.strip().lstrip("#")
-    if len(clean_hex) == 3:
-        clean_hex = "".join([c * 2 for c in clean_hex])
-    if len(clean_hex) != 6:
-        raise ValueError(f"Invalid hex color: {hex_str}")
-    return (int(clean_hex[0:2], 16), int(clean_hex[2:4], 16), int(clean_hex[4:6], 16))
-
-
-def rgb_to_ansi_escapes(rgb_str: str) -> Tuple[str, Tuple[int, int, int]]:
-    """Parses 'R,G,B' string into RGB tuple."""
-    parts = [int(x.strip()) for x in rgb_str.split(",")]
-    return (rgb_str, (parts[0], parts[1], parts[2]))
-
-
-def render_preview(theme_key: str):
+def render_preview(theme_key: str, raw: bool = False):
     """Renders a visual terminal preview of a color scheme."""
-    theme = PRESET_THEMES.get(theme_key.lower())
+    themes = load_all_themes()
+    theme = themes.get(theme_key.lower())
     if not theme:
-        print(f"Error: Unknown theme '{theme_key}'.")
+        if not raw:
+            print(f"Error: Unknown theme '{theme_key}'.")
         return
 
     colors = theme["colors"]
-    print(f"\n--- Color Scheme Preview: \031[1m{theme['name']}\033[0m (by {theme['author']}) ---")
 
-    # Helper for truecolor ANSI
     def bg_rgb(rgb_str):
         r, g, b = [int(x) for x in rgb_str.split(",")]
         return f"\033[48;2;{r};{g};{b}m"
@@ -375,25 +292,24 @@ def render_preview(theme_key: str):
     fg = colors[0]
     bg = colors[2]
 
+    if not raw:
+        print(f"\n--- Color Scheme Preview: \033[1m{theme['name']}\033[0m (from {theme['author']}) ---")
+    else:
+        print(f"\033[1mTheme: {theme['name']}\033[0m ({theme['author']})")
+
     print(f"\nBackground / Foreground demo:")
     print(f"{bg_rgb(bg)}{fg_rgb(fg)}  Sample Text: The quick brown fox jumps over the lazy dog  {reset()}")
     
     print("\nANSI 16-Color Palette:")
-    labels = ["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"]
-    
-    # Normal colors (Colour6..13 vs Colour14..21 in PuTTY map:
-    # PuTTY map: 6=Black, 8=Red, 10=Green, 12=Yellow, 14=Blue, 16=Magenta, 18=Cyan, 20=White
     normal_indices = [6, 8, 10, 12, 14, 16, 18, 20]
     bright_indices = [7, 9, 11, 13, 15, 17, 19, 21]
 
-    # Print normal palette
     sys.stdout.write("Normal: ")
     for idx in normal_indices:
         rgb = colors[idx]
         sys.stdout.write(f"{bg_rgb(rgb)}   {reset()} ")
     print()
 
-    # Print bright palette
     sys.stdout.write("Bright: ")
     for idx in bright_indices:
         rgb = colors[idx]
@@ -401,32 +317,59 @@ def render_preview(theme_key: str):
     print("\n")
 
 
-def list_themes():
-    """Lists all available preset color schemes and allows interactive selection."""
-    theme_keys = list(PRESET_THEMES.keys())
-    print("Available PuTTY Color Schemes:\n")
-    print(f" {'#':<3} {'KEY':<18} {'NAME':<20} {'AUTHOR':<25}")
-    print("-" * 70)
-    for idx, key in enumerate(theme_keys, 1):
-        data = PRESET_THEMES[key]
-        print(f" [{idx:2d}] {key:<18} {data['name']:<20} {data['author']:<25}")
+def fzf_theme_picker() -> Optional[str]:
+    """Launches fzf with live ANSI truecolor preview window to select from all 650+ themes."""
+    themes = load_all_themes()
+    if not themes:
+        print("Error: No themes found.")
+        return None
 
-    # Allow interactive selection if standard input is TTY
-    if sys.stdin.isatty():
-        print("\nSelect theme number to preview & manage (or 0/Enter to exit): ", end="")
-        try:
-            choice = input().strip()
-            if not choice or choice == "0":
-                return
-            idx = int(choice) - 1
-            if 0 <= idx < len(theme_keys):
-                selected_key = theme_keys[idx]
-                render_preview(selected_key)
-                prompt_theme_actions(selected_key)
-            else:
-                print("Invalid selection.")
-        except Exception:
-            pass
+    fzf_bin = "fzf"
+    if sys.platform == "win32":
+        if not shutil.which("fzf") and shutil.which("fzf.exe"):
+            fzf_bin = "fzf.exe"
+
+    if not shutil.which(fzf_bin):
+        print("Note: 'fzf' is not in PATH. Falling back to standard menu.")
+        return None
+
+    lines = []
+    for key, data in sorted(themes.items(), key=lambda x: x[1]["name"].lower()):
+        lines.append(f"{key:<32}\t{data['name']} ({data['author']})")
+
+    python_bin = sys.executable
+    script_path = os.path.abspath(__file__)
+    
+    preview_cmd = f'"{python_bin}" "{script_path}" preview --raw {{1}}'
+
+    try:
+        fzf_proc = subprocess.Popen(
+            [
+                fzf_bin,
+                "--prompt=PuTTY Theme > ",
+                "--header=Arrow Up/Down to preview, Enter to select theme",
+                f"--preview={preview_cmd}",
+                "--preview-window=right:55%:wrap",
+                "--delimiter=\t",
+                "--with-nth=2",
+                "--height=85%",
+                "--reverse",
+                "--tiebreak=begin,length"
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True
+        )
+
+        stdout, _ = fzf_proc.communicate(input="\n".join(lines))
+        if fzf_proc.returncode == 0 and stdout.strip():
+            selected_line = stdout.strip()
+            selected_key = selected_line.split("\t")[0].strip()
+            return selected_key
+    except Exception as e:
+        print(f"Error launching fzf: {e}")
+
+    return None
 
 
 def apply_theme_to_windows_registry(session: str, color_list: List[str]):
@@ -465,10 +408,7 @@ def apply_theme_to_linux_putty(session: str, color_list: List[str]):
         with open(session_file, "r", encoding="utf-8", errors="ignore") as f:
             existing_lines = f.readlines()
 
-    # Filter out existing Colour entries
     new_lines = [line for line in existing_lines if not re.match(r"^Colour\d+=", line.strip())]
-
-    # Append new Colour entries
     for idx, rgb in enumerate(color_list):
         new_lines.append(f"Colour{idx}={rgb}\n")
 
@@ -479,9 +419,64 @@ def apply_theme_to_linux_putty(session: str, color_list: List[str]):
     return True
 
 
+def get_all_putty_sessions() -> List[str]:
+    """Retrieves list of all saved PuTTY session names from Windows Registry or Linux."""
+    sessions = []
+    if sys.platform == "win32":
+        try:
+            import winreg
+            import urllib.parse
+            key_path = r"Software\SimonTatham\PuTTY\Sessions"
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path)
+            idx = 0
+            while True:
+                try:
+                    sub_key = winreg.EnumKey(key, idx)
+                    sessions.append(urllib.parse.unquote(sub_key))
+                    idx += 1
+                except OSError:
+                    break
+            winreg.CloseKey(key)
+        except Exception:
+            pass
+    else:
+        putty_dir = os.path.expanduser("~/.putty/sessions")
+        if os.path.exists(putty_dir):
+            import urllib.parse
+            for item in os.listdir(putty_dir):
+                if os.path.isfile(os.path.join(putty_dir, item)):
+                    sessions.append(urllib.parse.unquote(item))
+    return sessions
+
+
+def apply_live_osc_colors(theme_key: str):
+    """Sends ANSI OSC sequences to immediately change active terminal colors on the fly."""
+    themes = load_all_themes()
+    theme = themes.get(theme_key.lower())
+    if not theme:
+        print(f"Error: Unknown theme '{theme_key}'.")
+        return
+    colors = theme["colors"]
+    fg_rgb = [int(x) for x in colors[0].split(',')]
+    bg_rgb = [int(x) for x in colors[2].split(',')]
+    
+    sys.stdout.write(f"\033]10;rgb:{fg_rgb[0]:02x}/{fg_rgb[1]:02x}/{fg_rgb[2]:02x}\007")
+    sys.stdout.write(f"\033]11;rgb:{bg_rgb[0]:02x}/{bg_rgb[1]:02x}/{bg_rgb[2]:02x}\007")
+    
+    ansi_map = [6, 8, 10, 12, 14, 16, 18, 20, 7, 9, 11, 13, 15, 17, 19, 21]
+    for ansi_idx, color_idx in enumerate(ansi_map):
+        r, g, b = [int(x) for x in colors[color_idx].split(',')]
+        sys.stdout.write(f"\033]4;{ansi_idx};rgb:{r:02x}/{g:02x}/{b:02x}\007")
+    sys.stdout.flush()
+    print(f"Instantly changed active terminal window colors to '{theme['name']}'.")
+
+
 def prompt_theme_actions(selected_key: str):
     """Prompts user for actions (apply, export, saved sessions) on a selected theme."""
-    theme_data = PRESET_THEMES[selected_key]
+    themes = load_all_themes()
+    theme_data = themes.get(selected_key)
+    if not theme_data:
+        return
     theme_colors = theme_data["colors"]
     
     print(f"\nActions for '{theme_data['name']}':")
@@ -584,112 +579,71 @@ def prompt_theme_actions(selected_key: str):
         print(f"Operation failed: {e}")
 
 
-def interactive_menu():
-    """Interactive CLI menu to select, preview, export, or apply theme."""
-    theme_keys = list(PRESET_THEMES.keys())
-    
-    while True:
-        print("\n========================================")
-        print("   PuTTY Color Scheme Manager Utility   ")
-        print("========================================\n")
+def list_themes():
+    """Lists all available preset & custom .reg color schemes and allows interactive selection."""
+    themes = load_all_themes()
+    theme_keys = sorted(themes.keys(), key=lambda k: themes[k]["name"].lower())
 
-        print("Available Color Schemes:")
-        for idx, k in enumerate(theme_keys, 1):
-            name = PRESET_THEMES[k]["name"]
-            author = PRESET_THEMES[k]["author"]
-            print(f" [{idx:2d}] {k:<18} - {name} (by {author})")
+    print(f"Available PuTTY Color Schemes ({len(themes)} Themes):\n")
+    print(f" {'#':<4} {'KEY':<30} {'NAME':<25} {'SOURCE':<20}")
+    print("-" * 82)
+    for idx, key in enumerate(theme_keys, 1):
+        data = themes[key]
+        print(f" [{idx:3d}] {key:<30} {data['name']:<25} {data['author']:<20}")
 
-        print("\nSelect a theme number to preview & manage (or 0 to exit): ", end="")
+    if sys.stdin.isatty():
+        print("\nSelect theme number to preview & manage (or 0/Enter to exit): ", end="")
         try:
             choice = input().strip()
             if not choice or choice == "0":
-                print("Exiting.")
                 return
             idx = int(choice) - 1
-            if idx < 0 or idx >= len(theme_keys):
+            if 0 <= idx < len(theme_keys):
+                selected_key = theme_keys[idx]
+                render_preview(selected_key)
+                prompt_theme_actions(selected_key)
+            else:
                 print("Invalid selection.")
-                continue
-            selected_key = theme_keys[idx]
-        except Exception:
-            print("Invalid input.")
-            continue
-
-        render_preview(selected_key)
-        prompt_theme_actions(selected_key)
-
-        print("\nPress Enter to return to main menu...", end="")
-        try:
-            input()
-        except Exception:
-            return
-
-
-def get_all_putty_sessions() -> List[str]:
-    """Retrieves list of all saved PuTTY session names from Windows Registry or Linux."""
-    sessions = []
-    if sys.platform == "win32":
-        try:
-            import winreg
-            import urllib.parse
-            key_path = r"Software\SimonTatham\PuTTY\Sessions"
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path)
-            idx = 0
-            while True:
-                try:
-                    sub_key = winreg.EnumKey(key, idx)
-                    sessions.append(urllib.parse.unquote(sub_key))
-                    idx += 1
-                except OSError:
-                    break
-            winreg.CloseKey(key)
         except Exception:
             pass
+
+
+def interactive_menu():
+    """Interactive CLI menu to select, preview, export, or apply theme."""
+    # Check if fzf is available for instant fuzzy search
+    if sys.platform == "win32":
+        has_fzf = shutil.which("fzf") or shutil.which("fzf.exe")
     else:
-        putty_dir = os.path.expanduser("~/.putty/sessions")
-        if os.path.exists(putty_dir):
-            import urllib.parse
-            for item in os.listdir(putty_dir):
-                if os.path.isfile(os.path.join(putty_dir, item)):
-                    sessions.append(urllib.parse.unquote(item))
-    return sessions
+        has_fzf = shutil.which("fzf")
 
+    if sys.stdin.isatty() and has_fzf:
+        selected_key = fzf_theme_picker()
+        if selected_key:
+            render_preview(selected_key)
+            prompt_theme_actions(selected_key)
+            return
 
-def apply_live_osc_colors(theme_key: str):
-    """Sends ANSI OSC sequences to immediately change active terminal colors on the fly."""
-    theme = PRESET_THEMES.get(theme_key.lower())
-    if not theme:
-        print(f"Error: Unknown theme '{theme_key}'.")
-        return
-    colors = theme["colors"]
-    fg_rgb = [int(x) for x in colors[0].split(',')]
-    bg_rgb = [int(x) for x in colors[2].split(',')]
-    
-    # OSC 10 (Foreground) & OSC 11 (Background)
-    sys.stdout.write(f"\033]10;rgb:{fg_rgb[0]:02x}/{fg_rgb[1]:02x}/{fg_rgb[2]:02x}\007")
-    sys.stdout.write(f"\033]11;rgb:{bg_rgb[0]:02x}/{bg_rgb[1]:02x}/{bg_rgb[2]:02x}\007")
-    
-    # 16 ANSI colors
-    ansi_map = [6, 8, 10, 12, 14, 16, 18, 20, 7, 9, 11, 13, 15, 17, 19, 21]
-    for ansi_idx, color_idx in enumerate(ansi_map):
-        r, g, b = [int(x) for x in colors[color_idx].split(',')]
-        sys.stdout.write(f"\033]4;{ansi_idx};rgb:{r:02x}/{g:02x}/{b:02x}\007")
-    sys.stdout.flush()
-    print(f"Instantly changed active terminal window colors to '{theme['name']}'.")
+    # Fallback to standard CLI menu
+    list_themes()
 
 
 def main():
     parser = argparse.ArgumentParser(description="PuTTY Color Scheme Utility - Easily preview, export, or apply color schemes.")
     subparsers = parser.add_subparsers(dest="command")
 
+    # fzf
+    subparsers.add_parser("fzf", help="Launch fzf theme picker with live ANSI preview")
+
     # list
-    subparsers.add_parser("list", help="List all available preset themes")
+    subparsers.add_parser("list", help="List all available preset & .reg themes")
 
     # sessions
     subparsers.add_parser("sessions", help="List all saved PuTTY sessions in Windows Registry")
 
     # preview
     preview_parser = subparsers.add_parser("preview", help="Preview a color scheme in terminal")
-    preview_parser.add_argument("theme", nargs="?", default=None, help="Theme key (e.g. dracula, nord, tokyonight)")
+    preview_parser.add_argument("theme", nargs="?", default=None, help="Theme key (e.g. dracula, cyberpunk, nord)")
+    preview_parser.add_argument("--raw", action="store_true", help="Output raw preview block (for fzf preview window)")
 
     # export
     export_parser = subparsers.add_parser("export", help="Export color scheme to Windows Registry .reg file")
@@ -716,7 +670,13 @@ def main():
         interactive_menu()
         return
 
-    if args.command == "list":
+    if args.command == "fzf":
+        selected_key = fzf_theme_picker()
+        if selected_key:
+            render_preview(selected_key)
+            prompt_theme_actions(selected_key)
+
+    elif args.command == "list":
         list_themes()
 
     elif args.command == "sessions":
@@ -730,57 +690,43 @@ def main():
 
     elif args.command == "preview":
         theme_key = args.theme
+        raw_mode = getattr(args, "raw", False)
         if not theme_key:
-            theme_keys = list(PRESET_THEMES.keys())
-            print("Available Color Schemes to Preview:\n")
-            for idx, k in enumerate(theme_keys, 1):
-                name = PRESET_THEMES[k]["name"]
-                author = PRESET_THEMES[k]["author"]
-                print(f" [{idx:2d}] {k:<18} - {name} (by {author})")
-            print("\nSelect theme number to preview (or 0 to cancel): ", end="")
-            try:
-                choice = input().strip()
-                if not choice or choice == "0":
-                    return
-                idx = int(choice) - 1
-                if 0 <= idx < len(theme_keys):
-                    theme_key = theme_keys[idx]
-                else:
-                    print("Invalid selection.")
-                    return
-            except Exception:
-                print("Invalid input.")
+            theme_key = fzf_theme_picker()
+            if not theme_key:
                 return
-        render_preview(theme_key)
+        render_preview(theme_key, raw=raw_mode)
 
     elif args.command == "live":
         apply_live_osc_colors(args.theme)
 
     elif args.command == "export":
+        themes = load_all_themes()
         theme_key = args.theme.lower()
-        if theme_key not in PRESET_THEMES:
+        if theme_key not in themes:
             print(f"Error: Unknown theme '{args.theme}'. Use 'list' to view available themes.")
             sys.exit(1)
-        colors = PRESET_THEMES[theme_key]["colors"]
+        colors = themes[theme_key]["colors"]
         session = args.session
         out_file = args.output or f"{theme_key}.reg"
         content = generate_reg_content(session, colors)
         with open(out_file, "w", encoding="utf-8") as f:
             f.write(content)
-        print(f"Exported '{PRESET_THEMES[theme_key]['name']}' theme for session '{session}' to {os.path.abspath(out_file)}")
+        print(f"Exported '{themes[theme_key]['name']}' theme for session '{session}' to {os.path.abspath(out_file)}")
 
     elif args.command == "apply":
+        themes = load_all_themes()
         theme_key = args.theme.lower()
-        if theme_key not in PRESET_THEMES:
+        if theme_key not in themes:
             print(f"Error: Unknown theme '{args.theme}'. Use 'list' to view available themes.")
             sys.exit(1)
-        colors = PRESET_THEMES[theme_key]["colors"]
+        colors = themes[theme_key]["colors"]
 
         if getattr(args, "all", False):
             sessions = get_all_putty_sessions()
             if "Default Settings" not in sessions:
                 sessions.append("Default Settings")
-            print(f"Applying '{PRESET_THEMES[theme_key]['name']}' theme to {len(sessions)} saved PuTTY sessions...")
+            print(f"Applying '{themes[theme_key]['name']}' theme to {len(sessions)} saved PuTTY sessions...")
             for s in sessions:
                 if sys.platform == "win32":
                     apply_theme_to_windows_registry(s, colors)
@@ -796,7 +742,7 @@ def main():
                 out_file = f"{theme_key}_{sanitize_session_name(session)}.reg"
                 with open(out_file, "w", encoding="utf-8") as f:
                     f.write(generate_reg_content(session, colors))
-                print(f"Generated Windows Registry file: {os.path.abspath(out_file)}")
+                print(f"Generated Windows Registry file: {os.path.abspath(os.path.abspath(out_file))}")
 
     elif args.command == "interactive":
         interactive_menu()
@@ -804,4 +750,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
