@@ -238,7 +238,7 @@ if not exist "%USERPROFILE%\.vim\plugged" mklink /J "%USERPROFILE%\.vim\plugged"
 echo Setting Environment Variables...
 setx RIPGREP_CONFIG_PATH "%USERPROFILE%\.ripgreprc"
 setx FZF_DEFAULT_COMMAND "fd --follow --hidden --exclude .git --ignore-file \"%APPDATA%\fd\ignore\""
-setx FZF_DEFAULT_OPTS "--preview \"bat --color=always {}\""
+setx FZF_DEFAULT_OPTS "--preview \"fzf_preview.bat {}\""
 
 :: Set Yazi MIME detector path
 set "YAZI_FILE_PATH="
