@@ -52,7 +52,20 @@ vim.keymap.set("n", "<leader>nn", ":NERDTreeToggle<cr>")
 vim.keymap.set("n", "<leader>nb", ":NERDTreeFromBookmark ")
 vim.keymap.set("n", "<leader>nf", ":NERDTreeFind<cr>")
 
--- AI Plugin Mappings (Codeium style)
+-- Dynamic AI Toggle Mapping (<leader>ta)
+vim.keymap.set("n", "<leader>ta", function()
+  if vim.g.codeium_enabled == 0 or vim.g.codeium_enabled == nil then
+    vim.g.codeium_enabled = 1
+    pcall(vim.cmd, "Codeium Enable")
+    vim.notify("Codeium AI Enabled", vim.log.levels.INFO, { title = "Codeium" })
+  else
+    vim.g.codeium_enabled = 0
+    pcall(vim.cmd, "Codeium Disable")
+    vim.notify("Codeium AI Disabled", vim.log.levels.WARN, { title = "Codeium" })
+  end
+end, { desc = "Toggle Codeium AI" })
+
+-- AI Plugin Inline Mappings
 vim.keymap.set("i", "<C-;>", "<Cmd>call codeium#CycleCompletions(1)<CR>")
 vim.keymap.set("i", "<C-,>", "<Cmd>call codeium#CycleCompletions(-1)<CR>")
 vim.keymap.set("i", "<C-x>", "<Cmd>call codeium#Clear()<CR>")

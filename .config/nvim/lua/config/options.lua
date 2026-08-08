@@ -150,3 +150,6 @@ vim.api.nvim_create_autocmd("FileType", {
     pcall(vim.api.nvim_buf_del_keymap, 0, "i", "<Tab>")
   end,
 })
+
+-- Codeium: Start disabled by default for dynamic toggling
+vim.g.codeium_enabled = 0
