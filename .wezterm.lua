@@ -118,7 +118,35 @@ config.keys = {
     { key = '9', mods = 'LEADER', action = wezterm.action.ActivateTab(8) },
 
     -- Color Scheme Selector (Leader + t)
-    { key = 't', mods = 'LEADER', action = wezterm.action.SelectColorScheme },
+    {
+        key = 't',
+        mods = 'LEADER',
+        action = wezterm.action_callback(function(window, pane)
+            local schemes = wezterm.color.get_builtin_schemes()
+            local choices = {}
+            for name, _ in pairs(schemes) do
+                table.insert(choices, { label = name, id = name })
+            end
+            table.sort(choices, function(a, b)
+                return a.label < b.label
+            end)
+            window:perform_action(
+                wezterm.action.InputSelector({
+                    title = 'Select Color Scheme',
+                    choices = choices,
+                    fuzzy = true,
+                    action = wezterm.action_callback(function(win, p, id, label)
+                        if id then
+                            local overrides = win:get_config_overrides() or {}
+                            overrides.color_scheme = id
+                            win:set_config_overrides(overrides)
+                        end
+                    end),
+                }),
+                pane
+            )
+        end),
+    },
 }
 
 -- Status Bar Update
