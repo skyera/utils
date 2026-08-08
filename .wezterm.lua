@@ -116,6 +116,9 @@ config.keys = {
     { key = '7', mods = 'LEADER', action = wezterm.action.ActivateTab(6) },
     { key = '8', mods = 'LEADER', action = wezterm.action.ActivateTab(7) },
     { key = '9', mods = 'LEADER', action = wezterm.action.ActivateTab(8) },
+
+    -- Color Scheme Selector (Leader + t)
+    { key = 't', mods = 'LEADER', action = wezterm.action.SelectColorScheme },
 }
 
 -- Status Bar Update
