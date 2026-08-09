@@ -326,7 +326,7 @@ return {
     dependencies = { "williamboman/mason.nvim" },
     opts = {
       ensure_installed = { "pyright", "bashls", "lua_ls" },
-      automatic_installation = true,
+      automatic_installation = false,
     },
   },
   {
