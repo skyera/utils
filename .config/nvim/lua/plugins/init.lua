@@ -378,30 +378,6 @@ return {
         end
       end
 
-      -- Custom Diagnostic Handler to filter out undeclared identifier/function noise
-      local default_publish_diag = vim.lsp.handlers["textDocument/publishDiagnostics"]
-        or vim.lsp.diagnostic.on_publish_diagnostics
-      vim.lsp.handlers["textDocument/publishDiagnostics"] = function(err, result, ctx, config)
-        if result and result.diagnostics then
-          local filtered = {}
-          for _, diag in ipairs(result.diagnostics) do
-            local msg = (diag.message or ""):lower()
-            local is_noise = msg:find("undeclared function", 1, true)
-              or msg:find("undeclared identifier", 1, true)
-              or msg:find("implicit declaration", 1, true)
-              or msg:find("call to undeclared", 1, true)
-              or msg:find("use of undeclared", 1, true)
-            if not is_noise then
-              table.insert(filtered, diag)
-            end
-          end
-          result.diagnostics = filtered
-        end
-        local target_handler = default_publish_diag or vim.lsp.diagnostic.on_publish_diagnostics
-        if target_handler and target_handler ~= vim.lsp.handlers["textDocument/publishDiagnostics"] then
-          return target_handler(err, result, ctx, config)
-        end
-      end
 
       local on_attach = function(client, bufnr)
         local map = function(mode, lhs, rhs, desc)

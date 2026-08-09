@@ -174,18 +174,18 @@ Added a centralized `on_attach` handler attached to all active language servers:
 
 ---
 
-## 🟢 P6 — Diagnostic Noise Suppression (Undeclared Functions & Identifiers)
+## 🟢 P6 — Diagnostic Visibility & UI Noise Control (Best Practice Alignment)
 
-### 8. Dual-Layer Suppression Strategy
+### 8. UI-Only Diagnostic Control Strategy
 
-**Files:** [`.config/clangd/config.yaml`](file:///home/zliu/test/utils/.config/clangd/config.yaml) and [`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua#L396-L415)
+**Files:** [`.config/clangd/config.yaml`](file:///home/pi/test/utils/.config/clangd/config.yaml), [`.config/nvim/lua/plugins/init.lua`](file:///home/pi/test/utils/.config/nvim/lua/plugins/init.lua), and [`.config/nvim/lua/config/options.lua`](file:///home/pi/test/utils/.config/nvim/lua/config/options.lua#L177-L183)
 
 **Problem:**
-When prototyping, writing standalone C scripts, or editing code without full include hierarchies, `clangd` emits repetitive errors such as `call to undeclared function...` and `use of undeclared identifier...`. These create excessive UI noise in signs, virtual text, and diagnostic pickers.
+Hard-filtering diagnostic messages at the LSP server (`clangd/config.yaml`) and Neovim client handler (`publishDiagnostics`) layers completely dropped diagnostic records from memory. This prevented diagnostic pickers (e.g. `<leader>sD` for Snacks Buffer Diagnostics) and LSP Code Actions from displaying or fixing real syntax and scope issues.
 
 **Resolution:**
-1. **Server-Level (`clangd/config.yaml`)**: Suppressed diagnostic codes `undeclared_var_use`, `implicit_func_decl`, `implicit_function_decl`, `unknown_typename`, and added `-Wno-implicit-function-declaration`.
-2. **Client-Level (`publishDiagnostics` handler)**: Intercepted `textDocument/publishDiagnostics` in Neovim to filter out any remaining diagnostics matching undeclared function/identifier patterns before rendering.
+- **Removed Hard Filtering:** Restored full diagnostic emission in `clangd/config.yaml` and deleted custom string filtering in `publishDiagnostics`.
+- **UI Noise Control:** Preserved `virtual_text = false`, `signs = false`, `underline = false`, and `update_in_insert = false` in `options.lua`. The editing view remains completely clean while typing, while `<leader>sD` (`Snacks.picker.diagnostics_buffer()`) provides full on-demand diagnostic inspection.
 
 ---
 
