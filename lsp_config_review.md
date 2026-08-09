@@ -117,7 +117,12 @@ sources = cmp.config.sources({
   { name = "nvim_lsp", max_item_count = 20 },
   { name = "luasnip", max_item_count = 5 },
 }, {
-  { name = "buffer", max_item_count = 5, keyword_length = 3 },
+  {
+    name = "buffer",
+    max_item_count = 5,
+    keyword_length = 3,
+    option = { get_bufnrs = function() return { vim.api.nvim_get_current_buf() } end },
+  },
   { name = "path", max_item_count = 5 },
 })
 ```

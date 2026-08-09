@@ -358,9 +358,12 @@ return {
       end
 
       -- C / C++ / CUDA Server Setup
+      local clangd_capabilities = require("cmp_nvim_lsp").default_capabilities()
+      clangd_capabilities.offsetEncoding = { "utf-16" }
+
       lspconfig.clangd.setup({
         on_attach = on_attach,
-        capabilities = capabilities,
+        capabilities = clangd_capabilities,
         filetypes = { "c", "cpp", "objc", "objcpp", "cuda" },
         cmd = {
           "clangd",
@@ -507,7 +510,16 @@ return {
           { name = "nvim_lsp", max_item_count = 20 },
           { name = "luasnip", max_item_count = 5 },
         }, {
-          { name = "buffer", max_item_count = 5, keyword_length = 3 },
+          {
+            name = "buffer",
+            max_item_count = 5,
+            keyword_length = 3,
+            option = {
+              get_bufnrs = function()
+                return { vim.api.nvim_get_current_buf() }
+              end,
+            },
+          },
           { name = "path", max_item_count = 5 },
         }),
       })
