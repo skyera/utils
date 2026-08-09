@@ -325,13 +325,13 @@ return {
     "williamboman/mason-lspconfig.nvim",
     dependencies = { "williamboman/mason.nvim" },
     opts = {
-      ensure_installed = { "clangd", "pyright", "bashls", "lua_ls" },
+      ensure_installed = { "pyright", "bashls", "lua_ls" },
       automatic_installation = true,
     },
   },
   {
     "neovim/nvim-lspconfig",
-    event = { "BufReadPre", "BufNewFile" },
+    lazy = false,
     dependencies = {
       "williamboman/mason.nvim",
       "williamboman/mason-lspconfig.nvim",
@@ -339,7 +339,8 @@ return {
     },
     config = function()
       local lspconfig = require("lspconfig")
-      local capabilities = require("cmp_nvim_lsp").default_capabilities()
+      local capabilities = vim.lsp.protocol.make_client_capabilities()
+      capabilities = require("cmp_nvim_lsp").default_capabilities(capabilities)
 
       local on_attach = function(client, bufnr)
         local map = function(mode, lhs, rhs, desc)
@@ -351,6 +352,7 @@ return {
         map("n", "gr", vim.lsp.buf.references, "Goto References")
         map("n", "gi", vim.lsp.buf.implementation, "Goto Implementation")
         map("n", "K", vim.lsp.buf.hover, "Hover Documentation")
+        map({ "n", "i" }, "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
         map("n", "<leader>rn", vim.lsp.buf.rename, "Rename Symbol")
         map("n", "<leader>ca", vim.lsp.buf.code_action, "Code Action")
         map("n", "[d", vim.diagnostic.goto_prev, "Previous Diagnostic")
@@ -358,17 +360,23 @@ return {
       end
 
       -- C / C++ / CUDA Server Setup
-      local clangd_capabilities = require("cmp_nvim_lsp").default_capabilities()
+      local clangd_capabilities = vim.lsp.protocol.make_client_capabilities()
+      clangd_capabilities = require("cmp_nvim_lsp").default_capabilities(clangd_capabilities)
       clangd_capabilities.offsetEncoding = { "utf-16" }
+
+      local clangd_cmd = vim.fn.executable("/usr/bin/clangd") == 1 and "/usr/bin/clangd" or "clangd"
 
       lspconfig.clangd.setup({
         on_attach = on_attach,
         capabilities = clangd_capabilities,
         filetypes = { "c", "cpp", "objc", "objcpp", "cuda" },
+        root_dir = function(fname)
+          return lspconfig.util.root_pattern("compile_commands.json", "compile_flags.txt", ".git")(fname)
+            or lspconfig.util.path.dirname(fname)
+        end,
         cmd = {
-          "clangd",
+          clangd_cmd,
           "--background-index",
-          "--background-index-workers=4",
           "--completion-style=detailed",
           "--header-insertion=never",
           "--pch-storage=memory",
@@ -410,6 +418,8 @@ return {
           },
         },
       })
+
+      vim.cmd("filetype detect")
     end,
   },
   {
@@ -417,6 +427,7 @@ return {
     event = "InsertEnter",
     dependencies = {
       "hrsh7th/cmp-nvim-lsp",
+      "hrsh7th/cmp-nvim-lsp-signature-help",
       "hrsh7th/cmp-buffer",
       "hrsh7th/cmp-path",
       "L3MON4D3/LuaSnip",
@@ -473,6 +484,7 @@ return {
             vim_item.kind = string.format("%s %s", kind_icons[vim_item.kind] or "", vim_item.kind)
             vim_item.menu = ({
               nvim_lsp = "[LSP]",
+              nvim_lsp_signature_help = "[Sig]",
               luasnip = "[Snippet]",
               buffer = "[Buffer]",
               path = "[Path]",
@@ -485,6 +497,9 @@ return {
           ["<C-f>"] = cmp.mapping.scroll_docs(4),
           ["<C-Space>"] = cmp.mapping.complete(),
           ["<C-e>"] = cmp.mapping.abort(),
+          ["<C-k>"] = cmp.mapping(function()
+            vim.lsp.buf.signature_help()
+          end, { "i", "s" }),
           ["<CR>"] = cmp.mapping.confirm({ select = false }),
           ["<Tab>"] = cmp.mapping(function(fallback)
             if cmp.visible() then
@@ -507,6 +522,7 @@ return {
         }),
         sources = cmp.config.sources({
           { name = "nvim_lsp", max_item_count = 20 },
+          { name = "nvim_lsp_signature_help" },
           { name = "luasnip", max_item_count = 5 },
         }, {
           {

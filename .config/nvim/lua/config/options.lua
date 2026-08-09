@@ -148,9 +148,15 @@ vim.g.codeium_enabled = 0
 vim.opt.updatetime = 200
 
 vim.diagnostic.config({
-  virtual_text = false,
-  signs = false,
-  underline = false,
+  virtual_text = {
+    severity = vim.diagnostic.severity.ERROR,
+  },
+  signs = {
+    severity = vim.diagnostic.severity.ERROR,
+  },
+  underline = {
+    severity = vim.diagnostic.severity.ERROR,
+  },
   update_in_insert = false,
   severity_sort = true,
 })
