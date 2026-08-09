@@ -64,7 +64,7 @@ cmd = {
   "--background-index",
   "--background-index-workers=4",
   "--completion-style=detailed",
-  "--header-insertion=iwyu",
+  "--header-insertion=never",
   "--pch-storage=memory",
   "-j=4",
 }
