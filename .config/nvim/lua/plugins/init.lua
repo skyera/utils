@@ -398,7 +398,7 @@ return {
         map("n", "gr", vim.lsp.buf.references, "Goto References")
         map("n", "gi", vim.lsp.buf.implementation, "Goto Implementation")
         map("n", "K", vim.lsp.buf.hover, "Hover Documentation")
-        map({ "n", "i" }, "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
+        map("n", "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
         map("n", "<leader>rn", vim.lsp.buf.rename, "Rename Symbol")
         map("n", "<leader>ca", vim.lsp.buf.code_action, "Code Action")
         map("n", "[d", function() vim.diagnostic.goto_prev({ float = true }) end, "Previous Diagnostic")
