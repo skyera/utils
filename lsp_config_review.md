@@ -174,6 +174,21 @@ Added a centralized `on_attach` handler attached to all active language servers:
 
 ---
 
+## 🟢 P6 — Diagnostic Noise Suppression (Undeclared Functions & Identifiers)
+
+### 8. Dual-Layer Suppression Strategy
+
+**Files:** [`.config/clangd/config.yaml`](file:///home/zliu/test/utils/.config/clangd/config.yaml) and [`.config/nvim/lua/plugins/init.lua`](file:///home/zliu/test/utils/.config/nvim/lua/plugins/init.lua#L396-L415)
+
+**Problem:**
+When prototyping, writing standalone C scripts, or editing code without full include hierarchies, `clangd` emits repetitive errors such as `call to undeclared function...` and `use of undeclared identifier...`. These create excessive UI noise in signs, virtual text, and diagnostic pickers.
+
+**Resolution:**
+1. **Server-Level (`clangd/config.yaml`)**: Suppressed diagnostic codes `undeclared_var_use`, `implicit_func_decl`, `implicit_function_decl`, `unknown_typename`, and added `-Wno-implicit-function-declaration`.
+2. **Client-Level (`publishDiagnostics` handler)**: Intercepted `textDocument/publishDiagnostics` in Neovim to filter out any remaining diagnostics matching undeclared function/identifier patterns before rendering.
+
+---
+
 ## Verification
 
 The updated configuration was validated using headless Neovim:

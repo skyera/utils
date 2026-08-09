@@ -393,6 +393,27 @@ return {
         return orig_hover(err, result, ctx, config)
       end
 
+      -- Custom Diagnostic Handler to filter out undeclared identifier/function noise
+      local orig_publish_diagnostics = vim.lsp.handlers["textDocument/publishDiagnostics"]
+      vim.lsp.handlers["textDocument/publishDiagnostics"] = function(err, result, ctx, config)
+        if result and result.diagnostics then
+          local filtered = {}
+          for _, diag in ipairs(result.diagnostics) do
+            local msg = (diag.message or ""):lower()
+            local is_noise = msg:find("undeclared function")
+              or msg:find("undeclared identifier")
+              or msg:find("implicit declaration")
+              or msg:find("call to undeclared")
+              or msg:find("use of undeclared")
+            if not is_noise then
+              table.insert(filtered, diag)
+            end
+          end
+          result.diagnostics = filtered
+        end
+        return orig_publish_diagnostics(err, result, ctx, config)
+      end
+
       local on_attach = function(client, bufnr)
         local map = function(mode, lhs, rhs, desc)
           vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = "LSP: " .. desc })
