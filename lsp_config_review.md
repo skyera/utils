@@ -142,9 +142,9 @@ Vim's default `updatetime` is 4000ms, causing hover popups and `CursorHold` diag
 vim.opt.updatetime = 200
 
 vim.diagnostic.config({
-  virtual_text = true,
-  signs = true,
-  underline = true,
+  virtual_text = false,
+  signs = false,
+  underline = false,
   update_in_insert = false,
   severity_sort = true,
 })
