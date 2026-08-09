@@ -155,7 +155,9 @@ if vim.lsp.enable then
 end
 
 -- Auto-detach duplicate LSP client instances to ensure exactly one active server per language
+local lsp_dedup_grp = vim.api.nvim_create_augroup("LspDeduplicate", { clear = true })
 vim.api.nvim_create_autocmd("LspAttach", {
+  group = lsp_dedup_grp,
   callback = function(args)
     local client = vim.lsp.get_client_by_id(args.data.client_id)
     if not client then return end
@@ -163,10 +165,16 @@ vim.api.nvim_create_autocmd("LspAttach", {
       if existing.id ~= client.id and existing.name == client.name then
         local target_id = existing.id < client.id and existing.id or client.id
         pcall(vim.lsp.buf_detach_client, args.buf, target_id)
-        local target_client = vim.lsp.get_client_by_id(target_id)
-        if target_client and target_client.stop then
-          pcall(target_client.stop)
-        end
+        pcall(function()
+          if vim.lsp.stop_client then
+            vim.lsp.stop_client(target_id)
+          else
+            local target_client = vim.lsp.get_client_by_id(target_id)
+            if target_client and target_client.stop then
+              target_client:stop()
+            end
+          end
+        end)
       end
     end
   end,

@@ -345,31 +345,13 @@ return {
       "hrsh7th/cmp-nvim-lsp",
     },
     config = function()
-      -- Auto-detach duplicate LSP client instances to ensure exactly one active server per language
-      vim.api.nvim_create_autocmd("LspAttach", {
-        callback = function(args)
-          local client = vim.lsp.get_client_by_id(args.data.client_id)
-          if not client then return end
-          for _, existing in ipairs(vim.lsp.get_clients({ bufnr = args.buf })) do
-            if existing.id ~= client.id and existing.name == client.name then
-              local target_id = existing.id < client.id and existing.id or client.id
-              pcall(vim.lsp.buf_detach_client, args.buf, target_id)
-              local target_client = vim.lsp.get_client_by_id(target_id)
-              if target_client and target_client.stop then
-                pcall(target_client.stop)
-              end
-            end
-          end
-        end,
-      })
-
       local lspconfig = require("lspconfig")
       local util = require("lspconfig.util")
       local capabilities = vim.lsp.protocol.make_client_capabilities()
       capabilities = require("cmp_nvim_lsp").default_capabilities(capabilities)
 
       -- Custom Hover Handler to deduplicate clangd hover signatures & add rounded borders
-      local orig_hover = vim.lsp.handlers["textDocument/hover"]
+      local default_hover = vim.lsp.handlers["textDocument/hover"]
       vim.lsp.handlers["textDocument/hover"] = function(err, result, ctx, config)
         config = config or {}
         config.border = "rounded"
@@ -390,28 +372,35 @@ return {
             end
           end
         end
-        return orig_hover(err, result, ctx, config)
+        local target_handler = default_hover or vim.lsp.handlers.hover
+        if target_handler and target_handler ~= vim.lsp.handlers["textDocument/hover"] then
+          return target_handler(err, result, ctx, config)
+        end
       end
 
       -- Custom Diagnostic Handler to filter out undeclared identifier/function noise
-      local orig_publish_diagnostics = vim.lsp.handlers["textDocument/publishDiagnostics"]
+      local default_publish_diag = vim.lsp.handlers["textDocument/publishDiagnostics"]
+        or vim.lsp.diagnostic.on_publish_diagnostics
       vim.lsp.handlers["textDocument/publishDiagnostics"] = function(err, result, ctx, config)
         if result and result.diagnostics then
           local filtered = {}
           for _, diag in ipairs(result.diagnostics) do
             local msg = (diag.message or ""):lower()
-            local is_noise = msg:find("undeclared function")
-              or msg:find("undeclared identifier")
-              or msg:find("implicit declaration")
-              or msg:find("call to undeclared")
-              or msg:find("use of undeclared")
+            local is_noise = msg:find("undeclared function", 1, true)
+              or msg:find("undeclared identifier", 1, true)
+              or msg:find("implicit declaration", 1, true)
+              or msg:find("call to undeclared", 1, true)
+              or msg:find("use of undeclared", 1, true)
             if not is_noise then
               table.insert(filtered, diag)
             end
           end
           result.diagnostics = filtered
         end
-        return orig_publish_diagnostics(err, result, ctx, config)
+        local target_handler = default_publish_diag or vim.lsp.diagnostic.on_publish_diagnostics
+        if target_handler and target_handler ~= vim.lsp.handlers["textDocument/publishDiagnostics"] then
+          return target_handler(err, result, ctx, config)
+        end
       end
 
       local on_attach = function(client, bufnr)
