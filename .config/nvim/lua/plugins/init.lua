@@ -319,6 +319,7 @@ return {
   },
   {
     "williamboman/mason.nvim",
+    cmd = "Mason",
     opts = {},
   },
   {
@@ -338,7 +339,7 @@ return {
   },
   {
     "neovim/nvim-lspconfig",
-    lazy = false,
+    event = { "BufReadPre", "BufNewFile" },
     dependencies = {
       "williamboman/mason.nvim",
       "williamboman/mason-lspconfig.nvim",
@@ -411,9 +412,10 @@ return {
         cmd = {
           clangd_cmd,
           "--background-index",
+          "--background-index-workers=4",
           "--completion-style=detailed",
           "--header-insertion=never",
-          "--pch-storage=memory",
+          "--pch-storage=disk",
           "-j=4",
         },
       })
@@ -556,7 +558,6 @@ return {
         }),
         sources = cmp.config.sources({
           { name = "nvim_lsp", max_item_count = 20 },
-          { name = "nvim_lsp_signature_help" },
           { name = "luasnip", max_item_count = 5 },
         }, {
           {
