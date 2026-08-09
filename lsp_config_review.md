@@ -63,7 +63,6 @@ cmd = {
   "clangd",
   "--background-index",
   "--background-index-workers=4",
-  "--clang-tidy",
   "--completion-style=detailed",
   "--header-insertion=iwyu",
   "--pch-storage=memory",
