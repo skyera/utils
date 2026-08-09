@@ -342,6 +342,21 @@ return {
       local capabilities = vim.lsp.protocol.make_client_capabilities()
       capabilities = require("cmp_nvim_lsp").default_capabilities(capabilities)
 
+      -- Custom Hover Handler to deduplicate clangd hover signatures & add rounded borders
+      local orig_hover = vim.lsp.handlers["textDocument/hover"]
+      vim.lsp.handlers["textDocument/hover"] = function(err, result, ctx, config)
+        config = config or {}
+        config.border = "rounded"
+        if result and result.contents and type(result.contents) == "table" and result.contents.value then
+          local val = result.contents.value
+          if val:find("```cpp") or val:find("```c") then
+            val = val:gsub("^### function [^\n]+\n%s*%-%-%-%s*\n.-%-%-%-%s*\n", "")
+            result.contents.value = val
+          end
+        end
+        return orig_hover(err, result, ctx, config)
+      end
+
       local on_attach = function(client, bufnr)
         local map = function(mode, lhs, rhs, desc)
           vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = "LSP: " .. desc })
