@@ -388,7 +388,7 @@ return {
       end
 
 
-      local on_attach = function(client, bufnr)
+      local on_attach = function(_client, bufnr)
         local map = function(mode, lhs, rhs, desc)
           vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = "LSP: " .. desc })
         end
@@ -484,7 +484,7 @@ return {
 
       local kind_icons = {
         Text = "󰉿",
-        Method = "m",
+        Method = "",
         Function = "󰊕",
         Constructor = "",
         Field = "",
