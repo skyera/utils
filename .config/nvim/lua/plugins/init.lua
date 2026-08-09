@@ -401,8 +401,8 @@ return {
         map("n", "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
         map("n", "<leader>rn", vim.lsp.buf.rename, "Rename Symbol")
         map("n", "<leader>ca", vim.lsp.buf.code_action, "Code Action")
-        map("n", "[d", function() vim.diagnostic.jump({ count = -1, float = true }) end, "Previous Diagnostic")
-        map("n", "]d", function() vim.diagnostic.jump({ count = 1, float = true }) end, "Next Diagnostic")
+        map("n", "[d", function() vim.diagnostic.jump({ count = -1 }) end, "Previous Diagnostic")
+        map("n", "]d", function() vim.diagnostic.jump({ count = 1  }) end, "Next Diagnostic")
       end
 
       -- C / C++ / CUDA Server Setup

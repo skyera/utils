@@ -163,3 +163,10 @@ vim.diagnostic.config({
   severity_sort = true,
 })
 
+-- Show diagnostic float automatically when cursor rests on a line
+vim.api.nvim_create_autocmd("CursorHold", {
+  callback = function()
+    vim.diagnostic.open_float(nil, { focus = false })
+  end,
+})
+
