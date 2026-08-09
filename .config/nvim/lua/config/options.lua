@@ -165,16 +165,10 @@ vim.api.nvim_create_autocmd("LspAttach", {
       if existing.id ~= client.id and existing.name == client.name then
         local target_id = existing.id < client.id and existing.id or client.id
         pcall(vim.lsp.buf_detach_client, args.buf, target_id)
-        pcall(function()
-          if vim.lsp.stop_client then
-            vim.lsp.stop_client(target_id)
-          else
-            local target_client = vim.lsp.get_client_by_id(target_id)
-            if target_client and target_client.stop then
-              target_client:stop()
-            end
-          end
-        end)
+        local target_client = vim.lsp.get_client_by_id(target_id)
+        if target_client then
+          pcall(function() target_client:stop() end)
+        end
       end
     end
   end,
