@@ -352,31 +352,39 @@ return {
       capabilities = require("cmp_nvim_lsp").default_capabilities(capabilities)
 
       -- Custom Hover Handler to deduplicate clangd hover signatures & add rounded borders
-      local default_hover = vim.lsp.handlers["textDocument/hover"]
       vim.lsp.handlers["textDocument/hover"] = function(err, result, ctx, config)
+        if err then
+          vim.notify("LSP hover error: " .. tostring(err.message or err), vim.log.levels.ERROR)
+          return
+        end
         config = config or {}
         config.border = "rounded"
-        if result and result.contents then
-          local val = nil
+        if not (result and result.contents) then
+          return
+        end
+        -- Deduplicate clangd trailing raw signature
+        local val = nil
+        if type(result.contents) == "table" and result.contents.value then
+          val = result.contents.value
+        elseif type(result.contents) == "string" then
+          val = result.contents
+        end
+        if val then
+          -- Remove redundant trailing raw signature line in clangd hover output
+          val = val:gsub("\n%s*%-%-%-%s*\n%s*[^\n]+%([^%)]*%)%s*$", "")
           if type(result.contents) == "table" and result.contents.value then
-            val = result.contents.value
+            result.contents.value = val
           elseif type(result.contents) == "string" then
-            val = result.contents
-          end
-          if val then
-            -- Remove redundant trailing raw signature line in clangd hover output
-            val = val:gsub("\n%s*%-%-%-%s*\n%s*[^\n]+%([^%)]*%)%s*$", "")
-            if type(result.contents) == "table" and result.contents.value then
-              result.contents.value = val
-            elseif type(result.contents) == "string" then
-              result.contents = val
-            end
+            result.contents = val
           end
         end
-        local target_handler = default_hover or vim.lsp.handlers.hover
-        if target_handler and target_handler ~= vim.lsp.handlers["textDocument/hover"] then
-          return target_handler(err, result, ctx, config)
+        -- Render the hover float directly (no delegation to a possibly-nil default handler)
+        local markdown_lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
+        markdown_lines = vim.lsp.util.trim_empty_lines(markdown_lines)
+        if vim.tbl_isempty(markdown_lines) then
+          return
         end
+        return vim.lsp.util.open_floating_preview(markdown_lines, "markdown", config)
       end
 
 
