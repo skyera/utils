@@ -406,9 +406,9 @@ return {
       end
 
       -- C / C++ / CUDA Server Setup
-      local clangd_capabilities = vim.lsp.protocol.make_client_capabilities()
-      clangd_capabilities = require("cmp_nvim_lsp").default_capabilities(clangd_capabilities)
-      clangd_capabilities.offsetEncoding = { "utf-16" }
+      local clangd_capabilities = vim.tbl_deep_extend("force", capabilities, {
+        offsetEncoding = { "utf-16" },
+      })
 
       local clangd_cmd = vim.fn.executable("/usr/bin/clangd") == 1 and "/usr/bin/clangd" or "clangd"
 
