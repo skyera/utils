@@ -324,10 +324,17 @@ return {
   {
     "williamboman/mason-lspconfig.nvim",
     dependencies = { "williamboman/mason.nvim" },
-    opts = {
-      ensure_installed = { "pyright", "bashls", "lua_ls" },
-      automatic_installation = false,
-    },
+    config = function()
+      require("mason-lspconfig").setup({
+        ensure_installed = { "pyright", "bashls", "lua_ls" },
+        automatic_installation = false,
+        handlers = {
+          function(server_name)
+            -- Suppress automatic server setup since all servers are explicitly configured in nvim-lspconfig
+          end,
+        },
+      })
+    end,
   },
   {
     "neovim/nvim-lspconfig",
@@ -338,7 +345,26 @@ return {
       "hrsh7th/cmp-nvim-lsp",
     },
     config = function()
+      -- Auto-detach duplicate LSP client instances to ensure exactly one active server per language
+      vim.api.nvim_create_autocmd("LspAttach", {
+        callback = function(args)
+          local client = vim.lsp.get_client_by_id(args.data.client_id)
+          if not client then return end
+          for _, existing in ipairs(vim.lsp.get_clients({ bufnr = args.buf })) do
+            if existing.id ~= client.id and existing.name == client.name then
+              local target_id = existing.id < client.id and existing.id or client.id
+              pcall(vim.lsp.buf_detach_client, args.buf, target_id)
+              local target_client = vim.lsp.get_client_by_id(target_id)
+              if target_client and target_client.stop then
+                pcall(target_client.stop)
+              end
+            end
+          end
+        end,
+      })
+
       local lspconfig = require("lspconfig")
+      local util = require("lspconfig.util")
       local capabilities = vim.lsp.protocol.make_client_capabilities()
       capabilities = require("cmp_nvim_lsp").default_capabilities(capabilities)
 
@@ -347,11 +373,21 @@ return {
       vim.lsp.handlers["textDocument/hover"] = function(err, result, ctx, config)
         config = config or {}
         config.border = "rounded"
-        if result and result.contents and type(result.contents) == "table" and result.contents.value then
-          local val = result.contents.value
-          if val:find("```cpp") or val:find("```c") then
-            val = val:gsub("^### function [^\n]+\n%s*%-%-%-%s*\n.-%-%-%-%s*\n", "")
-            result.contents.value = val
+        if result and result.contents then
+          local val = nil
+          if type(result.contents) == "table" and result.contents.value then
+            val = result.contents.value
+          elseif type(result.contents) == "string" then
+            val = result.contents
+          end
+          if val then
+            -- Remove redundant trailing raw signature line in clangd hover output
+            val = val:gsub("\n%s*%-%-%-%s*\n%s*[^\n]+%([^%)]*%)%s*$", "")
+            if type(result.contents) == "table" and result.contents.value then
+              result.contents.value = val
+            elseif type(result.contents) == "string" then
+              result.contents = val
+            end
           end
         end
         return orig_hover(err, result, ctx, config)
@@ -385,10 +421,7 @@ return {
         on_attach = on_attach,
         capabilities = clangd_capabilities,
         filetypes = { "c", "cpp", "objc", "objcpp", "cuda" },
-        root_dir = function(fname)
-          return lspconfig.util.root_pattern("compile_commands.json", "compile_flags.txt", ".git")(fname)
-            or lspconfig.util.path.dirname(fname)
-        end,
+        root_dir = util.root_pattern("compile_commands.json", "compile_flags.txt", ".git"),
         cmd = {
           clangd_cmd,
           "--background-index",

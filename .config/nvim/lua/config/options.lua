@@ -147,6 +147,31 @@ vim.g.codeium_enabled = 0
 -- Performance & LSP Settings
 vim.opt.updatetime = 200
 
+-- Disable Neovim 0.10+ built-in LSP autostart to prevent duplicate LSP server instances alongside nvim-lspconfig
+if vim.lsp.enable then
+  for _, s in ipairs({ "clangd", "pyright", "bashls", "lua_ls" }) do
+    pcall(vim.lsp.enable, s, false)
+  end
+end
+
+-- Auto-detach duplicate LSP client instances to ensure exactly one active server per language
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(args)
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    if not client then return end
+    for _, existing in ipairs(vim.lsp.get_clients({ bufnr = args.buf })) do
+      if existing.id ~= client.id and existing.name == client.name then
+        local target_id = existing.id < client.id and existing.id or client.id
+        pcall(vim.lsp.buf_detach_client, args.buf, target_id)
+        local target_client = vim.lsp.get_client_by_id(target_id)
+        if target_client and target_client.stop then
+          pcall(target_client.stop)
+        end
+      end
+    end
+  end,
+})
+
 vim.diagnostic.config({
   virtual_text = {
     severity = vim.diagnostic.severity.ERROR,
