@@ -463,7 +463,6 @@ return {
         },
       })
 
-      vim.cmd("filetype detect")
     end,
   },
   {
