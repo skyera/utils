@@ -319,7 +319,9 @@ return {
   },
   {
     "williamboman/mason.nvim",
-    opts = {},
+    config = function()
+      require("mason").setup()
+    end,
   },
   {
     "williamboman/mason-lspconfig.nvim",
@@ -331,9 +333,7 @@ return {
   },
   {
     "neovim/nvim-lspconfig",
-    event = { "BufReadPre", "BufNewFile" },
     dependencies = {
-      "williamboman/mason.nvim",
       "williamboman/mason-lspconfig.nvim",
       "hrsh7th/cmp-nvim-lsp",
     },
@@ -341,70 +341,36 @@ return {
       local lspconfig = require("lspconfig")
       local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
-      local on_attach = function(client, bufnr)
-        local map = function(mode, lhs, rhs, desc)
-          vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = "LSP: " .. desc })
-        end
-
-        map("n", "gd", vim.lsp.buf.definition, "Goto Definition")
-        map("n", "gD", vim.lsp.buf.declaration, "Goto Declaration")
-        map("n", "gr", vim.lsp.buf.references, "Goto References")
-        map("n", "gi", vim.lsp.buf.implementation, "Goto Implementation")
-        map("n", "K", vim.lsp.buf.hover, "Hover Documentation")
-        map("n", "<leader>rn", vim.lsp.buf.rename, "Rename Symbol")
-        map("n", "<leader>ca", vim.lsp.buf.code_action, "Code Action")
-        map("n", "[d", vim.diagnostic.goto_prev, "Previous Diagnostic")
-        map("n", "]d", vim.diagnostic.goto_next, "Next Diagnostic")
-      end
-
       -- C / C++ / CUDA Server Setup
       lspconfig.clangd.setup({
-        on_attach = on_attach,
         capabilities = capabilities,
         filetypes = { "c", "cpp", "objc", "objcpp", "cuda" },
         cmd = {
           "clangd",
           "--background-index",
-          "--background-index-workers=4",
           "--clang-tidy",
           "--completion-style=detailed",
           "--header-insertion=iwyu",
-          "--pch-storage=memory",
-          "-j=4",
         },
       })
 
       -- Python Server Setup
       lspconfig.pyright.setup({
-        on_attach = on_attach,
         capabilities = capabilities,
-        settings = {
-          python = {
-            analysis = {
-              autoSearchPaths = true,
-              useLibraryCodeForTypes = true,
-              diagnosticMode = "openFilesOnly",
-            },
-          },
-        },
       })
 
       -- Bash / Shell Server Setup
       lspconfig.bashls.setup({
-        on_attach = on_attach,
         capabilities = capabilities,
       })
 
       -- Lua Server Setup
       lspconfig.lua_ls.setup({
-        on_attach = on_attach,
         capabilities = capabilities,
         settings = {
           Lua = {
             completion = { callSnippet = "Replace" },
             diagnostics = { globals = { "vim" } },
-            workspace = { checkThirdParty = false },
-            telemetry = { enable = false },
           },
         },
       })
@@ -455,11 +421,6 @@ return {
       }
 
       cmp.setup({
-        performance = {
-          debounce = 60,
-          throttle = 30,
-          fetching_timeout = 500,
-        },
         snippet = {
           expand = function(args)
             luasnip.lsp_expand(args.body)
@@ -504,11 +465,11 @@ return {
           end, { "i", "s" }),
         }),
         sources = cmp.config.sources({
-          { name = "nvim_lsp", max_item_count = 20 },
-          { name = "luasnip", max_item_count = 5 },
+          { name = "nvim_lsp" },
+          { name = "luasnip" },
         }, {
-          { name = "buffer", max_item_count = 5, keyword_length = 3 },
-          { name = "path", max_item_count = 5 },
+          { name = "buffer" },
+          { name = "path" },
         }),
       })
     end,

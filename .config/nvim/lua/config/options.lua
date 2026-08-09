@@ -153,15 +153,3 @@ vim.api.nvim_create_autocmd("FileType", {
 
 -- Codeium: Start disabled by default for dynamic toggling
 vim.g.codeium_enabled = 0
-
--- Performance & LSP Settings
-vim.opt.updatetime = 200
-
-vim.diagnostic.config({
-  virtual_text = true,
-  signs = true,
-  underline = true,
-  update_in_insert = false,
-  severity_sort = true,
-})
-
