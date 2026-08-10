@@ -16,15 +16,7 @@ $directory\
 [](fg:#89b4fa bg:#45475a)\
 $git_branch\
 $git_status\
-[](fg:#45475a bg:#313244)\
-$c\
-$python\
-$nodejs\
-$bun\
-$rust\
-$golang\
-$php\
-[](fg:#313244 bg:#181825)\
+[](fg:#45475a bg:#181825)\
 $time\
 [ ](fg:#181825)\
 \n$character"""
