@@ -5,6 +5,7 @@
 # Configuration options for prompt selection
 SH_PROMPT_STYLE=${SH_PROMPT_STYLE:-"custom"} # options: "custom", "oh-my-bash", or "starship"
 OSH_THEME=${OSH_THEME:-"font"}             # oh-my-bash theme to use
+export GIT_PS1_FAST=${GIT_PS1_FAST:-true}  # Enable ultra-fast prompt (skips git status / git diff calls)
 
 # Customize what oh-my-bash loads when active:
 OMB_PLUGINS=${OMB_PLUGINS:-"git bash-preexec"}
