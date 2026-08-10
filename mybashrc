@@ -297,6 +297,8 @@ if [[ "$SH_PROMPT_STYLE" == "oh-my-bash" && -n "$BASH_VERSION" ]]; then
         plugins=($OMB_PLUGINS)
         aliases=($OMB_ALIASES)
         completions=($OMB_COMPLETIONS)
+        # Skip remote tracking info for faster prompt on NFS
+        SCM_GIT_SHOW_REMOTE_INFO=false
         source "$OSH/oh-my-bash.sh"
     else
         echo -e "\033[33m[mybashrc] Note: oh-my-bash could not be loaded. Falling back to custom prompt.\033[0m"
