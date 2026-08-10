@@ -807,7 +807,67 @@ _get_omb_theme_script() {
     fi
 }
 
+switch_starship_theme() {
+    local preset="$1"
+    if ! command -v starship >/dev/null 2>&1; then
+        echo "Error: starship is not installed."
+        return 1
+    fi
+
+    if [[ -z "$preset" ]]; then
+        if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
+            preset=$(starship preset --list 2>/dev/null | \
+                fzf --header="⚡ Select Starship Preset/Theme" \
+                    --layout=reverse \
+                    --border=rounded \
+                    --height=~15 \
+                    --prompt="❯ " \
+                    --pointer="▶ " \
+                    --preview="starship preset {} 2>/dev/null | head -n 25")
+            [[ -z "$preset" ]] && return 0
+        else
+            echo "Usage: switch_starship_theme [preset_name]"
+            echo "Available presets: $(starship preset --list 2>/dev/null | tr '\n' ' ')"
+            return 0
+        fi
+    fi
+
+    local target_config="${STARSHIP_CONFIG:-$HOME/.config/starship.toml}"
+    mkdir -p "$(dirname "$target_config")"
+    if starship preset "$preset" -o "$target_config" -f 2>/dev/null; then
+        if [[ -d "$HOME/test/utils/.config" ]]; then
+            cp "$target_config" "$HOME/test/utils/.config/starship.toml" 2>/dev/null
+        fi
+        if [[ "$SH_PROMPT_STYLE" != "starship" ]]; then
+            switch_prompt starship
+        elif declare -f starship_precmd >/dev/null 2>&1; then
+            starship_precmd
+        fi
+        echo "Switched Starship preset to: $preset"
+    else
+        echo "Error: Failed to apply Starship preset '$preset'"
+        return 1
+    fi
+}
+
+alias sst='switch_starship_theme'
+
+_switch_starship_theme_completion() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    if command -v starship >/dev/null 2>&1; then
+        COMPREPLY=($(compgen -W "$(starship preset --list 2>/dev/null)" -- "$cur"))
+    fi
+}
+if [[ -n "$BASH_VERSION" ]]; then
+    complete -F _switch_starship_theme_completion switch_starship_theme sst
+fi
+
 switch_theme() {
+    if [[ "$SH_PROMPT_STYLE" == "starship" ]]; then
+        switch_starship_theme "$@"
+        return $?
+    fi
+
     local theme="$1"
     export OSH=${OSH:-$HOME/.oh-my-bash}
     if [[ ! -d "$OSH/themes" ]]; then
@@ -864,6 +924,10 @@ alias st='switch_theme'
 
 _switch_theme_completion() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
+    if [[ "$SH_PROMPT_STYLE" == "starship" ]]; then
+        _switch_starship_theme_completion
+        return 0
+    fi
     local osh_dir="${OSH:-$HOME/.oh-my-bash}"
     if [[ -d "$osh_dir/themes" ]]; then
         local themes
