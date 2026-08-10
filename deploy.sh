@@ -121,6 +121,9 @@ deploy_file "$REPO_DIR/.config/lf/colors"           "$HOME/.config/lf/colors"
 deploy_file "$REPO_DIR/.config/git/ignore"          "$HOME/.config/git/ignore"
 deploy_file "$REPO_DIR/.config/fd/ignore"           "$HOME/.config/fd/ignore"
 
+# Starship configuration
+deploy_file "$REPO_DIR/.config/starship.toml"        "$HOME/.config/starship.toml"
+
 # MPV configuration
 deploy_file "$REPO_DIR/.config/mpv/mpv.conf" "$HOME/.config/mpv/mpv.conf"
 
@@ -163,7 +166,15 @@ if command -v git >/dev/null 2>&1; then
     fi
 fi
 
-# 5. Install missing plugins and tools (TPM, fonts, fzf-git.sh, forgit, ranger_devicons)
+# 5. Install Starship prompt if missing
+if ! command -v starship >/dev/null 2>&1; then
+    if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "cygwin" && "$OSTYPE" != "win32" ]]; then
+        echo "Installing Starship prompt..."
+        curl -sS https://starship.rs/install.sh | sh -s -- --yes
+    fi
+fi
+
+# 6. Install missing plugins and tools (TPM, fonts, fzf-git.sh, forgit, ranger_devicons)
 echo "Installing shell plugins and fonts..."
 IS_WINDOWS=false
 [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]] && IS_WINDOWS=true
