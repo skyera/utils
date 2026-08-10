@@ -788,6 +788,22 @@ if [[ -n "$BASH_VERSION" ]]; then
     complete -W "custom oh-my-bash starship omb my" switch_prompt sp
 fi
 
+_get_omb_theme_script() {
+    local osh="$1"
+    local theme="$2"
+    local dir="$osh/themes/$theme"
+    if [[ -f "$dir/$theme.theme.sh" ]]; then
+        echo "$dir/$theme.theme.sh"
+    elif [[ -f "$dir/$theme.theme.bash" ]]; then
+        echo "$dir/$theme.theme.bash"
+    elif [[ -d "$dir" ]]; then
+        local files=("$dir"/*.theme.*)
+        if [[ -f "${files[0]}" ]]; then
+            echo "${files[0]}"
+        fi
+    fi
+}
+
 switch_theme() {
     local theme="$1"
     export OSH=${OSH:-$HOME/.oh-my-bash}
@@ -799,13 +815,14 @@ switch_theme() {
     # Interactive fzf selection if no argument is provided in terminal
     if [[ -z "$theme" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            theme=$(ls -1 "$OSH/themes/" 2>/dev/null | \
+            theme=$(find "$OSH/themes/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort | \
                 fzf --header="⚡ Select Oh-My-Bash Theme (Active: ${OSH_THEME:-font})" \
                     --layout=reverse \
                     --border=rounded \
                     --height=~15 \
                     --prompt="❯ " \
-                    --pointer="▶ ")
+                    --pointer="▶ " \
+                    --preview-window=hidden)
             [[ -z "$theme" ]] && return 0
         else
             echo "Usage: switch_theme [theme_name]"
@@ -814,7 +831,10 @@ switch_theme() {
         fi
     fi
 
-    if [[ -f "$OSH/themes/$theme/$theme.theme.sh" ]]; then
+    local theme_script
+    theme_script=$(_get_omb_theme_script "$OSH" "$theme")
+
+    if [[ -n "$theme_script" && -f "$theme_script" ]]; then
         export OSH_THEME="$theme"
         export SCM_GIT_SHOW_MINIMAL_INFO=true
         export SCM_GIT_SHOW_REMOTE_INFO=false
@@ -827,7 +847,7 @@ switch_theme() {
             completions=($OMB_COMPLETIONS)
             source "$OSH/oh-my-bash.sh" 2>/dev/null
         else
-            source "$OSH/themes/$theme/$theme.theme.sh" 2>/dev/null
+            source "$theme_script" 2>/dev/null
         fi
         _apply_overrides
         echo "Switched Oh-My-Bash theme to: $theme"
@@ -843,7 +863,9 @@ _switch_theme_completion() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     local osh_dir="${OSH:-$HOME/.oh-my-bash}"
     if [[ -d "$osh_dir/themes" ]]; then
-        COMPREPLY=($(compgen -W "$(ls -1 "$osh_dir/themes" 2>/dev/null)" -- "$cur"))
+        local themes
+        themes=$(find "$osh_dir/themes/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null)
+        COMPREPLY=($(compgen -W "$themes" -- "$cur"))
     fi
 }
 if [[ -n "$BASH_VERSION" ]]; then
