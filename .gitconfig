@@ -101,3 +101,6 @@
 
 [include]
 	path = ~/.gitconfig.local
+
+[oh-my-bash]
+	hide-dirty = 1
