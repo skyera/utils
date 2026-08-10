@@ -169,8 +169,8 @@ fi
 # 5. Install Starship prompt if missing
 if ! command -v starship >/dev/null 2>&1; then
     if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "cygwin" && "$OSTYPE" != "win32" ]]; then
-        echo "Installing Starship prompt..."
-        curl -sS https://starship.rs/install.sh | sh -s -- --yes
+        mkdir -p "$HOME/bin"
+        curl -sS https://starship.rs/install.sh | sh -s -- --yes -b "$HOME/bin"
     fi
 fi
 
