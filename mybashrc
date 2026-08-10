@@ -286,6 +286,40 @@ if [[ "$LANG" == *".UTF-8"* || "$LANG" == *".utf8"* || "$LC_ALL" == *".UTF-8"* ]
     _PROMPT_CHAR="❯"
 fi
 
+_clean_prompt_command() {
+    unset STARSHIP_PROMPT_COMMAND
+    if declare -p PROMPT_COMMAND 2>/dev/null | grep -q "declare -a"; then
+        local new_pc=()
+        local pc
+        for pc in "${PROMPT_COMMAND[@]}"; do
+            if [[ "$pc" != *"_render_prompt"* && "$pc" != *"_set_bash_fallback_prompt"* && "$pc" != *"_omb_util_prompt_command_hook"* && "$pc" != *"starship"* ]]; then
+                pc="${pc#"${pc%%[![:space:];]*}"}"
+                pc="${pc%"${pc##*[![:space:];]}"}"
+                [[ -n "$pc" ]] && new_pc+=("$pc")
+            fi
+        done
+        PROMPT_COMMAND=("${new_pc[@]}")
+    else
+        local cmd new_str=""
+        local raw="${PROMPT_COMMAND//$'\n'/;}"
+        local IFS=";"
+        local cmds
+        read -ra cmds <<< "$raw"
+        for cmd in "${cmds[@]}"; do
+            cmd="${cmd#"${cmd%%[![:space:]]*}"}"
+            cmd="${cmd%"${cmd##*[![:space:]]}"}"
+            if [[ -n "$cmd" && "$cmd" != *"_render_prompt"* && "$cmd" != *"_set_bash_fallback_prompt"* && "$cmd" != *"_omb_util_prompt_command_hook"* && "$cmd" != *"starship"* ]]; then
+                if [[ -z "$new_str" ]]; then
+                    new_str="$cmd"
+                else
+                    new_str="$new_str; $cmd"
+                fi
+            fi
+        done
+        PROMPT_COMMAND="$new_str"
+    fi
+}
+
 if [[ "$SH_PROMPT_STYLE" == "oh-my-bash" && -n "$BASH_VERSION" ]]; then
     export OSH=$HOME/.oh-my-bash
     if [ ! -d "$OSH" ]; then
@@ -593,40 +627,6 @@ _fzf_comprun() {
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
-
-_clean_prompt_command() {
-    unset STARSHIP_PROMPT_COMMAND
-    if declare -p PROMPT_COMMAND 2>/dev/null | grep -q "declare -a"; then
-        local new_pc=()
-        local pc
-        for pc in "${PROMPT_COMMAND[@]}"; do
-            if [[ "$pc" != *"_render_prompt"* && "$pc" != *"_set_bash_fallback_prompt"* && "$pc" != *"_omb_util_prompt_command_hook"* && "$pc" != *"starship"* ]]; then
-                pc="${pc#"${pc%%[![:space:];]*}"}"
-                pc="${pc%"${pc##*[![:space:];]}"}"
-                [[ -n "$pc" ]] && new_pc+=("$pc")
-            fi
-        done
-        PROMPT_COMMAND=("${new_pc[@]}")
-    else
-        local cmd new_str=""
-        local raw="${PROMPT_COMMAND//$'\n'/;}"
-        local IFS=";"
-        local cmds
-        read -ra cmds <<< "$raw"
-        for cmd in "${cmds[@]}"; do
-            cmd="${cmd#"${cmd%%[![:space:]]*}"}"
-            cmd="${cmd%"${cmd##*[![:space:]]}"}"
-            if [[ -n "$cmd" && "$cmd" != *"_render_prompt"* && "$cmd" != *"_set_bash_fallback_prompt"* && "$cmd" != *"_omb_util_prompt_command_hook"* && "$cmd" != *"starship"* ]]; then
-                if [[ -z "$new_str" ]]; then
-                    new_str="$cmd"
-                else
-                    new_str="$new_str; $cmd"
-                fi
-            fi
-        done
-        PROMPT_COMMAND="$new_str"
-    fi
-}
 
 switch_prompt() {
     local style="$1"
