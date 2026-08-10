@@ -302,8 +302,12 @@ if [[ "$SH_PROMPT_STYLE" == "oh-my-bash" && -n "$BASH_VERSION" ]]; then
         plugins=($OMB_PLUGINS)
         aliases=($OMB_ALIASES)
         completions=($OMB_COMPLETIONS)
-        # Skip remote tracking info for faster prompt on NFS
-        SCM_GIT_SHOW_REMOTE_INFO=false
+        # Performance optimizations for Oh-My-Bash in large repositories (20GB+) & NFS
+        export SCM_GIT_SHOW_MINIMAL_INFO=true
+        export SCM_GIT_SHOW_REMOTE_INFO=false
+        export SCM_GIT_SHOW_DETAILS=false
+        export SCM_GIT_DISABLE_UNTRACKED_DIRTY=true
+        export SCM_GIT_IGNORE_UNTRACKED=true
         source "$OSH/oh-my-bash.sh"
     else
         echo -e "\033[33m[mybashrc] Note: oh-my-bash could not be loaded. Falling back to custom prompt.\033[0m"
@@ -666,6 +670,11 @@ switch_prompt() {
             
             if [ -f "$OSH/oh-my-bash.sh" ]; then
                 export SH_PROMPT_STYLE="oh-my-bash"
+                export SCM_GIT_SHOW_MINIMAL_INFO=true
+                export SCM_GIT_SHOW_REMOTE_INFO=false
+                export SCM_GIT_SHOW_DETAILS=false
+                export SCM_GIT_DISABLE_UNTRACKED_DIRTY=true
+                export SCM_GIT_IGNORE_UNTRACKED=true
                 if ! declare -f _omb_util_add_prompt_command >/dev/null 2>&1; then
                     plugins=($OMB_PLUGINS)
                     aliases=($OMB_ALIASES)
