@@ -840,6 +840,11 @@ switch_starship_theme() {
     local target_config="${STARSHIP_CONFIG:-$HOME/.config/starship.toml}"
     mkdir -p "$(dirname "$target_config")"
     if starship preset "$preset" -o "$target_config" -f 2>/dev/null; then
+        if grep -q "^\[git_status\]" "$target_config"; then
+            sed -i "/^\[git_status\]/a disabled = true" "$target_config"
+        else
+            printf "\n[git_status]\ndisabled = true\n" >> "$target_config"
+        fi
         if [[ -d "$HOME/test/utils/.config" ]]; then
             cp "$target_config" "$HOME/test/utils/.config/starship.toml" 2>/dev/null
         fi
