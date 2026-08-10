@@ -816,15 +816,20 @@ switch_starship_theme() {
 
     if [[ -z "$preset" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            preset=$(starship preset --list 2>/dev/null | \
-                fzf --header="⚡ Select Starship Preset/Theme" \
-                    --layout=reverse \
+            local choice
+            choice=$(printf "%b\n" \
+                "catppuccin-powerline\t✦ Catppuccin Mocha Powerline Pills ()\ntokyo-night\t🌌 Tokyo Night Powerline Pills ()\ngruvbox-rainbow\t🌈 Retro Gruvbox Rainbow Arrows ()\npastel-powerline\t🎨 Soft Pastel Arrows ()\npure-preset\t⚡ Minimalist 2-line prompt (Pure Zsh style)\nbracketed-segments\t📦 Clean bracketed segments [dir] [git]\njetpack\t🚀 High-contrast bold layout\nplain-text-symbols\t🔤 Clean Unicode text (No Nerd Fonts)\nno-nerd-font\t💻 Pure ASCII fallback" | \
+                fzf --layout=reverse \
                     --border=rounded \
                     --height=~15 \
+                    --delimiter='\t' \
+                    --with-nth=1,2 \
                     --prompt="❯ " \
                     --pointer="▶ " \
-                    --preview="starship preset {} 2>/dev/null | head -n 25")
-            [[ -z "$preset" ]] && return 0
+                    --header="⚡ Select Starship Preset/Theme" \
+                    --preview-window=hidden | cut -f1)
+            [[ -z "$choice" ]] && return 0
+            preset="$choice"
         else
             echo "Usage: switch_starship_theme [preset_name]"
             echo "Available presets: $(starship preset --list 2>/dev/null | tr '\n' ' ')"
