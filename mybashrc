@@ -3,7 +3,7 @@
 # =============================================================================
 
 # Configuration options for prompt selection
-if [[ -f "$HOME/.prompt_style" ]]; then
+if [[ -z "$SH_PROMPT_STYLE" && -f "$HOME/.prompt_style" ]]; then
     _saved_prompt_style="$(cat "$HOME/.prompt_style" 2>/dev/null)"
     [[ -n "$_saved_prompt_style" ]] && SH_PROMPT_STYLE="$_saved_prompt_style"
 fi
@@ -675,9 +675,22 @@ switch_prompt() {
         fi
     fi
 
-    if [[ "$style" == "oh-my-bash" || "$style" == "omb" ]]; then
-        if [[ -n "$BASH_VERSION" ]]; then
-            _clean_prompt_command
+    local target_style=""
+    case "$style" in
+        starship)
+            target_style="starship"
+            if ! command -v starship >/dev/null 2>&1; then
+                echo -e "\033[33m[mybashrc] starship not found. Installing to $HOME/bin...\033[0m"
+                mkdir -p "$HOME/bin"
+                if ! curl -sS https://starship.rs/install.sh | sh -s -- --yes -b "$HOME/bin"; then
+                    echo -e "\033[31m[mybashrc] Error: failed to install starship.\033[0m"
+                    return 1
+                fi
+                export PATH="$HOME/bin:$PATH"
+            fi
+            ;;
+        oh-my-bash|omb)
+            target_style="oh-my-bash"
             export OSH=$HOME/.oh-my-bash
             if [ ! -d "$OSH" ]; then
                 if command -v git >/dev/null 2>&1; then
@@ -688,130 +701,26 @@ switch_prompt() {
                     return 1
                 fi
             fi
-            
-            if [ -f "$OSH/oh-my-bash.sh" ]; then
-                export SH_PROMPT_STYLE="oh-my-bash"
-                printf "oh-my-bash" > "$HOME/.prompt_style" 2>/dev/null
-                export SCM_GIT_SHOW_MINIMAL_INFO=true
-                export SCM_GIT_SHOW_REMOTE_INFO=false
-                export SCM_GIT_SHOW_DETAILS=false
-                export SCM_GIT_DISABLE_UNTRACKED_DIRTY=true
-                export SCM_GIT_IGNORE_UNTRACKED=true
-                if ! declare -f _omb_util_add_prompt_command >/dev/null 2>&1; then
-                    plugins=($OMB_PLUGINS)
-                    aliases=($OMB_ALIASES)
-                    completions=($OMB_COMPLETIONS)
-                    source "$OSH/oh-my-bash.sh" 2>/dev/null
-                fi
-                
-                local theme_script
-                theme_script=$(_get_omb_theme_script "$OSH" "${OSH_THEME:-font}")
-                [[ -n "$theme_script" && -f "$theme_script" ]] && source "$theme_script" 2>/dev/null
-                
-                if declare -f _omb_util_prompt_command_hook >/dev/null 2>&1; then
-                    if ((BASH_VERSINFO[0] * 10000 + BASH_VERSINFO[1] * 100 + BASH_VERSINFO[2] >= 50100)); then
-                        local found=false
-                        for pc in "${PROMPT_COMMAND[@]}"; do
-                            [[ "$pc" == *"_omb_util_prompt_command_hook"* ]] && found=true
-                        done
-                        $found || PROMPT_COMMAND+=('_omb_util_prompt_command_hook')
-                    else
-                        [[ "$PROMPT_COMMAND" == *"_omb_util_prompt_command_hook"* ]] || PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }_omb_util_prompt_command_hook"
-                    fi
-                    _omb_util_prompt_command_hook
-                elif declare -f _omb_theme_PROMPT_COMMAND >/dev/null 2>&1; then
-                    _omb_theme_PROMPT_COMMAND
-                fi
-                
-                _apply_overrides
-                echo "Switched prompt style to oh-my-bash (Theme: $OSH_THEME)"
-            else
-                echo "Error: oh-my-bash could not be loaded from $OSH"
-                return 1
-            fi
-        else
-            echo "oh-my-bash is only supported in Bash."
+            ;;
+        custom|my)
+            target_style="custom"
+            ;;
+        *)
+            echo "Usage: switch_prompt [custom | oh-my-bash | starship]"
+            echo "Current style: $SH_PROMPT_STYLE"
             return 1
-        fi
-    elif [[ "$style" == "custom" || "$style" == "my" ]]; then
-        export SH_PROMPT_STYLE="custom"
-        printf "custom" > "$HOME/.prompt_style" 2>/dev/null
-        if [[ -n "$BASH_VERSION" ]]; then
-            _clean_prompt_command
-            if ((BASH_VERSINFO[0] * 10000 + BASH_VERSINFO[1] * 100 + BASH_VERSINFO[2] >= 50100)); then
-                local found=false
-                if declare -F _render_prompt >/dev/null 2>&1; then
-                    for pc in "${PROMPT_COMMAND[@]}"; do
-                        [[ "$pc" == *"_render_prompt"* ]] && found=true
-                    done
-                    $found || PROMPT_COMMAND+=('_render_prompt')
-                else
-                    for pc in "${PROMPT_COMMAND[@]}"; do
-                        [[ "$pc" == *"_set_bash_fallback_prompt"* ]] && found=true
-                    done
-                    $found || PROMPT_COMMAND+=("_set_bash_fallback_prompt")
-                fi
-            else
-                if declare -F _render_prompt >/dev/null 2>&1; then
-                    [[ "$PROMPT_COMMAND" == *"_render_prompt"* ]] || PROMPT_COMMAND='_render_prompt'
-                else
-                    [[ "$PROMPT_COMMAND" == *"_set_bash_fallback_prompt"* ]] || PROMPT_COMMAND="_set_bash_fallback_prompt"
-                fi
-            fi
-            if declare -F _render_prompt >/dev/null 2>&1; then
-                _render_prompt
-            elif declare -F _set_bash_fallback_prompt >/dev/null 2>&1; then
-                _set_bash_fallback_prompt
-            fi
-            echo "Switched prompt style to custom mybashrc prompt."
-        elif [[ -n "$ZSH_VERSION" ]]; then
-            PROMPT='%(?..%F{203}[%?] %f)$(_zsh_conda_prompt)%F{85}%n@%m%f:%F{117}%~%f%F{141}${vcs_info_msg_0_}%f %F{214}$_PROMPT_CHAR%f '
-            echo "Switched prompt style to custom mybashrc prompt."
-        fi
-    elif [[ "$style" == "starship" ]]; then
-        if [[ -n "$BASH_VERSION" ]]; then
-            _clean_prompt_command
-            if command -v starship >/dev/null 2>&1; then
-                export SH_PROMPT_STYLE="starship"
-                printf "starship" > "$HOME/.prompt_style" 2>/dev/null
-                _load_starship_init
-                if declare -f starship_precmd >/dev/null 2>&1; then
-                    starship_precmd
-                fi
-                echo "Switched prompt style to starship."
-            else
-                echo -e "\033[33m[mybashrc] starship not found. Installing to $HOME/bin...\033[0m"
-                mkdir -p "$HOME/bin"
-                if curl -sS https://starship.rs/install.sh | sh -s -- --yes -b "$HOME/bin"; then
-                    export PATH="$HOME/bin:$PATH"
-                    export SH_PROMPT_STYLE="starship"
-                    printf "starship" > "$HOME/.prompt_style" 2>/dev/null
-                    _load_starship_init
-                    if declare -f starship_precmd >/dev/null 2>&1; then
-                        starship_precmd
-                    fi
-                    echo "Switched prompt style to starship."
-                else
-                    echo -e "\033[31m[mybashrc] Error: failed to install starship.\033[0m"
-                    return 1
-                fi
-            fi
-        elif [[ -n "$ZSH_VERSION" ]]; then
-            if command -v starship >/dev/null 2>&1; then
-                export SH_PROMPT_STYLE="starship"
-                printf "starship" > "$HOME/.prompt_style" 2>/dev/null
-                eval "$(starship init zsh)"
-                echo "Switched prompt style to starship."
-            else
-                echo "starship is not installed. Run: curl -sS https://starship.rs/install.sh | sh"
-                return 1
-            fi
-        fi
-    else
-        echo "Usage: switch_prompt [custom | oh-my-bash | starship]"
-        echo "Current style: $SH_PROMPT_STYLE"
-        return 1
-    fi
+            ;;
+    esac
+
+    export SH_PROMPT_STYLE="$target_style"
+    printf "%s" "$target_style" > "$HOME/.prompt_style" 2>/dev/null
+    echo "Switched prompt style to $target_style. Restarting shell..."
+
+    local target_shell="${SHELL:-bash}"
+    [[ -n "$ZSH_VERSION" ]] && target_shell="zsh"
+    [[ -n "$BASH_VERSION" ]] && target_shell="bash"
+
+    SH_PROMPT_STYLE="$target_style" exec "$target_shell" -i
 }
 
 toggle_prompt() {
