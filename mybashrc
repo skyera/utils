@@ -686,16 +686,19 @@ switch_prompt() {
                 theme_script=$(_get_omb_theme_script "$OSH" "${OSH_THEME:-font}")
                 [[ -n "$theme_script" && -f "$theme_script" ]] && source "$theme_script" 2>/dev/null
                 
-                if declare -f _omb_theme_PROMPT_COMMAND >/dev/null 2>&1; then
-                    if declare -f _omb_util_add_prompt_command >/dev/null 2>&1; then
-                        _omb_util_add_prompt_command _omb_theme_PROMPT_COMMAND
-                    fi
-                    _omb_theme_PROMPT_COMMAND
-                elif declare -f _omb_util_prompt_command_hook >/dev/null 2>&1; then
-                    if declare -f _omb_util_add_prompt_command >/dev/null 2>&1; then
-                        _omb_util_add_prompt_command _omb_util_prompt_command_hook
+                if declare -f _omb_util_prompt_command_hook >/dev/null 2>&1; then
+                    if ((BASH_VERSINFO[0] * 10000 + BASH_VERSINFO[1] * 100 + BASH_VERSINFO[2] >= 50100)); then
+                        local found=false
+                        for pc in "${PROMPT_COMMAND[@]}"; do
+                            [[ "$pc" == *"_omb_util_prompt_command_hook"* ]] && found=true
+                        done
+                        $found || PROMPT_COMMAND+=('_omb_util_prompt_command_hook')
+                    else
+                        [[ "$PROMPT_COMMAND" == *"_omb_util_prompt_command_hook"* ]] || PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }_omb_util_prompt_command_hook"
                     fi
                     _omb_util_prompt_command_hook
+                elif declare -f _omb_theme_PROMPT_COMMAND >/dev/null 2>&1; then
+                    _omb_theme_PROMPT_COMMAND
                 fi
                 
                 _apply_overrides
@@ -862,10 +865,12 @@ switch_starship_theme() {
 
 alias sst='switch_starship_theme'
 
+_STARSHIP_PRESETS_CACHE=""
 _switch_starship_theme_completion() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     if command -v starship >/dev/null 2>&1; then
-        COMPREPLY=($(compgen -W "$(starship preset --list 2>/dev/null)" -- "$cur"))
+        [[ -z "$_STARSHIP_PRESETS_CACHE" ]] && _STARSHIP_PRESETS_CACHE="$(starship preset --list 2>/dev/null)"
+        COMPREPLY=($(compgen -W "$_STARSHIP_PRESETS_CACHE" -- "$cur"))
     fi
 }
 if [[ -n "$BASH_VERSION" ]]; then
@@ -873,12 +878,40 @@ if [[ -n "$BASH_VERSION" ]]; then
 fi
 
 switch_theme() {
+    local target="$1"
+
+    # Smart routing if target is a prompt style keyword
+    if [[ "$target" == "starship" ]]; then
+        if [[ "$SH_PROMPT_STYLE" != "starship" ]]; then
+            switch_prompt starship || return 1
+        fi
+        shift
+        if [[ $# -gt 0 ]]; then
+            switch_starship_theme "$@"
+        elif [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
+            switch_starship_theme
+        fi
+        return 0
+    elif [[ "$target" == "oh-my-bash" || "$target" == "omb" ]]; then
+        if [[ "$SH_PROMPT_STYLE" != "oh-my-bash" ]]; then
+            switch_prompt oh-my-bash || return 1
+        fi
+        shift
+        if [[ $# -gt 0 ]]; then
+            switch_theme "$@"
+        fi
+        return 0
+    elif [[ "$target" == "custom" || "$target" == "my" ]]; then
+        switch_prompt custom
+        return 0
+    fi
+
     if [[ "$SH_PROMPT_STYLE" == "starship" ]]; then
         switch_starship_theme "$@"
         return $?
     fi
 
-    local theme="$1"
+    local theme="$target"
     export OSH=${OSH:-$HOME/.oh-my-bash}
     if [[ ! -d "$OSH/themes" ]]; then
         echo "Error: Oh-My-Bash themes directory not found at $OSH/themes"
@@ -888,7 +921,7 @@ switch_theme() {
     # Interactive fzf selection if no argument is provided in terminal
     if [[ -z "$theme" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            theme=$(find "$OSH/themes/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort | \
+            theme=$( (cd "$OSH/themes" 2>/dev/null && for d in */; do echo "${d%/}"; done) | sort | \
                 fzf --header="⚡ Select Oh-My-Bash Theme (Active: ${OSH_THEME:-font})" \
                     --layout=reverse \
                     --border=rounded \
@@ -898,7 +931,7 @@ switch_theme() {
                     --preview-window=hidden)
             [[ -z "$theme" ]] && return 0
         else
-            echo "Usage: switch_theme [theme_name]"
+            echo "Usage: switch_theme [theme_name | starship | oh-my-bash | custom]"
             echo "Current theme: ${OSH_THEME:-font}"
             return 0
         fi
@@ -941,8 +974,8 @@ _switch_theme_completion() {
     local osh_dir="${OSH:-$HOME/.oh-my-bash}"
     if [[ -d "$osh_dir/themes" ]]; then
         local themes
-        themes=$(find "$osh_dir/themes/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null)
-        COMPREPLY=($(compgen -W "$themes" -- "$cur"))
+        themes=$(cd "$osh_dir/themes" 2>/dev/null && for d in */; do echo "${d%/}"; done)
+        COMPREPLY=($(compgen -W "$themes starship oh-my-bash custom omb" -- "$cur"))
     fi
 }
 if [[ -n "$BASH_VERSION" ]]; then
