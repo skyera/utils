@@ -14,7 +14,6 @@ SH_PROMPT_STYLE=${SH_PROMPT_STYLE:-"custom"} # options: "custom", "oh-my-bash", 
 OSH_THEME=${OSH_THEME:-"font"}             # oh-my-bash theme to use
 export GIT_PS1_FAST=${GIT_PS1_FAST:-true}  # Enable ultra-fast prompt (skips git status / git diff calls)
 
-[[ ":$PATH:" != *":$HOME/bin:"* ]] && export PATH="$HOME/bin:$PATH"
 export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$HOME/.config/starship.toml}"
 [[ "$TERM" == "dumb" || -z "$TERM" ]] && export TERM="xterm-256color"
 
