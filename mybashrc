@@ -1243,10 +1243,9 @@ if ! $_IS_CONTAINER; then
     fi
     if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
         # Source forgit.plugin.sh first so functions and variables are defined before completions
+        # Read first line to detect Zsh-only variant (file existence already guaranteed by outer guard)
         _TMP_FIRST_LINE=""
-        if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
-            read -r _TMP_FIRST_LINE < "$PLUGINS_DIR/forgit/forgit.plugin.sh" 2>/dev/null
-        fi
+        read -r _TMP_FIRST_LINE < "$PLUGINS_DIR/forgit/forgit.plugin.sh" 2>/dev/null
         if [ "$_TMP_FIRST_LINE" = "forgit.plugin.zsh" ]; then
             source "$PLUGINS_DIR/forgit/forgit.plugin.zsh"
         else
