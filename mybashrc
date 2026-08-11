@@ -713,7 +713,7 @@ switch_prompt() {
     esac
 
     export SH_PROMPT_STYLE="$target_style"
-    printf "%s" "$target_style" > "$HOME/.prompt_style" 2>/dev/null
+    printf "%s" "$target_style" >| "$HOME/.prompt_style" 2>/dev/null
     echo "Switched prompt style to $target_style. Restarting shell..."
 
     local target_shell="${SHELL:-bash}"
