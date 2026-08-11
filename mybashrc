@@ -3,8 +3,13 @@
 # =============================================================================
 
 # Configuration options for prompt selection
-if [[ -z "$SH_PROMPT_STYLE" && -f "$HOME/.prompt_style" ]]; then
-    _saved_prompt_style="$(cat "$HOME/.prompt_style" 2>/dev/null)"
+if [[ -z "$SH_PROMPT_STYLE" ]]; then
+    _host="${HOSTNAME:-$(hostname 2>/dev/null)}"
+    if [[ -n "$_host" && -f "$HOME/.prompt_style.$_host" ]]; then
+        _saved_prompt_style="$(cat "$HOME/.prompt_style.$_host" 2>/dev/null)"
+    elif [[ -f "$HOME/.prompt_style" ]]; then
+        _saved_prompt_style="$(cat "$HOME/.prompt_style" 2>/dev/null)"
+    fi
     [[ -n "$_saved_prompt_style" ]] && SH_PROMPT_STYLE="$_saved_prompt_style"
 fi
 SH_PROMPT_STYLE=${SH_PROMPT_STYLE:-"custom"} # options: "custom", "oh-my-bash", or "starship"
@@ -713,6 +718,8 @@ switch_prompt() {
     esac
 
     export SH_PROMPT_STYLE="$target_style"
+    local host_name="${HOSTNAME:-$(hostname 2>/dev/null)}"
+    [[ -n "$host_name" ]] && printf "%s" "$target_style" >| "$HOME/.prompt_style.$host_name" 2>/dev/null
     printf "%s" "$target_style" >| "$HOME/.prompt_style" 2>/dev/null
     echo "Switched prompt style to $target_style. Restarting shell..."
 
