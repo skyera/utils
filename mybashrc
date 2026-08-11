@@ -985,7 +985,7 @@ up() {
 }
 
 dexec() {
-    local cid=$(docker ps --format '{{.Names}}' | grep ${USER}|fzf)
+    local cid=$(docker ps --format '{{.Names}}' | grep "${USER}" | fzf)
     [ -n "$cid" ] && docker exec -it -u ${USER} "$cid" bash
 }
 
