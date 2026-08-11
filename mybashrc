@@ -193,13 +193,14 @@ _add_path_to_var() {
     local var_name="$1"
     local dir_path="$2"
     if [[ -d "$dir_path" ]]; then
-        eval "local current_val=\$$var_name"
+        local current_val="${!var_name}"
         if [[ ":$current_val:" != *":$dir_path:"* ]]; then
             if [[ -z "$current_val" ]]; then
-                eval "export $var_name=\"$dir_path\""
+                printf -v "$var_name" '%s' "$dir_path"
             else
-                eval "export $var_name=\"$dir_path:$current_val\""
+                printf -v "$var_name" '%s' "$dir_path:$current_val"
             fi
+            export "$var_name"
         fi
     fi
 }
