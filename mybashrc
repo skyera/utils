@@ -3,6 +3,10 @@
 # =============================================================================
 
 # Configuration options for prompt selection
+if [[ -f "$HOME/.prompt_style" ]]; then
+    _saved_prompt_style="$(cat "$HOME/.prompt_style" 2>/dev/null)"
+    [[ -n "$_saved_prompt_style" ]] && SH_PROMPT_STYLE="$_saved_prompt_style"
+fi
 SH_PROMPT_STYLE=${SH_PROMPT_STYLE:-"custom"} # options: "custom", "oh-my-bash", or "starship"
 OSH_THEME=${OSH_THEME:-"font"}             # oh-my-bash theme to use
 export GIT_PS1_FAST=${GIT_PS1_FAST:-true}  # Enable ultra-fast prompt (skips git status / git diff calls)
@@ -320,6 +324,23 @@ _clean_prompt_command() {
     fi
 }
 
+_STARSHIP_INIT_CACHE=""
+_load_starship_init() {
+    if [[ -z "$_STARSHIP_INIT_CACHE" ]]; then
+        local cache_file="$HOME/.cache/starship_init_bash.sh"
+        if [[ -s "$cache_file" ]]; then
+            _STARSHIP_INIT_CACHE="$(< "$cache_file")"
+        elif command -v starship >/dev/null 2>&1; then
+            mkdir -p "$HOME/.cache"
+            _STARSHIP_INIT_CACHE="$(starship init bash --print-full-init 2>/dev/null)"
+            printf '%s\n' "$_STARSHIP_INIT_CACHE" > "$cache_file" 2>/dev/null
+        fi
+    fi
+    if [[ -n "$_STARSHIP_INIT_CACHE" ]]; then
+        eval "$_STARSHIP_INIT_CACHE"
+    fi
+}
+
 if [[ "$SH_PROMPT_STYLE" == "oh-my-bash" && -n "$BASH_VERSION" ]]; then
     export OSH=$HOME/.oh-my-bash
     if [ ! -d "$OSH" ]; then
@@ -350,7 +371,7 @@ if [[ "$SH_PROMPT_STYLE" == "oh-my-bash" && -n "$BASH_VERSION" ]]; then
 elif [[ "$SH_PROMPT_STYLE" == "starship" ]]; then
     if command -v starship >/dev/null 2>&1; then
         _clean_prompt_command
-        eval "$(starship init bash)"
+        _load_starship_init
     else
         echo -e "\033[33m[mybashrc] Note: starship is not installed. Run deploy.sh or: curl -sS https://starship.rs/install.sh | sh\033[0m"
         SH_PROMPT_STYLE="custom"
@@ -670,6 +691,7 @@ switch_prompt() {
             
             if [ -f "$OSH/oh-my-bash.sh" ]; then
                 export SH_PROMPT_STYLE="oh-my-bash"
+                printf "oh-my-bash" > "$HOME/.prompt_style" 2>/dev/null
                 export SCM_GIT_SHOW_MINIMAL_INFO=true
                 export SCM_GIT_SHOW_REMOTE_INFO=false
                 export SCM_GIT_SHOW_DETAILS=false
@@ -713,6 +735,7 @@ switch_prompt() {
         fi
     elif [[ "$style" == "custom" || "$style" == "my" ]]; then
         export SH_PROMPT_STYLE="custom"
+        printf "custom" > "$HOME/.prompt_style" 2>/dev/null
         if [[ -n "$BASH_VERSION" ]]; then
             _clean_prompt_command
             if ((BASH_VERSINFO[0] * 10000 + BASH_VERSINFO[1] * 100 + BASH_VERSINFO[2] >= 50100)); then
@@ -750,7 +773,8 @@ switch_prompt() {
             _clean_prompt_command
             if command -v starship >/dev/null 2>&1; then
                 export SH_PROMPT_STYLE="starship"
-                eval "$(starship init bash)"
+                printf "starship" > "$HOME/.prompt_style" 2>/dev/null
+                _load_starship_init
                 if declare -f starship_precmd >/dev/null 2>&1; then
                     starship_precmd
                 fi
@@ -761,7 +785,8 @@ switch_prompt() {
                 if curl -sS https://starship.rs/install.sh | sh -s -- --yes -b "$HOME/bin"; then
                     export PATH="$HOME/bin:$PATH"
                     export SH_PROMPT_STYLE="starship"
-                    eval "$(starship init bash)"
+                    printf "starship" > "$HOME/.prompt_style" 2>/dev/null
+                    _load_starship_init
                     if declare -f starship_precmd >/dev/null 2>&1; then
                         starship_precmd
                     fi
@@ -774,6 +799,7 @@ switch_prompt() {
         elif [[ -n "$ZSH_VERSION" ]]; then
             if command -v starship >/dev/null 2>&1; then
                 export SH_PROMPT_STYLE="starship"
+                printf "starship" > "$HOME/.prompt_style" 2>/dev/null
                 eval "$(starship init zsh)"
                 echo "Switched prompt style to starship."
             else
@@ -788,10 +814,27 @@ switch_prompt() {
     fi
 }
 
-# Convenient shortcut alias and completion for switch_prompt
+toggle_prompt() {
+    case "$SH_PROMPT_STYLE" in
+        custom) switch_prompt starship ;;
+        starship) switch_prompt oh-my-bash ;;
+        oh-my-bash|omb) switch_prompt custom ;;
+        *) switch_prompt starship ;;
+    esac
+}
+
+# Convenient shortcut aliases and completion for switch_prompt
 alias sp='switch_prompt'
+alias tp='toggle_prompt'
+alias spc='switch_prompt custom'
+alias sps='switch_prompt starship'
+alias spo='switch_prompt oh-my-bash'
+
 if [[ -n "$BASH_VERSION" ]]; then
-    complete -W "custom oh-my-bash starship omb my" switch_prompt sp
+    complete -W "custom oh-my-bash starship omb my" switch_prompt sp spc sps spo
+    if [[ $- == *i* ]]; then
+        bind '"\ep": "toggle_prompt\n"' 2>/dev/null
+    fi
 fi
 
 _get_omb_theme_script() {
