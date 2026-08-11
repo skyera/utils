@@ -303,6 +303,16 @@ if [[ "$LANG" == *".UTF-8"* || "$LANG" == *".utf8"* || "$LC_ALL" == *".UTF-8"* ]
     _PROMPT_CHAR="❯"
 fi
 
+# Curated modern pastel palette (using 256-color modes) — module-level constants,
+# hoisted out of the per-prompt functions to avoid 7 string assignments per keypress.
+_PC_RED="\[\033[38;5;203m\]"
+_PC_MINT="\[\033[38;5;85m\]"
+_PC_SKY="\[\033[38;5;117m\]"
+_PC_LAVENDER="\[\033[38;5;141m\]"
+_PC_AMBER="\[\033[38;5;214m\]"
+_PC_SOFT_GREEN="\[\033[38;5;120m\]"
+_PC_RESET="\[\033[00m\]"
+
 _clean_prompt_command() {
     unset STARSHIP_PROMPT_COMMAND
     if declare -p PROMPT_COMMAND 2>/dev/null | grep -q "declare -a"; then
@@ -441,14 +451,10 @@ if [[ -n "$BASH_VERSION" ]]; then
                 GIT_PS1_SHOWUPSTREAM="auto"
             fi
             
-            # Curated modern pastel palette (using 256-color modes)
-            local red="\[\033[38;5;203m\]"
-            local mint="\[\033[38;5;85m\]"
-            local sky="\[\033[38;5;117m\]"
-            local lavender="\[\033[38;5;141m\]"
-            local amber="\[\033[38;5;214m\]"
-            local soft_green="\[\033[38;5;120m\]"
-            local reset="\[\033[00m\]"
+            # Prompt color references — defined once at module level (_PC_*)
+            local red="$_PC_RED" mint="$_PC_MINT" sky="$_PC_SKY"
+            local lavender="$_PC_LAVENDER" amber="$_PC_AMBER"
+            local soft_green="$_PC_SOFT_GREEN" reset="$_PC_RESET"
             
             local status_indicator=""
             if [ $exit_code -ne 0 ]; then
@@ -480,13 +486,10 @@ if [[ -n "$BASH_VERSION" ]]; then
         # Fallback premium prompt if __git_ps1 is unavailable
         _set_bash_fallback_prompt() {
             local exit_code=$?
-            local red="\[\033[38;5;203m\]"
-            local mint="\[\033[38;5;85m\]"
-            local sky="\[\033[38;5;117m\]"
-            local lavender="\[\033[38;5;141m\]"
-            local amber="\[\033[38;5;214m\]"
-            local soft_green="\[\033[38;5;120m\]"
-            local reset="\[\033[00m\]"
+            # Prompt color references — defined once at module level (_PC_*)
+            local red="$_PC_RED" mint="$_PC_MINT" sky="$_PC_SKY"
+            local lavender="$_PC_LAVENDER" amber="$_PC_AMBER"
+            local soft_green="$_PC_SOFT_GREEN" reset="$_PC_RESET"
             
             local status_indicator=""
             if [ $exit_code -ne 0 ]; then
