@@ -864,7 +864,8 @@ switch_theme() {
             switch_prompt oh-my-bash || return 1
         fi
         shift
-        if [[ $# -gt 0 ]]; then
+        # Guard: only recurse for non-keyword (theme name) args to prevent infinite recursion
+        if [[ $# -gt 0 && "$1" != "oh-my-bash" && "$1" != "omb" && "$1" != "starship" && "$1" != "custom" ]]; then
             switch_theme "$@"
         fi
         return 0
