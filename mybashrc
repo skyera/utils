@@ -309,9 +309,15 @@ if [[ "$SH_PROMPT_STYLE" == "oh-my-bash" && -n "$BASH_VERSION" ]]; then
     fi
     
     if [ -f "$OSH/oh-my-bash.sh" ]; then
-        read -ra plugins <<< "$OMB_PLUGINS"
-        read -ra aliases <<< "$OMB_ALIASES"
-        read -ra completions <<< "$OMB_COMPLETIONS"
+        if [[ -n "$BASH_VERSION" ]]; then
+            read -ra plugins <<< "$OMB_PLUGINS"
+            read -ra aliases <<< "$OMB_ALIASES"
+            read -ra completions <<< "$OMB_COMPLETIONS"
+        elif [[ -n "$ZSH_VERSION" ]]; then
+            plugins=(${(s: :)OMB_PLUGINS})
+            aliases=(${(s: :)OMB_ALIASES})
+            completions=(${(s: :)OMB_COMPLETIONS})
+        fi
         export SCM_GIT_SHOW_MINIMAL_INFO=true
         export SCM_GIT_SHOW_REMOTE_INFO=false
         export SCM_GIT_SHOW_DETAILS=false
@@ -764,9 +770,15 @@ switch_theme() {
         export SCM_GIT_DISABLE_UNTRACKED_DIRTY=true
         export SCM_GIT_IGNORE_UNTRACKED=true
         if ! declare -f _omb_util_add_prompt_command >/dev/null 2>&1 && [[ -f "$OSH/oh-my-bash.sh" ]]; then
-            read -ra plugins <<< "$OMB_PLUGINS"
-            read -ra aliases <<< "$OMB_ALIASES"
-            read -ra completions <<< "$OMB_COMPLETIONS"
+            if [[ -n "$BASH_VERSION" ]]; then
+                read -ra plugins <<< "$OMB_PLUGINS"
+                read -ra aliases <<< "$OMB_ALIASES"
+                read -ra completions <<< "$OMB_COMPLETIONS"
+            elif [[ -n "$ZSH_VERSION" ]]; then
+                plugins=(${(s: :)OMB_PLUGINS})
+                aliases=(${(s: :)OMB_ALIASES})
+                completions=(${(s: :)OMB_COMPLETIONS})
+            fi
             source "$OSH/oh-my-bash.sh" 2>/dev/null
         else
             source "$theme_script" 2>/dev/null
