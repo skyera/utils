@@ -1229,14 +1229,18 @@ lf() {
     LS_COLORS="${LS_COLORS/di=01;34/di=01;36}" command lf "$@"
 }
 
-tpe() {
+tmux_edit() {
+    if [[ -z "$TMUX" ]]; then
+        echo "Error: Not inside a tmux session"
+        return 1
+    fi
     local file="/tmp/tmux_capture_$(date +%Y%m%d_%H%M%S)_$$"
+    trap 'rm -f "$file"' EXIT INT TERM
     tmux capture-pane -Jp -S - -E - > "$file"
-    local editor=$(command -v nvim || command -v vim || echo vi)
-    "$editor" "$file"
-    rm -f "$file"
-    echo "Deleted $file"
+    "${EDITOR:-vi}" "$file"
 }
+alias tpe='tmux_edit'
+alias txe='tmux_edit'
 
 _apply_overrides() {
     if command -v eza >/dev/null 2>&1 || command -v eza.exe >/dev/null 2>&1; then
