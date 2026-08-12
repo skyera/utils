@@ -1069,7 +1069,7 @@ frg() {
     fi
 
     results="$(
-        rg --smart-case --no-ignore-vcs --line-number --no-heading "$pattern" |
+        rg --smart-case --line-number --no-heading "$pattern" |
         fzf --multi --delimiter : \
             --preview "$_bat_preview" \
             --preview-window=right:60%
