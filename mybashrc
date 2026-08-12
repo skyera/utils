@@ -274,25 +274,9 @@ _clean_prompt_command() {
     fi
 }
 
-_STARSHIP_INIT_CACHE=""
 _load_starship_init() {
-    if [[ -z "$_STARSHIP_INIT_CACHE" ]]; then
-        local cache_file="$HOME/.cache/starship_init_bash.sh"
-        local starship_bin
-        starship_bin="$(command -v starship 2>/dev/null)"
-        local current_ver=""
-        [[ -n "$starship_bin" ]] && current_ver="$("$starship_bin" --version 2>/dev/null)"
-
-        if [[ -s "$cache_file" ]] && head -n 1 "$cache_file" | grep -qF "$current_ver"; then
-            _STARSHIP_INIT_CACHE="$(< "$cache_file")"
-        elif [[ -n "$starship_bin" ]]; then
-            mkdir -p "$HOME/.cache"
-            _STARSHIP_INIT_CACHE="$(starship init bash --print-full-init 2>/dev/null)"
-            printf '# %s\n%s\n' "$current_ver" "$_STARSHIP_INIT_CACHE" > "$cache_file" 2>/dev/null
-        fi
-    fi
-    if [[ -n "$_STARSHIP_INIT_CACHE" ]]; then
-        eval "$_STARSHIP_INIT_CACHE"
+    if command -v starship >/dev/null 2>&1; then
+        eval "$(starship init bash --print-full-init 2>/dev/null)"
     fi
 }
 
