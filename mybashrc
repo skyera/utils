@@ -232,8 +232,6 @@ export LIBGL_ALWAYS_SOFTWARE=1
 export CONDA_CHANGEPS1=false
 
 
-# Cached tool check for fallback prompt
-_HAS_GIT=false && command -v git >/dev/null 2>&1 && _HAS_GIT=true
 
 _git_branch_fast() {
     local dir="$PWD"
