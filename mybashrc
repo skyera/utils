@@ -268,8 +268,12 @@ _clean_prompt_command() {
     else
         local cmd new_str=""
         local raw="${PROMPT_COMMAND//$'\n'/;}"
-        local cmds
-        IFS=";" read -ra cmds <<< "$raw"
+        local cmds=()
+        if [[ -n "$BASH_VERSION" ]]; then
+            IFS=";" read -ra cmds <<< "$raw"
+        elif [[ -n "$ZSH_VERSION" ]]; then
+            cmds=("${(s:;:)raw}")
+        fi
         for cmd in "${cmds[@]}"; do
             cmd="${cmd#"${cmd%%[![:space:]]*}"}"
             cmd="${cmd%"${cmd##*[![:space:]]}"}"
@@ -837,6 +841,9 @@ if ! $_IS_CONTAINER; then
         command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init bash)"
         command -v fzf >/dev/null 2>&1 && eval "$(fzf --bash)"
     elif [[ -n "$ZSH_VERSION" ]]; then
+        if [ -d "$HOME/.local/share/forgit/completions" ]; then
+            fpath=("$HOME/.local/share/forgit/completions" $fpath)
+        fi
         if ! type _git >/dev/null 2>&1; then
             autoload -Uz compinit && compinit
         fi
@@ -968,7 +975,7 @@ if ! $_IS_CONTAINER; then
 
             [ -f "$PLUGINS_DIR/forgit/completions/git-forgit.bash" ] && source "$PLUGINS_DIR/forgit/completions/git-forgit.bash"
         elif [[ -n "$ZSH_VERSION" ]]; then
-            [ -f "$PLUGINS_DIR/forgit/completions/_git-forgit" ] && source "$PLUGINS_DIR/forgit/completions/_git-forgit"
+            : # Zsh completion for forgit is autoloaded via fpath
         fi
     fi
 fi
