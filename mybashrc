@@ -80,6 +80,39 @@ fi
 _IS_WINDOWS=false
 [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]] && _IS_WINDOWS=true
 
+# Windows-specific tool aliases & symlink settings
+if $_IS_WINDOWS; then
+    command -v nvim.exe >/dev/null 2>&1 && alias nvim='nvim.exe'
+    command -v vim.exe >/dev/null 2>&1 && alias vim='vim.exe'
+    alias vi='nvim'
+
+    if [ -f "C:/Program Files/Git/usr/bin/file.exe" ]; then
+        export YAZI_FILE_ONE="C:/Program Files/Git/usr/bin/file.exe"
+    elif [ -f "C:/Program Files (x86)/Git/usr/bin/file.exe" ]; then
+        export YAZI_FILE_ONE="C:/Program Files (x86)/Git/usr/bin/file.exe"
+    elif [ -f "C:/cygwin64/bin/file.exe" ]; then
+        export YAZI_FILE_ONE="C:/cygwin64/bin/file.exe"
+    fi
+
+    command -v python.exe >/dev/null 2>&1 && alias python='winpty python.exe'
+    command -v python3.exe >/dev/null 2>&1 && alias python3='winpty python3.exe'
+    command -v pip.exe >/dev/null 2>&1 && alias pip='winpty pip.exe'
+
+    alias mpv='winpty /c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe'
+
+    if command -v agy.exe >/dev/null 2>&1; then
+        alias agy='agy.exe --dangerously-skip-permissions'
+    elif command -v antigravity.exe >/dev/null 2>&1; then
+        alias agy='antigravity.exe --dangerously-skip-permissions'
+    elif command -v antigravity >/dev/null 2>&1; then
+        alias agy='antigravity --dangerously-skip-permissions'
+    else
+        alias agy='agy --dangerously-skip-permissions'
+    fi
+
+    export MSYS="winsymlinks:nativestrict"
+fi
+
 # Container detection
 is_container() {
     $_IS_WINDOWS && return 1
@@ -1172,37 +1205,7 @@ txp() {
 # 6. ALIASES & CLEANUP
 # =============================================================================
 
-if $_IS_WINDOWS; then
-    command -v nvim.exe >/dev/null 2>&1 && alias nvim='nvim.exe'
-    command -v vim.exe >/dev/null 2>&1 && alias vim='vim.exe'
-    alias vi='nvim'
 
-    if [ -f "C:/Program Files/Git/usr/bin/file.exe" ]; then
-        export YAZI_FILE_ONE="C:/Program Files/Git/usr/bin/file.exe"
-    elif [ -f "C:/Program Files (x86)/Git/usr/bin/file.exe" ]; then
-        export YAZI_FILE_ONE="C:/Program Files (x86)/Git/usr/bin/file.exe"
-    elif [ -f "C:/cygwin64/bin/file.exe" ]; then
-        export YAZI_FILE_ONE="C:/cygwin64/bin/file.exe"
-    fi
-
-    command -v python.exe >/dev/null 2>&1 && alias python='winpty python.exe'
-    command -v python3.exe >/dev/null 2>&1 && alias python3='winpty python3.exe'
-    command -v pip.exe >/dev/null 2>&1 && alias pip='winpty pip.exe'
-
-    alias mpv='winpty /c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe'
-
-    if command -v agy.exe >/dev/null 2>&1; then
-        alias agy='agy.exe --dangerously-skip-permissions'
-    elif command -v antigravity.exe >/dev/null 2>&1; then
-        alias agy='antigravity.exe --dangerously-skip-permissions'
-    elif command -v antigravity >/dev/null 2>&1; then
-        alias agy='antigravity --dangerously-skip-permissions'
-    else
-        alias agy='agy --dangerously-skip-permissions'
-    fi
-
-    export MSYS="winsymlinks:nativestrict"
-fi
 
 unalias neovide 2>/dev/null
 neovide() {
