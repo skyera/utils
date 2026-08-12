@@ -614,10 +614,13 @@ _get_omb_theme_script() {
     elif [[ -f "$dir/$theme.theme.bash" ]]; then
         echo "$dir/$theme.theme.bash"
     elif [[ -d "$dir" ]]; then
-        local files=("$dir"/*.theme.*)
-        if [[ -f "${files[0]}" ]]; then
-            echo "${files[0]}"
-        fi
+        local f
+        for f in "$dir"/*; do
+            if [[ -f "$f" && "$f" == *.theme.* ]]; then
+                echo "$f"
+                return 0
+            fi
+        done
     fi
 }
 
@@ -728,7 +731,7 @@ switch_theme() {
 
     if [[ -z "$theme" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            theme=$( (cd "$OSH/themes" 2>/dev/null && for d in */; do echo "${d%/}"; done) | sort | \
+            theme=$( (cd "$OSH/themes" 2>/dev/null && find . -maxdepth 1 -mindepth 1 -type d -exec basename {} \;) | sort | \
                 fzf --header="⚡ Select Oh-My-Bash Theme (Active: ${OSH_THEME:-font})" \
                     --layout=reverse \
                     --border=rounded \
@@ -779,7 +782,7 @@ _switch_theme_completion() {
     local osh_dir="${OSH:-$HOME/.oh-my-bash}"
     if [[ -d "$osh_dir/themes" ]]; then
         local themes
-        themes=$(cd "$osh_dir/themes" 2>/dev/null && for d in */; do echo "${d%/}"; done)
+        themes=$(cd "$osh_dir/themes" 2>/dev/null && find . -maxdepth 1 -mindepth 1 -type d -exec basename {} \;)
         COMPREPLY=($(compgen -W "$themes starship oh-my-bash custom omb" -- "$cur"))
     fi
 }
