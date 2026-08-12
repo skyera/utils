@@ -232,28 +232,6 @@ export LIBGL_ALWAYS_SOFTWARE=1
 # Disable Conda's default unstyled PS1 prefix injection
 export CONDA_CHANGEPS1=false
 
-# Helper to detect NFS / network filesystems to prevent prompt stalls
-# Result is cached per $PWD to avoid a stat(1) subprocess on every prompt draw.
-_NFS_CACHE_DIR=""
-_NFS_CACHE_VAL=1
-_is_network_fs() {
-    if [[ "$PWD" == "$_NFS_CACHE_DIR" ]]; then
-        return $_NFS_CACHE_VAL
-    fi
-    _NFS_CACHE_DIR="$PWD"
-    local fs_type
-    if command -v stat >/dev/null 2>&1; then
-        fs_type=$(stat -f -c %T "$PWD" 2>/dev/null)
-        case "$fs_type" in
-            nfs*|cifs|smb*|sshfs*|fuse.sshfs|afs|gpfs|ceph*|lustre*)
-                _NFS_CACHE_VAL=0
-                return 0
-                ;;
-        esac
-    fi
-    _NFS_CACHE_VAL=1
-    return 1
-}
 
 # Cached tool check for fallback prompt
 _HAS_GIT=false && command -v git >/dev/null 2>&1 && _HAS_GIT=true
@@ -440,7 +418,7 @@ if [[ -n "$BASH_VERSION" ]]; then
             
             # Dynamically adjust Git prompt features for WSL mounted drives, Windows, NFS/network mounts, or GIT_PS1_FAST=true to avoid severe lag
             export GIT_OPTIONAL_LOCKS=0
-            if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]] || $_IS_WINDOWS || [[ "$GIT_PS1_FAST" == "true" || "$GIT_PS1_FAST" == "1" ]] || _is_network_fs; then
+            if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]] || $_IS_WINDOWS || [[ "$GIT_PS1_FAST" == "true" || "$GIT_PS1_FAST" == "1" ]]; then
                 GIT_PS1_SHOWDIRTYSTATE=""
                 GIT_PS1_SHOWSTASHSTATE=""
                 GIT_PS1_SHOWUNTRACKEDFILES=""
