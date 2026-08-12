@@ -564,6 +564,19 @@ toggle_prompt() {
     esac
 }
 
+alias sp='switch_prompt'
+alias tp='toggle_prompt'
+alias spc='switch_prompt custom'
+alias sps='switch_prompt starship'
+alias spo='switch_prompt oh-my-bash'
+
+if [[ -n "$BASH_VERSION" ]]; then
+    complete -W "custom oh-my-bash starship omb my" switch_prompt sp spc sps spo
+    if [[ $- == *i* ]]; then
+        bind '"\ep": "toggle_prompt\n"' 2>/dev/null
+    fi
+fi
+
 _get_omb_theme_script() {
     local osh="$1"
     local theme="$2"
@@ -1240,18 +1253,7 @@ _apply_overrides() {
 }
 _apply_overrides
 
-alias sp='switch_prompt'
-alias tp='toggle_prompt'
-alias spc='switch_prompt custom'
-alias sps='switch_prompt starship'
-alias spo='switch_prompt oh-my-bash'
 
-if [[ -n "$BASH_VERSION" ]]; then
-    complete -W "custom oh-my-bash starship omb my" switch_prompt sp spc sps spo
-    if [[ $- == *i* ]]; then
-        bind '"\ep": "toggle_prompt\n"' 2>/dev/null
-    fi
-fi
 
 alias st='switch_theme'
 alias git-branch-gone='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'''
