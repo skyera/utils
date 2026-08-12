@@ -520,8 +520,13 @@ switch_prompt() {
     local style="$1"
     if [[ -z "$style" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            local choice
-            choice=$(printf "%b\n" "custom\t✦ Fast pastel prompt (Pure Bash, zero-subshell Git)\noh-my-bash\t🚀 Feature-rich Oh-My-Bash framework (Theme: ${OSH_THEME:-font})\nstarship\t🌌 Modern cross-shell Starship prompt" | \
+            local choice options_str
+            if [[ -n "$ZSH_VERSION" ]]; then
+                options_str="custom\t✦ Fast pastel prompt (Pure Zsh, zero-subshell Git)\nstarship\t🌌 Modern cross-shell Starship prompt"
+            else
+                options_str="custom\t✦ Fast pastel prompt (Pure Bash, zero-subshell Git)\noh-my-bash\t🚀 Feature-rich Oh-My-Bash framework (Theme: ${OSH_THEME:-font})\nstarship\t🌌 Modern cross-shell Starship prompt"
+            fi
+            choice=$(printf "%b\n" "$options_str" | \
                 fzf --layout=reverse \
                     --border=rounded \
                     --height=~10 \
