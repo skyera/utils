@@ -1054,13 +1054,16 @@ fcht() {
 }
 alias cheat='fcht'
 
-valg() {
+valgrind_check() {
     local ts LOGFILE
     ts=$(date +%Y%m%d_%H%M%S)
     LOGFILE="valgrind_${ts}.log"
     echo "Valgrind output will be saved to: $LOGFILE"
     valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="$LOGFILE" "$@"
 }
+alias valg='valgrind_check'
+alias vchk='valgrind_check'
+alias vlog='valgrind_check'
 
 frg() {
     local pattern="$1"
