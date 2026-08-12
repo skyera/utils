@@ -1020,9 +1020,9 @@ fzfc() {
 }
 
 valg() {
-    local ts
+    local ts LOGFILE
     ts=$(date +%Y%m%d_%H%M%S)
-    local LOGFILE="valgrind_${ts}.log"
+    LOGFILE="valgrind_${ts}.log"
     echo "Valgrind output will be saved to: $LOGFILE"
     valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="$LOGFILE" "$@"
 }
