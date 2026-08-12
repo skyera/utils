@@ -307,9 +307,8 @@ _clean_prompt_command() {
     else
         local cmd new_str=""
         local raw="${PROMPT_COMMAND//$'\n'/;}"
-        local IFS=";"
         local cmds
-        read -ra cmds <<< "$raw"
+        IFS=";" read -ra cmds <<< "$raw"
         for cmd in "${cmds[@]}"; do
             cmd="${cmd#"${cmd%%[![:space:]]*}"}"
             cmd="${cmd%"${cmd##*[![:space:]]}"}"
