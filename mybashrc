@@ -1011,13 +1011,13 @@ dexec() {
     [ -n "$cid" ] && docker exec -it -u ${USER} "$cid" bash
 }
 
-fzfc() {
+fcht() {
     local q="$*"
-    curl -s "https://cht.sh/$(
-        curl -s https://cht.sh/:list |
-        IFS=+ fzf --preview 'curl -s https://cht.sh{}' -q "$q"
-    )"
+    local topic
+    topic=$(curl -s https://cht.sh/:list | IFS=+ fzf --preview 'curl -s https://cht.sh/{}' -q "$q")
+    [[ -n "$topic" ]] && curl -s "https://cht.sh/$topic"
 }
+alias cheat='fcht'
 
 valg() {
     local ts LOGFILE
