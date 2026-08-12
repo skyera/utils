@@ -291,7 +291,9 @@ _clean_prompt_command() {
 
 _load_starship_init() {
     if command -v starship >/dev/null 2>&1; then
-        eval "$(starship init bash --print-full-init 2>/dev/null)"
+        local sh_name="bash"
+        [[ -n "$ZSH_VERSION" ]] && sh_name="zsh"
+        eval "$(starship init "$sh_name" 2>/dev/null)"
     fi
 }
 
@@ -584,7 +586,7 @@ switch_prompt() {
     [[ -n "$ZSH_VERSION" ]] && target_shell="zsh"
     [[ -n "$BASH_VERSION" ]] && target_shell="bash"
 
-    SH_PROMPT_STYLE="$target_style" exec "$target_shell" -i
+    SH_PROMPT_STYLE="$target_style" exec "$target_shell" -l -i
 }
 
 toggle_prompt() {
