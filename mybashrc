@@ -1,5 +1,5 @@
 # =============================================================================
-# ENVIRONMENT
+# 1. ENVIRONMENT & PATHS
 # =============================================================================
 
 # Configuration options for prompt selection
@@ -22,20 +22,98 @@ OMB_PLUGINS=${OMB_PLUGINS:-"git bash-preexec"}
 OMB_ALIASES=${OMB_ALIASES:-"general"}
 OMB_COMPLETIONS=${OMB_COMPLETIONS:-"git npm pip"}
 
+# PATH: Safely add to PATH without creating duplicate entries upon sourcing/reloading
+[[ ":$PATH:" != *":$HOME/bin:"* ]] && export PATH="$HOME/bin:$PATH"
+[[ ":$PATH:" != *":$HOME/.local/share/forgit/bin:"* ]] && export PATH="$HOME/.local/share/forgit/bin:$PATH"
+export FORGIT_INSTALL_DIR="$HOME/.local/share/forgit"
+
+# Tool configs
+export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
+export PROMPT_DIRTRIM=2
+export LIBGL_ALWAYS_SOFTWARE=1
+export CONDA_CHANGEPS1=false
+
+# Safely prepend include and library paths without duplicates or trailing colons (POSIX / Zsh compatible)
+_add_path_to_var() {
+    local var_name="$1"
+    local dir_path="$2"
+    if [[ -d "$dir_path" ]]; then
+        local current_val=""
+        eval "current_val=\"\$$var_name\""
+        if [[ ":$current_val:" != *":$dir_path:"* ]]; then
+            if [[ -z "$current_val" ]]; then
+                eval "$var_name=\"\$dir_path\""
+            else
+                eval "$var_name=\"\$dir_path:\$current_val\""
+            fi
+            export "$var_name"
+        fi
+    fi
+}
+
+for _p in "$HOME/test/doctest/doctest" \
+          "$HOME/test/nanobench/src/include" \
+          "$HOME/test/FakeIt/single_header/doctest" \
+          "$HOME/test/json/single_include" \
+          "$HOME/test/stb" \
+          "$HOME/test/LuaBridge/Source" \
+          "$HOME/test/luajit/src"; do
+    _add_path_to_var CPLUS_INCLUDE_PATH "$_p"
+done
+_add_path_to_var LIBRARY_PATH "$HOME/test/luajit/src"
+
+# History (shell-agnostic)
+export HISTSIZE=10000
+export HISTFILESIZE=20000
+export HISTCONTROL=ignoreboth:erasedups
+if [[ -n "$BASH_VERSION" ]]; then
+    shopt -s histappend
+elif [[ -n "$ZSH_VERSION" ]]; then
+    setopt HIST_APPEND HIST_IGNORE_DUPS HIST_IGNORE_SPACE
+fi
+
+# =============================================================================
+# 2. SHELL & SYSTEM DETECTION
+# =============================================================================
+
 # System detection (avoiding uname subprocess call which is slow on Windows/Git Bash)
 _IS_WINDOWS=false
 [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]] && _IS_WINDOWS=true
 
 # Container detection
 is_container() {
-    # On Windows, we're likely not in a container of interest for this script
     $_IS_WINDOWS && return 1
     [ -f /.dockerenv ] || [ -f /.containerenv ] || grep -q "docker\|lxc\|kubepods" /proc/1/cgroup 2>/dev/null || [ -n "$CONTAINER" ] || [ -n "$KUBERNETES_SERVICE_HOST" ]
 }
 
-# Cache container status
 _IS_CONTAINER=false
 is_container && _IS_CONTAINER=true
+
+# Editor & Tool detection (cached)
+if [[ -z "$_EDITOR" ]]; then
+    if command -v nvim >/dev/null 2>&1; then
+        _EDITOR="nvim"
+    elif command -v vim >/dev/null 2>&1; then
+        _EDITOR="vim"
+    else
+        _EDITOR="vi"
+    fi
+fi
+export EDITOR="$_EDITOR"
+export VISUAL="$EDITOR"
+
+if [[ -z "$_NEOVIM_BIN" ]]; then
+    if $_IS_WINDOWS; then
+        if command -v nvim.exe >/dev/null 2>&1; then
+            _NEOVIM_BIN="nvim.exe"
+        fi
+    else
+        if command -v nvim >/dev/null 2>&1; then
+            _NEOVIM_BIN="nvim"
+        fi
+    fi
+fi
+export NEOVIM_BIN="$_NEOVIM_BIN"
 
 # Clear any existing git alias before function definition to prevent parse errors on reload
 unalias git 2>/dev/null
@@ -43,8 +121,6 @@ unalias git 2>/dev/null
 # Optimize git commands on WSL mounted Windows drives by routing to git.exe
 if [[ -n "$WSL_DISTRO_NAME" ]]; then
     git() {
-        # If called from prompt scripts or git completion, bypass the wrapper to use native git
-        # This keeps shell prompt and tab completion instantaneous while optimizing manual CLI commands
         local f
         if [[ -n "$BASH_VERSION" ]]; then
             for f in "${FUNCNAME[@]}"; do
@@ -71,7 +147,6 @@ if [[ -n "$WSL_DISTRO_NAME" ]]; then
 fi
 
 # Git configuration overrides for containers or old git versions
-# zdiff3 requires Git 2.35+
 if $_IS_WINDOWS; then
     _GIT_SUPPORTS_ZDIFF3=true
 else
@@ -89,9 +164,6 @@ else
 fi
 
 if $_IS_CONTAINER || ! $_GIT_SUPPORTS_ZDIFF3; then
-    # Git < 2.35 (e.g. Git 2.25 in Ubuntu 20.04) does not support zdiff3
-    # Git < 2.37 does not support push.autoSetupRemote
-    # Use an alias because GIT_CONFIG_PARAMETERS format changed between Git versions
     _GIT_EXTRA_ARGS=""
     if ! $_GIT_SUPPORTS_ZDIFF3; then
         _GIT_EXTRA_ARGS="$_GIT_EXTRA_ARGS -c merge.conflictstyle=diff3"
@@ -105,133 +177,15 @@ if $_IS_CONTAINER || ! $_GIT_SUPPORTS_ZDIFF3; then
     fi
 fi
 
-# Git Pager (delta) detection
-# Avoid running delta --version if possible, or only do it once
 if ! $_IS_CONTAINER && command -v delta >/dev/null 2>&1; then
     export GIT_PAGER="delta"
 else
     export GIT_PAGER="less"
 fi
 
-# Windows-specific overrides
-if $_IS_WINDOWS; then
-    # Use Windows-installed Neovim/Vim if available
-    command -v nvim.exe >/dev/null 2>&1 && alias nvim='nvim.exe'
-    command -v vim.exe >/dev/null 2>&1 && alias vim='vim.exe'
-    alias vi='nvim'
-
-    # Set Yazi file type detection helper path
-    if [ -f "C:/Program Files/Git/usr/bin/file.exe" ]; then
-        export YAZI_FILE_ONE="C:/Program Files/Git/usr/bin/file.exe"
-    elif [ -f "C:/Program Files (x86)/Git/usr/bin/file.exe" ]; then
-        export YAZI_FILE_ONE="C:/Program Files (x86)/Git/usr/bin/file.exe"
-    elif [ -f "C:/cygwin64/bin/file.exe" ]; then
-        export YAZI_FILE_ONE="C:/cygwin64/bin/file.exe"
-    fi
-
-    # Use Windows-installed Python if available (wrapped in winpty for Git Bash console compatibility)
-    command -v python.exe >/dev/null 2>&1 && alias python='winpty python.exe'
-    command -v python3.exe >/dev/null 2>&1 && alias python3='winpty python3.exe'
-    command -v pip.exe >/dev/null 2>&1 && alias pip='winpty pip.exe'
-
-    # mpv media player (run via winpty for Git Bash console compatibility)
-    alias mpv='winpty /c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe'
-
-    # Antigravity CLI alias
-    if command -v agy.exe >/dev/null 2>&1; then
-        alias agy='agy.exe --dangerously-skip-permissions'
-    elif command -v antigravity.exe >/dev/null 2>&1; then
-        alias agy='antigravity.exe --dangerously-skip-permissions'
-    elif command -v antigravity >/dev/null 2>&1; then
-        alias agy='antigravity --dangerously-skip-permissions'
-    else
-        alias agy='agy --dangerously-skip-permissions'
-    fi
-
-    # Enable native Windows symlinks in MSYS2/Git Bash.
-    # NOTE: Windows requires "Developer Mode" to be enabled for standard users to create symlinks.
-    # Enable it via: Windows Settings -> System -> For developers -> Toggle "Developer Mode" ON.
-    export MSYS="winsymlinks:nativestrict"
-fi
-
-# PATH
-# Safely add to PATH without creating duplicate entries upon sourcing/reloading
-[[ ":$PATH:" != *":$HOME/bin:"* ]] && export PATH="$HOME/bin:$PATH"
-[[ ":$PATH:" != *":$HOME/.local/share/forgit/bin:"* ]] && export PATH="$HOME/.local/share/forgit/bin:$PATH"
-
-# Editor & Tool detection (cached)
-if [[ -z "$_EDITOR" ]]; then
-    if command -v nvim >/dev/null 2>&1; then
-        _EDITOR="nvim"
-    elif command -v vim >/dev/null 2>&1; then
-        _EDITOR="vim"
-    else
-        _EDITOR="vi"
-    fi
-fi
-export EDITOR="$_EDITOR"
-export VISUAL="$EDITOR"
-
-# Detect Neovim binary path if not already set (cached, fast builtin check)
-if [[ -z "$_NEOVIM_BIN" ]]; then
-    if $_IS_WINDOWS; then
-        if command -v nvim.exe >/dev/null 2>&1; then
-            _NEOVIM_BIN="nvim.exe"
-        fi
-    else
-        if command -v nvim >/dev/null 2>&1; then
-            _NEOVIM_BIN="nvim"
-        fi
-    fi
-fi
-export NEOVIM_BIN="$_NEOVIM_BIN"
-
-# Tool configs
-export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
-# Safely prepend include and library paths without duplicates or trailing colons
-_add_path_to_var() {
-    local var_name="$1"
-    local dir_path="$2"
-    if [[ -d "$dir_path" ]]; then
-        local current_val="${!var_name}"
-        if [[ ":$current_val:" != *":$dir_path:"* ]]; then
-            if [[ -z "$current_val" ]]; then
-                printf -v "$var_name" '%s' "$dir_path"
-            else
-                printf -v "$var_name" '%s' "$dir_path:$current_val"
-            fi
-            export "$var_name"
-        fi
-    fi
-}
-
-for _p in "$HOME/test/doctest/doctest" \
-          "$HOME/test/nanobench/src/include" \
-          "$HOME/test/FakeIt/single_header/doctest" \
-          "$HOME/test/json/single_include" \
-          "$HOME/test/stb" \
-          "$HOME/test/LuaBridge/Source" \
-          "$HOME/test/luajit/src"; do
-    _add_path_to_var CPLUS_INCLUDE_PATH "$_p"
-done
-
-_add_path_to_var LIBRARY_PATH "$HOME/test/luajit/src"
-
-unset -f _add_path_to_var
-unset _p
-
-# Terminal & Display
-export PROMPT_DIRTRIM=2
-export LIBGL_ALWAYS_SOFTWARE=1
-
 # =============================================================================
-# PROMPT CONFIGURATION (Git-Aware & Colorized)
+# 3. PROMPT & THEMES
 # =============================================================================
-
-# Disable Conda's default unstyled PS1 prefix injection
-export CONDA_CHANGEPS1=false
-
-
 
 _git_branch_fast() {
     local dir="$PWD"
@@ -243,8 +197,15 @@ _git_branch_fast() {
         elif [[ -f "$dir/.git" ]]; then
             local gitref
             if read -r gitref < "$dir/.git" 2>/dev/null; then
+                local rel_path=""
                 if [[ "$gitref" =~ ^gitdir:\ (.*) ]]; then
-                    local rel_path="${BASH_REMATCH[1]}"
+                    if [[ -n "$BASH_VERSION" ]]; then
+                        rel_path="${BASH_REMATCH[1]}"
+                    elif [[ -n "$ZSH_VERSION" ]]; then
+                        rel_path="${match[1]}"
+                    fi
+                fi
+                if [[ -n "$rel_path" ]]; then
                     if [[ "$rel_path" == /* ]]; then
                         gitdir="$rel_path"
                     else
@@ -263,7 +224,11 @@ _git_branch_fast() {
         local head_content
         read -r head_content < "$gitdir/HEAD" 2>/dev/null
         if [[ "$head_content" =~ ^ref:\ refs/heads/(.*) ]]; then
-            echo "${BASH_REMATCH[1]}"
+            if [[ -n "$BASH_VERSION" ]]; then
+                echo "${BASH_REMATCH[1]}"
+            elif [[ -n "$ZSH_VERSION" ]]; then
+                echo "${match[1]}"
+            fi
             return 0
         elif [[ -n "$head_content" ]]; then
             echo "${head_content:0:7}"
@@ -273,14 +238,13 @@ _git_branch_fast() {
     return 1
 }
 
-# Unicode check to choose a modern chevron or classic fallback
+# Unicode prompt character check
 _PROMPT_CHAR="\$"
 if [[ "$LANG" == *".UTF-8"* || "$LANG" == *".utf8"* || "$LC_ALL" == *".UTF-8"* ]]; then
     _PROMPT_CHAR="❯"
 fi
 
-# Curated modern pastel palette (using 256-color modes) — module-level constants,
-# hoisted out of the per-prompt functions to avoid 7 string assignments per keypress.
+# Pastel palette colors for custom prompt
 _PC_RED="\[\033[38;5;203m\]"
 _PC_MINT="\[\033[38;5;85m\]"
 _PC_SKY="\[\033[38;5;117m\]"
@@ -326,12 +290,17 @@ _STARSHIP_INIT_CACHE=""
 _load_starship_init() {
     if [[ -z "$_STARSHIP_INIT_CACHE" ]]; then
         local cache_file="$HOME/.cache/starship_init_bash.sh"
-        if [[ -s "$cache_file" ]]; then
+        local starship_bin
+        starship_bin="$(command -v starship 2>/dev/null)"
+        local current_ver=""
+        [[ -n "$starship_bin" ]] && current_ver="$("$starship_bin" --version 2>/dev/null)"
+
+        if [[ -s "$cache_file" ]] && head -n 1 "$cache_file" | grep -qF "$current_ver"; then
             _STARSHIP_INIT_CACHE="$(< "$cache_file")"
-        elif command -v starship >/dev/null 2>&1; then
+        elif [[ -n "$starship_bin" ]]; then
             mkdir -p "$HOME/.cache"
             _STARSHIP_INIT_CACHE="$(starship init bash --print-full-init 2>/dev/null)"
-            printf '%s\n' "$_STARSHIP_INIT_CACHE" > "$cache_file" 2>/dev/null
+            printf '# %s\n%s\n' "$current_ver" "$_STARSHIP_INIT_CACHE" > "$cache_file" 2>/dev/null
         fi
     fi
     if [[ -n "$_STARSHIP_INIT_CACHE" ]]; then
@@ -351,11 +320,9 @@ if [[ "$SH_PROMPT_STYLE" == "oh-my-bash" && -n "$BASH_VERSION" ]]; then
     fi
     
     if [ -f "$OSH/oh-my-bash.sh" ]; then
-        # Map our config to oh-my-bash expected arrays
-        plugins=($OMB_PLUGINS)
-        aliases=($OMB_ALIASES)
-        completions=($OMB_COMPLETIONS)
-        # Performance optimizations for Oh-My-Bash in large repositories (20GB+) & NFS
+        read -ra plugins <<< "$OMB_PLUGINS"
+        read -ra aliases <<< "$OMB_ALIASES"
+        read -ra completions <<< "$OMB_COMPLETIONS"
         export SCM_GIT_SHOW_MINIMAL_INFO=true
         export SCM_GIT_SHOW_REMOTE_INFO=false
         export SCM_GIT_SHOW_DETAILS=false
@@ -377,7 +344,6 @@ elif [[ "$SH_PROMPT_STYLE" == "starship" ]]; then
 fi
 
 if [[ -n "$BASH_VERSION" ]]; then
-    # Load git-sh-prompt if available
     if ! declare -F __git_ps1 >/dev/null 2>&1; then
         _git_exec_dir=""
         command -v git >/dev/null 2>&1 && _git_exec_dir="$(git --exec-path 2>/dev/null)"
@@ -399,11 +365,10 @@ if [[ -n "$BASH_VERSION" ]]; then
     fi
 
     if declare -F __git_ps1 >/dev/null 2>&1; then
-        # Configure Git prompt features
-        export GIT_PS1_SHOWDIRTYSTATE=true       # '*' for unstaged, '+' for staged changes
-        export GIT_PS1_SHOWSTASHSTATE=true       # '$' if stash exists
-        export GIT_PS1_SHOWUNTRACKEDFILES=true   # '%' if untracked files exist
-        export GIT_PS1_SHOWUPSTREAM="auto"       # '<', '>', '=', '<>' compared to upstream
+        export GIT_PS1_SHOWDIRTYSTATE=true
+        export GIT_PS1_SHOWSTASHSTATE=true
+        export GIT_PS1_SHOWUNTRACKEDFILES=true
+        export GIT_PS1_SHOWUPSTREAM="auto"
         export GIT_PS1_STATESEPARATOR=" "
         
         _set_bash_prompt_vars() {
@@ -412,7 +377,6 @@ if [[ -n "$BASH_VERSION" ]]; then
                 exit_code=$1
             fi
             
-            # Dynamically adjust Git prompt features for WSL mounted drives, Windows, NFS/network mounts, or GIT_PS1_FAST=true to avoid severe lag
             export GIT_OPTIONAL_LOCKS=0
             if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]] || $_IS_WINDOWS || [[ "$GIT_PS1_FAST" == "true" || "$GIT_PS1_FAST" == "1" ]]; then
                 GIT_PS1_SHOWDIRTYSTATE=""
@@ -426,7 +390,6 @@ if [[ -n "$BASH_VERSION" ]]; then
                 GIT_PS1_SHOWUPSTREAM="auto"
             fi
             
-            # Prompt color references — defined once at module level (_PC_*)
             local red="$_PC_RED" mint="$_PC_MINT" sky="$_PC_SKY"
             local lavender="$_PC_LAVENDER" amber="$_PC_AMBER"
             local soft_green="$_PC_SOFT_GREEN" reset="$_PC_RESET"
@@ -458,10 +421,8 @@ if [[ -n "$BASH_VERSION" ]]; then
             return $exit_code
         }
     else
-        # Fallback premium prompt if __git_ps1 is unavailable
         _set_bash_fallback_prompt() {
             local exit_code=$?
-            # Prompt color references — defined once at module level (_PC_*)
             local red="$_PC_RED" mint="$_PC_MINT" sky="$_PC_SKY"
             local lavender="$_PC_LAVENDER" amber="$_PC_AMBER"
             local soft_green="$_PC_SOFT_GREEN" reset="$_PC_RESET"
@@ -487,7 +448,6 @@ if [[ -n "$BASH_VERSION" ]]; then
         }
     fi
 
-    # Set PROMPT_COMMAND only if the custom prompt is selected
     if [[ "$SH_PROMPT_STYLE" == "custom" ]]; then
         if declare -F __git_ps1 >/dev/null 2>&1; then
             PROMPT_COMMAND="_render_prompt"
@@ -496,7 +456,7 @@ if [[ -n "$BASH_VERSION" ]]; then
         fi
     fi
 
-elif [[ -n "$ZSH_VERSION" ]]; then    # Zsh built-in Git integration (vcs_info)
+elif [[ -n "$ZSH_VERSION" ]]; then
     autoload -Uz vcs_info
     precmd_vcs_info() {
         if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]]; then
@@ -515,7 +475,6 @@ elif [[ -n "$ZSH_VERSION" ]]; then    # Zsh built-in Git integration (vcs_info)
     zstyle ':vcs_info:git:*' unstagedstr '*'
     zstyle ':vcs_info:git:*' stagedstr '+'
  
-    # Zsh vcs_info hooks to check for untracked files, stashes, and upstream status
     +vi-git-untracked() {
         if [[ -n "$WSL_DISTRO_NAME" && "$PWD" == /mnt/* ]]; then
             return 0
@@ -555,95 +514,21 @@ elif [[ -n "$ZSH_VERSION" ]]; then    # Zsh built-in Git integration (vcs_info)
     }
     
     zstyle ':vcs_info:git*+set-message:*' hooks git-upstream git-stash git-untracked
-    
     setopt prompt_subst
     
-    # Dynamic Conda environment indicator for Zsh
     _zsh_conda_prompt() {
         if [[ -n "$CONDA_DEFAULT_ENV" && "$CONDA_DEFAULT_ENV" != "base" ]]; then
             echo "%F{120}(${CONDA_DEFAULT_ENV}) %f"
         fi
     }
     
-    # Premium styled prompt for Zsh with curated colors (applied only if custom)
     if [[ "$SH_PROMPT_STYLE" == "custom" ]]; then
         PROMPT='%(?..%F{203}[%?] %f)$(_zsh_conda_prompt)%F{85}%n@%m%f:%F{117}%~%f%F{141}${vcs_info_msg_0_}%f %F{214}$_PROMPT_CHAR%f '
     fi
 fi
 
-
-# History (shell-agnostic)
-export HISTSIZE=10000
-export HISTFILESIZE=20000
-export HISTCONTROL=ignoreboth:erasedups
-if [[ -n "$BASH_VERSION" ]]; then
-    shopt -s histappend
-elif [[ -n "$ZSH_VERSION" ]]; then
-    setopt HIST_APPEND HIST_IGNORE_DUPS HIST_IGNORE_SPACE
-fi
-
-# =============================================================================
-# FZF
-# =============================================================================
-
-export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude .git --ignore-file ~/.config/fd/ignore"
-export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --strip-cwd-prefix --exclude .git"
-
-# Check tool availability for robust, cross-platform previews
-_HAS_EZA=false && command -v eza >/dev/null 2>&1 && _HAS_EZA=true
-_HAS_BAT=false && command -v bat >/dev/null 2>&1 && _HAS_BAT=true
-
-if $_HAS_EZA && $_HAS_BAT; then
-    show_file_or_dir_preview="if [ -d {} ]; then eza --tree --icons=always --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
-    _eza_preview='eza --tree --icons=always --color=always {} | head -200'
-    _bat_preview='bat --style=numbers --color=always {1}'
-elif $_HAS_EZA; then
-    show_file_or_dir_preview="if [ -d {} ]; then eza --tree --icons=always --color=always {} | head -200; else head -500 {}; fi"
-    _eza_preview='eza --tree --icons=always --color=always {} | head -200'
-    _bat_preview='head -500 {1}'
-elif $_HAS_BAT; then
-    show_file_or_dir_preview="if [ -d {} ]; then ls -R {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
-    _eza_preview='ls -R {} | head -200'
-    _bat_preview='bat --style=numbers --color=always {1}'
-else
-    show_file_or_dir_preview="if [ -d {} ]; then ls -R {} | head -200; else head -500 {}; fi"
-    _eza_preview='ls -R {} | head -200'
-    _bat_preview='head -500 {1}'
-fi
-
-if command -v delta >/dev/null 2>&1; then
-    _delta_preview="git stash show -p {1} | delta"
-else
-    _delta_preview="git stash show -p {1}"
-fi
-
-export FZF_DEFAULT_OPTS="--preview '$show_file_or_dir_preview'"
-export FZF_CTRL_T_OPTS="--preview '$show_file_or_dir_preview'"
-export FZF_ALT_C_OPTS="--preview '$_eza_preview'"
-export FZF_CTRL_R_OPTS="--sort --exact --preview 'echo {}'"
-
-_fzf_compgen_path() { fd --hidden --exclude .git "$1"; }
-_fzf_compgen_dir() { fd --type=d --hidden --exclude .git "$1"; }
-
-_fzf_comprun() {
-    local command=$1; shift
-    case "$command" in
-        cd) fzf --preview "$_eza_preview" "$@" ;;
-        export|unset) fzf --preview "eval 'echo ${}'" "$@" ;;
-        ssh) fzf --preview 'dig {}' "$@" ;;
-        *) fzf --preview "$show_file_or_dir_preview" "$@" ;;
-    esac
-}
-
-# =============================================================================
-# FUNCTIONS
-# =============================================================================
-
 switch_prompt() {
     local style="$1"
-
-    # Interactive fzf selection if no argument is provided in an interactive terminal
     if [[ -z "$style" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
             local choice
@@ -724,20 +609,6 @@ toggle_prompt() {
     esac
 }
 
-# Convenient shortcut aliases and completion for switch_prompt
-alias sp='switch_prompt'
-alias tp='toggle_prompt'
-alias spc='switch_prompt custom'
-alias sps='switch_prompt starship'
-alias spo='switch_prompt oh-my-bash'
-
-if [[ -n "$BASH_VERSION" ]]; then
-    complete -W "custom oh-my-bash starship omb my" switch_prompt sp spc sps spo
-    if [[ $- == *i* ]]; then
-        bind '"\ep": "toggle_prompt\n"' 2>/dev/null
-    fi
-fi
-
 _get_omb_theme_script() {
     local osh="$1"
     local theme="$2"
@@ -795,12 +666,12 @@ switch_starship_theme() {
         if [[ -d "$HOME/test/utils/.config" ]]; then
             cp "$target_config" "$HOME/test/utils/.config/starship.toml" 2>/dev/null
         fi
+        echo "Switched Starship preset to: $preset"
         if [[ "$SH_PROMPT_STYLE" != "starship" ]]; then
             switch_prompt starship
         elif declare -f starship_precmd >/dev/null 2>&1; then
             starship_precmd
         fi
-        echo "Switched Starship preset to: $preset"
     else
         echo "Error: Failed to apply Starship preset '$preset'"
         return 1
@@ -822,7 +693,6 @@ fi
 switch_theme() {
     local target="$1"
 
-    # Smart routing if target is a prompt style keyword
     if [[ "$target" == "starship" ]]; then
         if [[ "$SH_PROMPT_STYLE" != "starship" ]]; then
             switch_prompt starship || return 1
@@ -839,7 +709,6 @@ switch_theme() {
             switch_prompt oh-my-bash || return 1
         fi
         shift
-        # Guard: only recurse for non-keyword (theme name) args to prevent infinite recursion
         if [[ $# -gt 0 && "$1" != "oh-my-bash" && "$1" != "omb" && "$1" != "starship" && "$1" != "custom" ]]; then
             switch_theme "$@"
         fi
@@ -861,7 +730,6 @@ switch_theme() {
         return 1
     fi
 
-    # Interactive fzf selection if no argument is provided in terminal
     if [[ -z "$theme" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
             theme=$( (cd "$OSH/themes" 2>/dev/null && for d in */; do echo "${d%/}"; done) | sort | \
@@ -891,9 +759,9 @@ switch_theme() {
         export SCM_GIT_DISABLE_UNTRACKED_DIRTY=true
         export SCM_GIT_IGNORE_UNTRACKED=true
         if ! declare -f _omb_util_add_prompt_command >/dev/null 2>&1 && [[ -f "$OSH/oh-my-bash.sh" ]]; then
-            plugins=($OMB_PLUGINS)
-            aliases=($OMB_ALIASES)
-            completions=($OMB_COMPLETIONS)
+            read -ra plugins <<< "$OMB_PLUGINS"
+            read -ra aliases <<< "$OMB_ALIASES"
+            read -ra completions <<< "$OMB_COMPLETIONS"
             source "$OSH/oh-my-bash.sh" 2>/dev/null
         else
             source "$theme_script" 2>/dev/null
@@ -905,8 +773,6 @@ switch_theme() {
         return 1
     fi
 }
-
-alias st='switch_theme'
 
 _switch_theme_completion() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
@@ -925,299 +791,115 @@ if [[ -n "$BASH_VERSION" ]]; then
     complete -F _switch_theme_completion switch_theme st
 fi
 
-_apply_overrides() {
-    if command -v eza >/dev/null 2>&1 || command -v eza.exe >/dev/null 2>&1; then
-        alias ls='eza --icons=always --group-directories-first'
-        alias ll='eza -lh --icons=always --group-directories-first'
-        alias la='eza -a --icons=always --group-directories-first'
-        alias lt='eza --tree --icons=always'
-        alias lrt='eza -lh -s newest --icons=always'
-    else
-        alias ll='ls -lh'
-        alias la='ls -la'
-        alias lrt='ls -lhrt'
-    fi
-    alias gsu='git submodule update --init --recursive -f'
-}
-
-fcd() {
-    local dir
-    dir=$(fd -t d | fzf --preview "$_eza_preview") && cd "$dir"
-}
-
-fvim() {
-    local file
-    file=$(fzf)
-    [ -n "$file" ] && "$EDITOR" "$file"
-}
-
-fhist() {
-    if [[ -n "$BASH_VERSION" ]]; then
-        eval $(history | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')
-    elif [[ -n "$ZSH_VERSION" ]]; then
-        eval $(fc -l 1 | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')
-    fi
-}
-
-fkill() {
-    local pid
-    pid=$(ps -ef | fzf -m --header-lines=1 --header='[Process List] (TAB to multi-select)' | awk '{print $2}')
-    [ -n "$pid" ] && echo "$pid" | xargs kill -${1:-9}
-}
-
-up() {
-    local d=""
-    limit=${1:-1}
-    for ((i=1; i <= limit; i++)); do
-        d=$d"../"
-    done
-    cd "$d"
-}
-
-dexec() {
-    local cid=$(docker ps --format '{{.Names}}' | grep "${USER}" | fzf)
-    [ -n "$cid" ] && docker exec -it -u ${USER} "$cid" bash
-}
-
-fzfc() {
-    curl -s cht\.sh/$(
-        curl -s cht\.sh/:list |
-        IFS=+ fzf --preview 'curl -s http://cht.sh{}' -q "$*"
-    )
-}
-
-valg() {
-    local ts
-    ts=$(date +%Y%m%d_%H%M%S)
-    local LOGFILE="valgrind_${ts}.log"
-    echo "Valgrind output will be saved to: $LOGFILE"
-    valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="$LOGFILE" "$@"
-}
-
-frg() {
-    local pattern="$1"
-    local results file line files
-
-    if [[ -z "$pattern" ]]; then
-        if [[ -n "$BASH_VERSION" ]]; then
-            read -rp "Search pattern: " pattern
-        elif [[ -n "$ZSH_VERSION" ]]; then
-            read "pattern?Search pattern: "
-        fi
-    fi
-
-    results="$(
-        rg --smart-case --no-ignore-vcs --line-number --no-heading "$pattern" |
-        fzf --multi --delimiter : \
-            --preview "$_bat_preview" \
-            --preview-window=right:60%
-    )" || return
-
-    if [[ $(echo "$results" | wc -l) -eq 1 ]]; then
-        file=$(echo "$results" | cut -d: -f1)
-        line=$(echo "$results" | cut -d: -f2)
-        "$EDITOR" "+${line}" "$file"
-        return
-    fi
-
-    # Handle multiple files safely (including spaces)
-    if [[ -n "$BASH_VERSION" ]]; then
-        mapfile -t files < <(echo "$results" | cut -d: -f1 | sort -u)
-    elif [[ -n "$ZSH_VERSION" ]]; then
-        # shellcheck disable=SC2296
-        files=("${(@f)$(echo "$results" | cut -d: -f1 | sort -u)}")
-    fi
-    "$EDITOR" -p "${files[@]}"
-}
-
-git_tag() {
-    local tag="$1"
-    local message="$2"
-    if [[ -z "$tag" || -z "$message" ]]; then
-        echo "Usage: git_tag <tag> <message>"
-        return 1
-    fi
-    if ! git rev-parse --git-dir >/dev/null 2>&1; then
-        echo "Error: not inside a git repository"
-        return 1
-    fi
-    if git rev-parse "$tag" >/dev/null 2>&1; then
-        echo "Error: tag '$tag' already exists"
-        return 1
-    fi
-    git tag -a "$tag" -m "$message" || return 1
-    git push origin "$tag" || return 1
-    echo "Tag '$tag' created and pushed."
-}
-
-# Interactively select local branches to delete (local only)
-fbrd() {
-    local branches
-    # Use fzf to select multiple local branches
-    # %(refname:short) ensures we get just the branch name
-    branches=$(git branch --format="%(refname:short)" | fzf --multi --header="[Git Delete Local Branch] TAB to multi-select, ENTER to delete")
-    
-    if [[ -n "$branches" ]]; then
-        # -d is safe delete (checks for merge)
-        # Use -D if you want to force delete unmerged branches
-        echo "$branches" | xargs git branch -d
-    fi
-}
-
-# Interactively select local branches to FORCE delete (local only)
-fbrD() {
-    local branches
-    # Use fzf to select multiple local branches
-    branches=$(git branch --format="%(refname:short)" | fzf --multi --header="[Git FORCE Delete Local Branch] TAB to multi-select, ENTER to force delete")
-    
-    if [[ -n "$branches" ]]; then
-        # -D is force delete (ignores merge status)
-        echo "$branches" | xargs git branch -D
-    fi
-}
-
-# Interactively select and manage git stashes
-fstash() {
-    local out q k sha
-    while out=$(
-        git stash list --pretty="%C(yellow)%h %C(magenta)%ad %C(reset)%s" --date=short |
-        fzf --ansi --no-sort --query="$q" --print-query \
-            --expect=ctrl-d,ctrl-b --header="[Stash] Enter:apply, Ctrl-d:drop, Ctrl-b:pop" \
-            --preview "$_delta_preview"
-    ); do
-        mapfile -t out <<< "$out"
-        q="${out[0]}"
-        k="${out[1]}"
-        sha="${out[2]%% *}"
-        [[ -z "$sha" ]] && continue
-        if [[ "$k" == 'ctrl-d' ]]; then
-            git stash drop "$sha"
-        elif [[ "$k" == 'ctrl-b' ]]; then
-            git stash pop "$sha"
-            break
-        else
-            git stash apply "$sha"
-            break
-        fi
-    done
-}
-
 # =============================================================================
-# ALIASES
+# 4. FZF & TOOL INTEGRATIONS
 # =============================================================================
 
-# Remove Neovide alias if already defined in the current shell to prevent syntax errors during reload/sourcing
-unalias neovide 2>/dev/null
-neovide() {
-    if [[ -n "$NEOVIM_BIN" ]]; then
-        local nvim_path="$NEOVIM_BIN"
-        if $_IS_WINDOWS; then
-            nvim_path=$(cygpath -w "$NEOVIM_BIN")
-        fi
-        command neovide --neovim-bin "$nvim_path" "$@"
-    else
-        command neovide "$@"
-    fi
-}
-if [[ -n "$BASH_VERSION" ]]; then
-    alias reload='source ~/.bashrc'
-elif [[ -n "$ZSH_VERSION" ]]; then
-    alias reload='source ~/.zshrc'
+export FZF_DEFAULT_COMMAND="fd --follow --hidden --strip-cwd-prefix --exclude .git --ignore-file ~/.config/fd/ignore"
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND="fd --type d --follow --hidden --strip-cwd-prefix --exclude .git"
+
+_HAS_EZA=false
+(command -v eza >/dev/null 2>&1 || command -v eza.exe >/dev/null 2>&1) && _HAS_EZA=true
+_HAS_BAT=false
+(command -v bat >/dev/null 2>&1 || command -v bat.exe >/dev/null 2>&1) && _HAS_BAT=true
+
+if $_HAS_EZA && $_HAS_BAT; then
+    show_file_or_dir_preview="if [ -d {} ]; then eza --tree --icons=always --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
+    _eza_preview='eza --tree --icons=always --color=always {} | head -200'
+    _bat_preview='bat --style=numbers --color=always {1}'
+elif $_HAS_EZA; then
+    show_file_or_dir_preview="if [ -d {} ]; then eza --tree --icons=always --color=always {} | head -200; else head -500 {}; fi"
+    _eza_preview='eza --tree --icons=always --color=always {} | head -200'
+    _bat_preview='head -500 {1}'
+elif $_HAS_BAT; then
+    show_file_or_dir_preview="if [ -d {} ]; then ls -R {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
+    _eza_preview='ls -R {} | head -200'
+    _bat_preview='bat --style=numbers --color=always {1}'
+else
+    show_file_or_dir_preview="if [ -d {} ]; then ls -R {} | head -200; else head -500 {}; fi"
+    _eza_preview='ls -R {} | head -200'
+    _bat_preview='head -500 {1}'
 fi
-alias tmuxfix="printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'"
 
-# lf wrapper: override directory color only for lf (scoped, not global)
-lf() {
-    LS_COLORS="${LS_COLORS/di=01;34/di=01;36}" command lf "$@"
+if command -v delta >/dev/null 2>&1; then
+    _delta_preview="git stash show -p {1} | delta"
+else
+    _delta_preview="git stash show -p {1}"
+fi
+
+export FZF_DEFAULT_OPTS="--preview '$show_file_or_dir_preview'"
+export FZF_CTRL_T_OPTS="--preview '$show_file_or_dir_preview'"
+export FZF_ALT_C_OPTS="--preview '$_eza_preview'"
+export FZF_CTRL_R_OPTS="--sort --exact --preview 'echo {}'"
+
+_fzf_compgen_path() { fd --hidden --exclude .git "$1"; }
+_fzf_compgen_dir() { fd --type=d --hidden --exclude .git "$1"; }
+
+_fzf_comprun() {
+    local command=$1; shift
+    case "$command" in
+        cd) fzf --preview "$_eza_preview" "$@" ;;
+        export|unset) fzf --preview "eval 'echo ${}'" "$@" ;;
+        ssh) fzf --preview 'dig {}' "$@" ;;
+        *) fzf --preview "$show_file_or_dir_preview" "$@" ;;
+    esac
 }
 
-tpe() {
-    local file="/tmp/tmux_capture_$(date +%Y%m%d_%H%M%S)_$$"
-    tmux capture-pane -Jp -S - -E - > "$file"
-    local editor=$(command -v nvim || command -v vim || echo vi)
-    "$editor" "$file"
-    rm -f "$file"
-    echo "Deleted $file"
-}
-
-_apply_overrides
-
-alias git-branch-gone='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'''
-alias fzlog='git-fuzzy log'
-alias fzstash='git-fuzzy stash'
-alias fzbranch='git-fuzzy branch'
-alias git-clean-branches='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -d'
-alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -D'
-alias putty-colors='putty_colors.py'
-alias putty_colors='putty_colors.py'
-
-
-# =============================================================================
-# SOURCES
-# =============================================================================
-export FORGIT_INSTALL_DIR="$HOME/.local/share/forgit"
-
+# Cached shell init scripts with version-stamped auto-invalidation
 if ! $_IS_CONTAINER; then
-    # Cache directory for generated init scripts
     CACHE_DIR="$HOME/.cache/bash"
     [ -d "$CACHE_DIR" ] || mkdir -p "$CACHE_DIR"
 
     if [[ -n "$BASH_VERSION" ]]; then
-        # Zoxide caching
         if command -v zoxide >/dev/null 2>&1; then
-            if [ ! -f "$CACHE_DIR/zoxide.bash" ]; then
-                zoxide init bash > "$CACHE_DIR/zoxide.bash"
+            _zver="$(zoxide --version 2>/dev/null)"
+            if [[ ! -f "$CACHE_DIR/zoxide.bash" ]] || ! head -n 1 "$CACHE_DIR/zoxide.bash" | grep -qF "$_zver"; then
+                printf '# %s\n' "$_zver" > "$CACHE_DIR/zoxide.bash"
+                zoxide init bash >> "$CACHE_DIR/zoxide.bash"
             fi
             source "$CACHE_DIR/zoxide.bash"
         fi
-        # FZF caching
         if command -v fzf >/dev/null 2>&1; then
-            if [ ! -f "$CACHE_DIR/fzf.bash" ]; then
-                fzf --bash > "$CACHE_DIR/fzf.bash"
+            _fver="$(fzf --version 2>/dev/null)"
+            if [[ ! -f "$CACHE_DIR/fzf.bash" ]] || ! head -n 1 "$CACHE_DIR/fzf.bash" | grep -qF "$_fver"; then
+                printf '# %s\n' "$_fver" > "$CACHE_DIR/fzf.bash"
+                fzf --bash >> "$CACHE_DIR/fzf.bash"
             fi
             source "$CACHE_DIR/fzf.bash"
         fi
     elif [[ -n "$ZSH_VERSION" ]]; then
-        # Initialize Zsh completion system if not already done
         if ! type _git >/dev/null 2>&1; then
             autoload -Uz compinit && compinit
         fi
-        # Zoxide caching
         if command -v zoxide >/dev/null 2>&1; then
-            if [ ! -f "$CACHE_DIR/zoxide.zsh" ]; then
-                zoxide init zsh > "$CACHE_DIR/zoxide.zsh"
+            _zver="$(zoxide --version 2>/dev/null)"
+            if [[ ! -f "$CACHE_DIR/zoxide.zsh" ]] || ! head -n 1 "$CACHE_DIR/zoxide.zsh" | grep -qF "$_zver"; then
+                printf '# %s\n' "$_zver" > "$CACHE_DIR/zoxide.zsh"
+                zoxide init zsh >> "$CACHE_DIR/zoxide.zsh"
             fi
             source "$CACHE_DIR/zoxide.zsh"
         fi
-        # FZF caching
         if command -v fzf >/dev/null 2>&1; then
-            if [ ! -f "$CACHE_DIR/fzf.zsh" ]; then
-                fzf --zsh > "$CACHE_DIR/fzf.zsh"
+            _fver="$(fzf --version 2>/dev/null)"
+            if [[ ! -f "$CACHE_DIR/fzf.zsh" ]] || ! head -n 1 "$CACHE_DIR/fzf.zsh" | grep -qF "$_fver"; then
+                printf '# %s\n' "$_fver" > "$CACHE_DIR/fzf.zsh"
+                fzf --zsh >> "$CACHE_DIR/fzf.zsh"
             fi
             source "$CACHE_DIR/fzf.zsh"
         fi
     fi
-fi
 
-# =============================================================================
-# PLUGINS
-# =============================================================================
-
-if ! $_IS_CONTAINER; then
+    # Plugins integration
     PLUGINS_DIR="$HOME/.local/share"
-
-    # Preserving behavior: check if core plugins are missing, and if so, warn the user cleanly
     if [ ! -d "$PLUGINS_DIR/forgit" ] || [ ! -d "$PLUGINS_DIR/fzf-git.sh" ]; then
         echo -e "\033[33m[mybashrc] Note: Core plugins are missing. Please run './deploy.sh' to download and install them.\033[0m"
     fi
 
-    # Source plugins if they exist
     if [ -f "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh" ]; then
         source "$PLUGINS_DIR/fzf-git.sh/fzf-git.sh"
     fi
     if [ -f "$PLUGINS_DIR/forgit/forgit.plugin.sh" ]; then
-        # Source forgit.plugin.sh first so functions and variables are defined before completions
-        # Read first line to detect Zsh-only variant (file existence already guaranteed by outer guard)
         _TMP_FIRST_LINE=""
         read -r _TMP_FIRST_LINE < "$PLUGINS_DIR/forgit/forgit.plugin.sh" 2>/dev/null
         if [ "$_TMP_FIRST_LINE" = "forgit.plugin.zsh" ]; then
@@ -1231,7 +913,6 @@ if ! $_IS_CONTAINER; then
             export GIT_COMPLETION_CHECKOUT_NO_GUESS=1
             _git_switch_branch() { _git_checkout_branch "$@"; }
             
-            # Ensure Git completion and _completion_loader are available on reload (including Git Bash on Windows & macOS)
             _git_exec_path=""
             command -v git >/dev/null 2>&1 && _git_exec_path="$(git --exec-path 2>/dev/null)"
 
@@ -1275,22 +956,18 @@ if ! $_IS_CONTAINER; then
 
             _load_git_completion
 
-            # Ensure git and git.exe completion bindings are active
             if declare -F __git_complete >/dev/null 2>&1 && declare -F _git >/dev/null 2>&1; then
                 __git_complete git _git 2>/dev/null
                 __git_complete git.exe _git 2>/dev/null
             fi
 
-            # Prevent completion from taking optional index locks or writing stat cache on disk (critical for 20GB+ repos)
             export GIT_OPTIONAL_LOCKS=0
 
-            # Override __git helper to force fast native execution and disable optional locks during completion
             __git ()
             {
                 GIT_OPTIONAL_LOCKS=0 command git ${__git_C_args:+"${__git_C_args[@]}"} ${__git_dir:+--git-dir="$__git_dir"} "$@" 2>/dev/null
             }
 
-            # Override _git_add to support fast tab completion for `git add -f <prefix>` in large repos
             _git_add ()
             {
                 case "$cur" in
@@ -1314,7 +991,6 @@ if ! $_IS_CONTAINER; then
                 GIT_OPTIONAL_LOCKS=0 __git_complete_index_file "$complete_opt"
             }
 
-            # Fallback _completion_loader if bash_completion package is missing
             if ! declare -F _completion_loader >/dev/null 2>&1; then
                 _completion_loader() {
                     local cmd="$1"
@@ -1343,7 +1019,170 @@ if ! $_IS_CONTAINER; then
     fi
 fi
 
-# Select 2 directories and pass them as environment variables to tmuxp to load dev with a custom session name
+# =============================================================================
+# 5. FUNCTIONS & INTERACTIVE HELPERS
+# =============================================================================
+
+fcd() {
+    local dir
+    dir=$(fd -t d | fzf --preview "$_eza_preview") && cd "$dir"
+}
+
+fvim() {
+    local file
+    file=$(fzf)
+    [ -n "$file" ] && "$EDITOR" "$file"
+}
+
+fhist() {
+    if [[ -n "$BASH_VERSION" ]]; then
+        eval "$(history | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')"
+    elif [[ -n "$ZSH_VERSION" ]]; then
+        eval "$(fc -l 1 | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')"
+    fi
+}
+
+fkill() {
+    local pid
+    pid=$(ps -ef | fzf -m --header-lines=1 --header='[Process List] (TAB to multi-select)' | awk '{print $2}')
+    local sig="${1:-9}"
+    sig="${sig#-}"
+    if [[ -n "$pid" ]]; then
+        echo "$pid" | xargs kill -"$sig"
+    fi
+}
+
+up() {
+    local d=""
+    local limit="${1:-1}"
+    local i
+    if ! [[ "$limit" =~ ^[0-9]+$ ]] || [[ "$limit" -eq 0 ]]; then
+        echo "Usage: up [N] (N must be a positive integer)"
+        return 1
+    fi
+    for ((i=1; i <= limit; i++)); do
+        d=$d"../"
+    done
+    cd "$d"
+}
+
+dexec() {
+    local cid=$(docker ps --format '{{.Names}}' | grep "${USER}" | fzf)
+    [ -n "$cid" ] && docker exec -it -u ${USER} "$cid" bash
+}
+
+fzfc() {
+    local q="$*"
+    curl -s "https://cht.sh/$(
+        curl -s https://cht.sh/:list |
+        IFS=+ fzf --preview 'curl -s https://cht.sh{}' -q "$q"
+    )"
+}
+
+valg() {
+    local ts
+    ts=$(date +%Y%m%d_%H%M%S)
+    local LOGFILE="valgrind_${ts}.log"
+    echo "Valgrind output will be saved to: $LOGFILE"
+    valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="$LOGFILE" "$@"
+}
+
+frg() {
+    local pattern="$1"
+    local results file line files
+
+    if [[ -z "$pattern" ]]; then
+        if [[ -n "$BASH_VERSION" ]]; then
+            read -rp "Search pattern: " pattern
+        elif [[ -n "$ZSH_VERSION" ]]; then
+            read "pattern?Search pattern: "
+        fi
+    fi
+
+    results="$(
+        rg --smart-case --no-ignore-vcs --line-number --no-heading "$pattern" |
+        fzf --multi --delimiter : \
+            --preview "$_bat_preview" \
+            --preview-window=right:60%
+    )" || return
+
+    if [[ $(echo "$results" | wc -l) -eq 1 ]]; then
+        file=$(echo "$results" | cut -d: -f1)
+        line=$(echo "$results" | cut -d: -f2)
+        "$EDITOR" "+${line}" "$file"
+        return
+    fi
+
+    if [[ -n "$BASH_VERSION" ]]; then
+        mapfile -t files < <(echo "$results" | cut -d: -f1 | sort -u)
+    elif [[ -n "$ZSH_VERSION" ]]; then
+        # shellcheck disable=SC2296
+        files=("${(@f)$(echo "$results" | cut -d: -f1 | sort -u)}")
+    fi
+    "$EDITOR" -p "${files[@]}"
+}
+
+git_tag() {
+    local tag="$1"
+    local message="$2"
+    if [[ -z "$tag" || -z "$message" ]]; then
+        echo "Usage: git_tag <tag> <message>"
+        return 1
+    fi
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo "Error: not inside a git repository"
+        return 1
+    fi
+    if git rev-parse "$tag" >/dev/null 2>&1; then
+        echo "Error: tag '$tag' already exists"
+        return 1
+    fi
+    git tag -a "$tag" -m "$message" || return 1
+    git push origin "$tag" || return 1
+    echo "Tag '$tag' created and pushed."
+}
+
+fbrd() {
+    local branches
+    branches=$(git branch --format="%(refname:short)" | fzf --multi --header="[Git Delete Local Branch] TAB to multi-select, ENTER to delete")
+    if [[ -n "$branches" ]]; then
+        echo "$branches" | xargs git branch -d
+    fi
+}
+
+fbrD() {
+    local branches
+    branches=$(git branch --format="%(refname:short)" | fzf --multi --header="[Git FORCE Delete Local Branch] TAB to multi-select, ENTER to force delete")
+    if [[ -n "$branches" ]]; then
+        echo "$branches" | xargs git branch -D
+    fi
+}
+
+fstash() {
+    local out lines q k sha
+    while out=$(
+        git stash list --pretty="%C(yellow)%h %C(magenta)%ad %C(reset)%s" --date=short |
+        fzf --ansi --no-sort --query="$q" --print-query \
+            --expect=ctrl-d,ctrl-b --header="[Stash] Enter:apply, Ctrl-d:drop, Ctrl-b:pop" \
+            --preview "$_delta_preview"
+    ); do
+        mapfile -t lines <<< "$out"
+        q="${lines[0]}"
+        k="${lines[1]}"
+        sha="${lines[2]%% *}"
+        [[ -z "$sha" ]] && continue
+        if [[ "$k" == 'ctrl-d' ]]; then
+            git stash drop "$sha"
+        elif [[ "$k" == 'ctrl-b' ]]; then
+            git stash pop "$sha"
+            break
+        else
+            git stash apply "$sha"
+            break
+        fi
+    done
+}
+
 txp() {
     local repos_dir
     local container_dir
@@ -1371,7 +1210,6 @@ txp() {
         echo "Selected CONTAINER_DIR: $container_dir"
     fi
 
-    # Verify both directories exist
     if [ ! -d "$repos_dir" ]; then
         echo "Error: $repos_dir is not a directory."
         return 1
@@ -1381,7 +1219,6 @@ txp() {
         return 1
     fi
 
-    # Determine default session name from repos_dir basename
     local default_name
     default_name=$(basename "$repos_dir")
 
@@ -1389,21 +1226,132 @@ txp() {
         if [ "$#" -ge 2 ]; then
             session_name="$default_name"
         else
-            read -e -p "Enter session name (default: $default_name): " session_name
+            if [[ -n "$BASH_VERSION" ]]; then
+                read -e -p "Enter session name (default: $default_name): " session_name
+            else
+                printf "Enter session name (default: %s): " "$default_name"
+                read session_name
+            fi
             session_name="${session_name:-$default_name}"
         fi
     fi
 
-    # Sanitize session name for tmux (remove illegal characters like dots and colons)
     session_name=$(echo "$session_name" | tr -d '.:')
 
-    # Export variables for tmuxp
     export REPOS_DIR="$repos_dir"
     export CONTAINER_DIR="$container_dir"
 
-    # Start tmuxp with the custom session name
     echo "Loading tmuxp session: $session_name"
     tmuxp load dev -s "$session_name"
 }
 
+# =============================================================================
+# 6. ALIASES & CLEANUP
+# =============================================================================
 
+if $_IS_WINDOWS; then
+    command -v nvim.exe >/dev/null 2>&1 && alias nvim='nvim.exe'
+    command -v vim.exe >/dev/null 2>&1 && alias vim='vim.exe'
+    alias vi='nvim'
+
+    if [ -f "C:/Program Files/Git/usr/bin/file.exe" ]; then
+        export YAZI_FILE_ONE="C:/Program Files/Git/usr/bin/file.exe"
+    elif [ -f "C:/Program Files (x86)/Git/usr/bin/file.exe" ]; then
+        export YAZI_FILE_ONE="C:/Program Files (x86)/Git/usr/bin/file.exe"
+    elif [ -f "C:/cygwin64/bin/file.exe" ]; then
+        export YAZI_FILE_ONE="C:/cygwin64/bin/file.exe"
+    fi
+
+    command -v python.exe >/dev/null 2>&1 && alias python='winpty python.exe'
+    command -v python3.exe >/dev/null 2>&1 && alias python3='winpty python3.exe'
+    command -v pip.exe >/dev/null 2>&1 && alias pip='winpty pip.exe'
+
+    alias mpv='winpty /c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe'
+
+    if command -v agy.exe >/dev/null 2>&1; then
+        alias agy='agy.exe --dangerously-skip-permissions'
+    elif command -v antigravity.exe >/dev/null 2>&1; then
+        alias agy='antigravity.exe --dangerously-skip-permissions'
+    elif command -v antigravity >/dev/null 2>&1; then
+        alias agy='antigravity --dangerously-skip-permissions'
+    else
+        alias agy='agy --dangerously-skip-permissions'
+    fi
+
+    export MSYS="winsymlinks:nativestrict"
+fi
+
+unalias neovide 2>/dev/null
+neovide() {
+    if [[ -n "$NEOVIM_BIN" ]]; then
+        local nvim_path="$NEOVIM_BIN"
+        if $_IS_WINDOWS; then
+            nvim_path=$(cygpath -w "$NEOVIM_BIN")
+        fi
+        command neovide --neovim-bin "$nvim_path" "$@"
+    else
+        command neovide "$@"
+    fi
+}
+
+if [[ -n "$BASH_VERSION" ]]; then
+    alias reload='source ~/.bashrc'
+elif [[ -n "$ZSH_VERSION" ]]; then
+    alias reload='source ~/.zshrc'
+fi
+alias tmuxfix="printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'"
+
+lf() {
+    LS_COLORS="${LS_COLORS/di=01;34/di=01;36}" command lf "$@"
+}
+
+tpe() {
+    local file="/tmp/tmux_capture_$(date +%Y%m%d_%H%M%S)_$$"
+    tmux capture-pane -Jp -S - -E - > "$file"
+    local editor=$(command -v nvim || command -v vim || echo vi)
+    "$editor" "$file"
+    rm -f "$file"
+    echo "Deleted $file"
+}
+
+_apply_overrides() {
+    if command -v eza >/dev/null 2>&1 || command -v eza.exe >/dev/null 2>&1; then
+        alias ls='eza --icons=always --group-directories-first'
+        alias ll='eza -lh --icons=always --group-directories-first'
+        alias la='eza -a --icons=always --group-directories-first'
+        alias lt='eza --tree --icons=always'
+        alias lrt='eza -lh -s newest --icons=always'
+    else
+        alias ll='ls -lh'
+        alias la='ls -la'
+        alias lrt='ls -lhrt'
+    fi
+    alias gsu='git submodule update --init --recursive -f'
+}
+_apply_overrides
+
+alias sp='switch_prompt'
+alias tp='toggle_prompt'
+alias spc='switch_prompt custom'
+alias sps='switch_prompt starship'
+alias spo='switch_prompt oh-my-bash'
+
+if [[ -n "$BASH_VERSION" ]]; then
+    complete -W "custom oh-my-bash starship omb my" switch_prompt sp spc sps spo
+    if [[ $- == *i* ]]; then
+        bind '"\ep": "toggle_prompt\n"' 2>/dev/null
+    fi
+fi
+
+alias st='switch_theme'
+alias git-branch-gone='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'''
+alias fzlog='git-fuzzy log'
+alias fzstash='git-fuzzy stash'
+alias fzbranch='git-fuzzy branch'
+alias git-clean-branches='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -d'
+alias git-clean-branches-force='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'' | xargs -r git branch -D'
+alias putty-colors='putty_colors.py'
+alias putty_colors='putty_colors.py'
+
+# Clean up internal temporary startup variables to leave a pristine environment
+unset _host _saved_prompt_style _GIT_VERSION _GIT_MAJOR _GIT_MINOR _rest _GIT_SUPPORTS_ZDIFF3 _GIT_EXTRA_ARGS _git_exec_dir _prompt_script _p _zver _fver
