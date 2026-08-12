@@ -1044,7 +1044,8 @@ frg() {
         fzf --multi --delimiter : \
             --preview "$_bat_preview" \
             --preview-window=right:60%
-    )" || return
+    )"
+    [[ -z "$results" ]] && return
 
     if [[ $(echo "$results" | wc -l) -eq 1 ]]; then
         file=$(echo "$results" | cut -d: -f1)
