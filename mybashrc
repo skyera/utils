@@ -585,6 +585,9 @@ switch_prompt() {
     local target_shell="${SHELL:-bash}"
     [[ -n "$ZSH_VERSION" ]] && target_shell="zsh"
     [[ -n "$BASH_VERSION" ]] && target_shell="bash"
+    if [[ "$target_style" == "oh-my-bash" ]]; then
+        target_shell="bash"
+    fi
 
     SH_PROMPT_STYLE="$target_style" exec "$target_shell" -l -i
 }
@@ -698,6 +701,12 @@ fi
 
 switch_theme() {
     local target="$1"
+
+    if [[ -n "$ZSH_VERSION" && "$target" != "starship" && "$SH_PROMPT_STYLE" != "starship" ]]; then
+        echo -e "\033[33m[mybashrc] Oh-My-Bash themes require Bash shell. Launching Bash with Oh-My-Bash...\033[0m"
+        switch_prompt oh-my-bash
+        return $?
+    fi
 
     if [[ "$target" == "starship" ]]; then
         if [[ "$SH_PROMPT_STYLE" != "starship" ]]; then
