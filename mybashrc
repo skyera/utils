@@ -685,6 +685,7 @@ switch_starship_theme() {
 
 _STARSHIP_PRESETS_CACHE=""
 _switch_starship_theme_completion() {
+    [[ -z "$BASH_VERSION" ]] && return 0
     local cur="${COMP_WORDS[COMP_CWORD]}"
     if command -v starship >/dev/null 2>&1; then
         [[ -z "$_STARSHIP_PRESETS_CACHE" ]] && _STARSHIP_PRESETS_CACHE="$(starship preset --list 2>/dev/null)"
@@ -780,6 +781,7 @@ switch_theme() {
 }
 
 _switch_theme_completion() {
+    [[ -z "$BASH_VERSION" ]] && return 0
     local cur="${COMP_WORDS[COMP_CWORD]}"
     if [[ "$SH_PROMPT_STYLE" == "starship" ]]; then
         _switch_starship_theme_completion
