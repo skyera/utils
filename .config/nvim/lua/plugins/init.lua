@@ -329,11 +329,6 @@ return {
       require("mason-lspconfig").setup({
         ensure_installed = { "pyright", "bashls", "lua_ls" },
         automatic_installation = false,
-        handlers = {
-          function(server_name)
-            -- Suppress automatic server setup since all servers are explicitly configured in nvim-lspconfig
-          end,
-        },
       })
     end,
   },
@@ -403,6 +398,7 @@ return {
         map("n", "<leader>ca", vim.lsp.buf.code_action, "Code Action")
         map("n", "[d", function() vim.diagnostic.jump({ count = -1 }) end, "Previous Diagnostic")
         map("n", "]d", function() vim.diagnostic.jump({ count = 1  }) end, "Next Diagnostic")
+        map("n", "<leader>cd", vim.diagnostic.open_float, "Line Diagnostics (Float)")
       end
 
       -- C / C++ / CUDA Server Setup
@@ -420,7 +416,6 @@ return {
         cmd = {
           clangd_cmd,
           "--background-index",
-          "--background-index-workers=4",
           "--completion-style=detailed",
           "--header-insertion=never",
           "--pch-storage=disk",
