@@ -1131,16 +1131,16 @@ git_tag() {
 
 fgbd() {
     local branches
-    branches=$(git branch --format="%(refname:short)" | fzf --multi --header="[Git Delete Local Branch] TAB to multi-select, ENTER to delete")
+    branches=$(git branch --format="%(if)%(HEAD)%(then)%(else)%(refname:short)%(end)" | grep -v '^$' | fzf --multi --header="[Git Delete Local Branch] TAB to multi-select, ENTER to delete")
     if [[ -n "$branches" ]]; then
-        echo "$branches" | xargs git branch -d
+        echo "$branches" | xargs -r git branch -d
     fi
 }
 alias fbrd='fgbd'
 
 fgbD() {
     local branches
-    branches=$(git branch --format="%(refname:short)" | fzf --multi --header="[Git FORCE Delete Local Branch] TAB to multi-select, ENTER to force delete")
+    branches=$(git branch --format="%(if)%(HEAD)%(then)%(else)%(refname:short)%(end)" | grep -v '^$' | fzf --multi --header="[Git FORCE Delete Local Branch] TAB to multi-select, ENTER to force delete")
     if [[ -n "$branches" ]]; then
         echo "Branches to FORCE delete:"
         echo "$branches"
@@ -1152,7 +1152,7 @@ fgbD() {
         fi
         echo
         if [[ "$reply" =~ ^[Yy]$ ]]; then
-            echo "$branches" | xargs git branch -D
+            echo "$branches" | xargs -r git branch -D
         fi
     fi
 }
