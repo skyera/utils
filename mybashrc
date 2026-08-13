@@ -1043,8 +1043,11 @@ up() {
 }
 
 dexec() {
-    local cid=$(docker ps --format '{{.Names}}' | grep "${USER}" | fzf)
-    [ -n "$cid" ] && docker exec -it -u ${USER} "$cid" bash
+    local cid
+    cid=$(docker ps --format '{{.Names}}' | { grep "${USER}" 2>/dev/null || cat; } | fzf)
+    if [[ -n "$cid" ]]; then
+        docker exec -it -u "$USER" "$cid" bash 2>/dev/null || docker exec -it -u "$USER" "$cid" sh
+    fi
 }
 
 fcht() {
