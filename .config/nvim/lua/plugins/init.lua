@@ -329,6 +329,7 @@ return {
       require("mason-lspconfig").setup({
         ensure_installed = { "pyright", "bashls", "lua_ls" },
         automatic_installation = false,
+        automatic_enable = false,
       })
     end,
   },
