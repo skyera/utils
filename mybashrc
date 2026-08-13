@@ -1081,7 +1081,7 @@ frg() {
     results="$(
         rg --smart-case --line-number --no-heading "$pattern" |
         fzf --multi --delimiter : \
-            --preview "$_bat_preview" \
+            --preview "bat --color=always --highlight-line {2} {1} 2>/dev/null || cat {1}" \
             --preview-window=right:60%
     )"
     [[ -z "$results" ]] && return
