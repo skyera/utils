@@ -1005,10 +1005,16 @@ fvim() {
 }
 
 fhist() {
+    local cmd
     if [[ -n "$BASH_VERSION" ]]; then
-        eval "$(history | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')"
+        cmd=$(history | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')
+        if [[ -n "$cmd" ]]; then
+            READLINE_LINE="$cmd"
+            READLINE_POINT=${#cmd}
+        fi
     elif [[ -n "$ZSH_VERSION" ]]; then
-        eval "$(fc -l 1 | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')"
+        cmd=$(fc -l 1 | fzf +s --tac | sed 's/^[ ]*[0-9]*[ ]*//')
+        [[ -n "$cmd" ]] && print -z "$cmd"
     fi
 }
 
