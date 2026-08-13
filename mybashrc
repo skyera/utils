@@ -1145,30 +1145,6 @@ fgbD() {
 }
 alias fbrD='fgbD'
 
-fstash() {
-    local out lines q k sha
-    while out=$(
-        git stash list --pretty="%C(yellow)%h %C(magenta)%ad %C(reset)%s" --date=short |
-        fzf --ansi --no-sort --query="$q" --print-query \
-            --expect=ctrl-d,ctrl-b --header="[Stash] Enter:apply, Ctrl-d:drop, Ctrl-b:pop" \
-            --preview "$_delta_preview"
-    ); do
-        mapfile -t lines <<< "$out"
-        q="${lines[0]}"
-        k="${lines[1]}"
-        sha="${lines[2]%% *}"
-        [[ -z "$sha" ]] && continue
-        if [[ "$k" == 'ctrl-d' ]]; then
-            git stash drop "$sha"
-        elif [[ "$k" == 'ctrl-b' ]]; then
-            git stash pop "$sha"
-            break
-        else
-            git stash apply "$sha"
-            break
-        fi
-    done
-}
 
 txp() {
     local repos_dir
