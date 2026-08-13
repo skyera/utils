@@ -244,13 +244,23 @@ if [[ "$LANG" == *".UTF-8"* || "$LANG" == *".utf8"* || "$LC_ALL" == *".UTF-8"* ]
 fi
 
 # Pastel palette colors for custom prompt
-_PC_RED="\[\033[38;5;203m\]"
-_PC_MINT="\[\033[38;5;85m\]"
-_PC_SKY="\[\033[38;5;117m\]"
-_PC_LAVENDER="\[\033[38;5;141m\]"
-_PC_AMBER="\[\033[38;5;214m\]"
-_PC_SOFT_GREEN="\[\033[38;5;120m\]"
-_PC_RESET="\[\033[00m\]"
+if [[ -n "$ZSH_VERSION" ]]; then
+    _PC_RED="%F{203}"
+    _PC_MINT="%F{85}"
+    _PC_SKY="%F{117}"
+    _PC_LAVENDER="%F{141}"
+    _PC_AMBER="%F{214}"
+    _PC_SOFT_GREEN="%F{120}"
+    _PC_RESET="%f"
+else
+    _PC_RED="\[\033[38;5;203m\]"
+    _PC_MINT="\[\033[38;5;85m\]"
+    _PC_SKY="\[\033[38;5;117m\]"
+    _PC_LAVENDER="\[\033[38;5;141m\]"
+    _PC_AMBER="\[\033[38;5;214m\]"
+    _PC_SOFT_GREEN="\[\033[38;5;120m\]"
+    _PC_RESET="\[\033[00m\]"
+fi
 
 _clean_prompt_command() {
     unset STARSHIP_PROMPT_COMMAND
