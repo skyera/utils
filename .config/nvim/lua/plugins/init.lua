@@ -393,20 +393,34 @@ return {
         map("n", "gD", vim.lsp.buf.declaration, "Goto Declaration")
         map("n", "gr", vim.lsp.buf.references, "Goto References")
         map("n", "gi", vim.lsp.buf.implementation, "Goto Implementation")
-        -- K: Open LSP Hover documentation in a top split window
+        -- K: Open LSP Hover documentation in a top split window (with Man page fallback)
         map("n", "K", function()
+          local cword = vim.fn.expand("<cword>")
           local params = vim.lsp.util.make_position_params(0, _client and _client.offset_encoding)
           vim.lsp.buf_request(bufnr, "textDocument/hover", params, function(err, result, _ctx, _config)
-            if err or not (result and result.contents) then return end
-            local lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
-            lines = vim.lsp.util.trim_empty_lines(lines)
+            local lines = {}
+            if not err and result and result.contents then
+              lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
+              lines = vim.lsp.util.trim_empty_lines(lines)
+            end
+
+            -- Fallback to man page if LSP hover returned no documentation
+            local is_man = false
+            if vim.tbl_isempty(lines) and cword ~= "" then
+              local man_output = vim.fn.systemlist("man 3 " .. vim.fn.shellescape(cword) .. " 2>/dev/null || man " .. vim.fn.shellescape(cword) .. " 2>/dev/null")
+              if vim.v.shell_error == 0 and not vim.tbl_isempty(man_output) then
+                lines = man_output
+                is_man = true
+              end
+            end
+
             if vim.tbl_isempty(lines) then return end
 
-            vim.cmd("topleft 12split")
+            vim.cmd("topleft 14split")
             local scratch_buf = vim.api.nvim_create_buf(false, true)
             vim.api.nvim_win_set_buf(0, scratch_buf)
             vim.api.nvim_buf_set_lines(scratch_buf, 0, -1, false, lines)
-            vim.bo[scratch_buf].filetype = "markdown"
+            vim.bo[scratch_buf].filetype = is_man and "man" or "markdown"
             vim.bo[scratch_buf].bufhidden = "wipe"
             vim.bo[scratch_buf].buftype = "nofile"
             vim.keymap.set("n", "q", "<cmd>close<CR>", { buffer = scratch_buf, silent = true })
