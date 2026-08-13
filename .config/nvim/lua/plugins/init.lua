@@ -393,7 +393,28 @@ return {
         map("n", "gD", vim.lsp.buf.declaration, "Goto Declaration")
         map("n", "gr", vim.lsp.buf.references, "Goto References")
         map("n", "gi", vim.lsp.buf.implementation, "Goto Implementation")
-        map("n", "K", vim.lsp.buf.hover, "Hover Documentation")
+        -- K: Open LSP Hover documentation in a top split window
+        map("n", "K", function()
+          local params = vim.lsp.util.make_position_params(0, _client and _client.offset_encoding)
+          vim.lsp.buf_request(bufnr, "textDocument/hover", params, function(err, result, _ctx, _config)
+            if err or not (result and result.contents) then return end
+            local lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
+            lines = vim.lsp.util.trim_empty_lines(lines)
+            if vim.tbl_isempty(lines) then return end
+
+            vim.cmd("topleft 12split")
+            local scratch_buf = vim.api.nvim_create_buf(false, true)
+            vim.api.nvim_win_set_buf(0, scratch_buf)
+            vim.api.nvim_buf_set_lines(scratch_buf, 0, -1, false, lines)
+            vim.bo[scratch_buf].filetype = "markdown"
+            vim.bo[scratch_buf].bufhidden = "wipe"
+            vim.bo[scratch_buf].buftype = "nofile"
+            vim.keymap.set("n", "q", "<cmd>close<CR>", { buffer = scratch_buf, silent = true })
+          end)
+        end, "Hover Documentation (Top Window)")
+
+        -- gK: Open LSP Hover documentation in floating preview window
+        map("n", "gK", vim.lsp.buf.hover, "Hover Documentation (Float)")
         map("n", "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
         map("n", "<leader>rn", vim.lsp.buf.rename, "Rename Symbol")
         map("n", "<leader>ca", vim.lsp.buf.code_action, "Code Action")
