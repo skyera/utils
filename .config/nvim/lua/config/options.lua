@@ -147,12 +147,6 @@ vim.g.codeium_enabled = 0
 -- Performance & LSP Settings
 vim.opt.updatetime = 200
 
--- Disable Neovim 0.10+ built-in LSP autostart to prevent duplicate LSP server instances alongside nvim-lspconfig
-if vim.lsp.enable then
-  for _, s in ipairs({ "clangd", "pyright", "bashls", "lua_ls" }) do
-    pcall(vim.lsp.enable, s, false)
-  end
-end
 
 
 vim.diagnostic.config({

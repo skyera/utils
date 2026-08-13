@@ -342,113 +342,77 @@ return {
       "hrsh7th/cmp-nvim-lsp",
     },
     config = function()
-      local lspconfig = require("lspconfig")
-      local util = require("lspconfig.util")
       local capabilities = vim.lsp.protocol.make_client_capabilities()
       capabilities = require("cmp_nvim_lsp").default_capabilities(capabilities)
 
-      -- Custom Hover Handler to deduplicate clangd hover signatures & add rounded borders
-      vim.lsp.handlers["textDocument/hover"] = function(err, result, ctx, config)
-        if err then
-          vim.notify("LSP hover error: " .. tostring(err.message or err), vim.log.levels.ERROR)
-          return
-        end
-        config = config or {}
-        config.border = "rounded"
-        if not (result and result.contents) then
-          return
-        end
-        -- Deduplicate clangd trailing raw signature
-        local val = nil
-        if type(result.contents) == "table" and result.contents.value then
-          val = result.contents.value
-        elseif type(result.contents) == "string" then
-          val = result.contents
-        end
-        if val then
-          -- Remove redundant trailing raw signature line in clangd hover output
-          val = val:gsub("\n%s*%-%-%-%s*\n%s*[^\n]+%([^%)]*%)%s*$", "")
-          if type(result.contents) == "table" and result.contents.value then
-            result.contents.value = val
-          elseif type(result.contents) == "string" then
-            result.contents = val
+      -- Configure global LspAttach autocmd for keymaps
+      vim.api.nvim_create_autocmd("LspAttach", {
+        callback = function(args)
+          local bufnr = args.buf
+          local _client = vim.lsp.get_client_by_id(args.data.client_id)
+          local map = function(mode, lhs, rhs, desc)
+            vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = "LSP: " .. desc })
           end
-        end
-        -- Render the hover float directly (no delegation to a possibly-nil default handler)
-        local markdown_lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
-        markdown_lines = vim.lsp.util.trim_empty_lines(markdown_lines)
-        if vim.tbl_isempty(markdown_lines) then
-          return
-        end
-        return vim.lsp.util.open_floating_preview(markdown_lines, "markdown", config)
-      end
 
-
-      local on_attach = function(_client, bufnr)
-        local map = function(mode, lhs, rhs, desc)
-          vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = "LSP: " .. desc })
-        end
-
-        map("n", "gd", vim.lsp.buf.definition, "Goto Definition")
-        map("n", "gD", vim.lsp.buf.declaration, "Goto Declaration")
-        map("n", "gr", vim.lsp.buf.references, "Goto References")
-        map("n", "gi", vim.lsp.buf.implementation, "Goto Implementation")
-        -- K: Open LSP Hover documentation in a top split window (with Man page fallback)
-        map("n", "K", function()
-          local cword = vim.fn.expand("<cword>")
-          local params = vim.lsp.util.make_position_params(0, _client and _client.offset_encoding)
-          vim.lsp.buf_request(bufnr, "textDocument/hover", params, function(err, result, _ctx, _config)
-            local lines = {}
-            if not err and result and result.contents then
-              lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
-              lines = vim.lsp.util.trim_empty_lines(lines)
-            end
-
-            -- Fallback to man page if LSP hover returned no documentation
-            local is_man = false
-            if vim.tbl_isempty(lines) and cword ~= "" then
-              local man_output = vim.fn.systemlist("man 3 " .. vim.fn.shellescape(cword) .. " 2>/dev/null || man " .. vim.fn.shellescape(cword) .. " 2>/dev/null")
-              if vim.v.shell_error == 0 and not vim.tbl_isempty(man_output) then
-                lines = man_output
-                is_man = true
+          map("n", "gd", vim.lsp.buf.definition, "Goto Definition")
+          map("n", "gD", vim.lsp.buf.declaration, "Goto Declaration")
+          map("n", "gr", vim.lsp.buf.references, "Goto References")
+          map("n", "gi", vim.lsp.buf.implementation, "Goto Implementation")
+          -- K: Open LSP Hover documentation in a top split window (with Man page fallback)
+          map("n", "K", function()
+            local cword = vim.fn.expand("<cword>")
+            local params = vim.lsp.util.make_position_params(0, _client and _client.offset_encoding)
+            vim.lsp.buf_request(bufnr, "textDocument/hover", params, function(err, result, _ctx, _config)
+              local lines = {}
+              if not err and result and result.contents then
+                lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
+                lines = vim.lsp.util.trim_empty_lines(lines)
               end
-            end
 
-            if vim.tbl_isempty(lines) then return end
+              -- Fallback to man page if LSP hover returned no documentation
+              local is_man = false
+              if vim.tbl_isempty(lines) and cword ~= "" then
+                local man_output = vim.fn.systemlist("man 3 " .. vim.fn.shellescape(cword) .. " 2>/dev/null || man " .. vim.fn.shellescape(cword) .. " 2>/dev/null")
+                if vim.v.shell_error == 0 and not vim.tbl_isempty(man_output) then
+                  lines = man_output
+                  is_man = true
+                end
+              end
 
-            vim.cmd("topleft 14split")
-            local scratch_buf = vim.api.nvim_create_buf(false, true)
-            vim.api.nvim_win_set_buf(0, scratch_buf)
-            vim.api.nvim_buf_set_lines(scratch_buf, 0, -1, false, lines)
-            vim.bo[scratch_buf].filetype = is_man and "man" or "markdown"
-            vim.bo[scratch_buf].bufhidden = "wipe"
-            vim.bo[scratch_buf].buftype = "nofile"
-            vim.keymap.set("n", "q", "<cmd>close<CR>", { buffer = scratch_buf, silent = true })
-          end)
-        end, "Hover Documentation (Top Window)")
+              if vim.tbl_isempty(lines) then return end
 
-        -- gK: Open LSP Hover documentation in floating preview window
-        map("n", "gK", vim.lsp.buf.hover, "Hover Documentation (Float)")
-        map("n", "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
-        map("n", "<leader>rn", vim.lsp.buf.rename, "Rename Symbol")
-        map("n", "<leader>ca", vim.lsp.buf.code_action, "Code Action")
-        map("n", "[d", function() vim.diagnostic.jump({ count = -1 }) end, "Previous Diagnostic")
-        map("n", "]d", function() vim.diagnostic.jump({ count = 1  }) end, "Next Diagnostic")
-        map("n", "<leader>cd", vim.diagnostic.open_float, "Line Diagnostics (Float)")
-      end
+              vim.cmd("topleft 14split")
+              local scratch_buf = vim.api.nvim_create_buf(false, true)
+              vim.api.nvim_win_set_buf(0, scratch_buf)
+              vim.api.nvim_buf_set_lines(scratch_buf, 0, -1, false, lines)
+              vim.bo[scratch_buf].filetype = is_man and "man" or "markdown"
+              vim.bo[scratch_buf].bufhidden = "wipe"
+              vim.bo[scratch_buf].buftype = "nofile"
+              vim.keymap.set("n", "q", "<cmd>close<CR>", { buffer = scratch_buf, silent = true })
+            end)
+          end, "Hover Documentation (Top Window)")
+
+          -- gK: Open LSP Hover documentation in floating preview window
+          map("n", "gK", vim.lsp.buf.hover, "Hover Documentation (Float)")
+          map("n", "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
+          map("n", "<leader>rn", vim.lsp.buf.rename, "Rename Symbol")
+          map("n", "<leader>ca", vim.lsp.buf.code_action, "Code Action")
+          map("n", "[d", function() vim.diagnostic.jump({ count = -1 }) end, "Previous Diagnostic")
+          map("n", "]d", function() vim.diagnostic.jump({ count = 1  }) end, "Next Diagnostic")
+          map("n", "<leader>cd", vim.diagnostic.open_float, "Line Diagnostics (Float)")
+        end,
+      })
 
       -- C / C++ / CUDA Server Setup
       local clangd_capabilities = vim.tbl_deep_extend("force", capabilities, {
         offsetEncoding = { "utf-16" },
       })
-
       local clangd_cmd = vim.fn.executable("/usr/bin/clangd") == 1 and "/usr/bin/clangd" or "clangd"
 
-      lspconfig.clangd.setup({
-        on_attach = on_attach,
+      vim.lsp.config.clangd = {
         capabilities = clangd_capabilities,
         filetypes = { "c", "cpp", "objc", "objcpp", "cuda" },
-        root_dir = util.root_pattern("compile_commands.json", "compile_flags.txt", ".git"),
+        root_markers = { "compile_commands.json", "compile_flags.txt", ".git" },
         cmd = {
           clangd_cmd,
           "--background-index",
@@ -457,11 +421,10 @@ return {
           "--pch-storage=disk",
           "-j=4",
         },
-      })
+      }
 
       -- Python Server Setup
-      lspconfig.pyright.setup({
-        on_attach = on_attach,
+      vim.lsp.config.pyright = {
         capabilities = capabilities,
         settings = {
           python = {
@@ -472,17 +435,15 @@ return {
             },
           },
         },
-      })
+      }
 
       -- Bash / Shell Server Setup
-      lspconfig.bashls.setup({
-        on_attach = on_attach,
+      vim.lsp.config.bashls = {
         capabilities = capabilities,
-      })
+      }
 
       -- Lua Server Setup
-      lspconfig.lua_ls.setup({
-        on_attach = on_attach,
+      vim.lsp.config.lua_ls = {
         capabilities = capabilities,
         settings = {
           Lua = {
@@ -492,7 +453,10 @@ return {
             telemetry = { enable = false },
           },
         },
-      })
+      }
+
+      -- Enable servers via Nvim 0.11+ native LSP enable API
+      vim.lsp.enable({ "clangd", "pyright", "bashls", "lua_ls" })
 
     end,
   },
