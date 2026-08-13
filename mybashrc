@@ -1296,4 +1296,4 @@ alias putty-colors='putty_colors.py'
 alias putty_colors='putty_colors.py'
 
 # Clean up internal temporary startup variables to leave a pristine environment
-unset _host _saved_prompt_style _GIT_VERSION _GIT_MAJOR _GIT_MINOR _rest _GIT_SUPPORTS_ZDIFF3 _GIT_EXTRA_ARGS _git_exec_dir _prompt_script _p _eza_cmd _bat_cmd
+unset _host _saved_prompt_style _GIT_VERSION _GIT_MAJOR _GIT_MINOR _rest _GIT_SUPPORTS_ZDIFF3 _GIT_EXTRA_ARGS _git_exec_dir _git_exec_path _prompt_script _comp_main _p _eza_cmd _bat_cmd _eza_preview _bat_preview _delta_preview
