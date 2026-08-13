@@ -601,7 +601,7 @@ switch_prompt() {
     [[ -n "$ZSH_VERSION" ]] && target_shell="zsh"
     [[ -n "$BASH_VERSION" ]] && target_shell="bash"
 
-    SH_PROMPT_STYLE="$target_style" exec "$target_shell" -l -i
+    SH_PROMPT_STYLE="$target_style" exec "$target_shell" -i
 }
 
 toggle_prompt() {
