@@ -366,7 +366,9 @@ return {
               local lines = {}
               if not err and result and result.contents then
                 lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
-                lines = vim.lsp.util.trim_empty_lines(lines)
+                if type(lines) == "table" then
+                  lines = vim.tbl_filter(function(line) return line and line:match("%S") end, lines)
+                end
               end
 
               -- Fallback to man page if LSP hover returned no documentation
