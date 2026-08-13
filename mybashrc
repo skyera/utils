@@ -858,7 +858,20 @@ _fzf_comprun() {
 if ! $_IS_CONTAINER; then
     if [[ -n "$BASH_VERSION" ]]; then
         command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init bash)"
-        command -v fzf >/dev/null 2>&1 && eval "$(fzf --bash)"
+        if command -v fzf >/dev/null 2>&1; then
+            if fzf --bash >/dev/null 2>&1; then
+                eval "$(fzf --bash)"
+            else
+                for _fzf_script in "/usr/share/doc/fzf/examples/key-bindings.bash" \
+                                  "/usr/share/doc/fzf/examples/completion.bash" \
+                                  "/usr/share/fzf/key-bindings.bash" \
+                                  "/usr/share/fzf/completion.bash" \
+                                  "$HOME/.fzf.bash"; do
+                    [ -f "$_fzf_script" ] && source "$_fzf_script"
+                done
+                unset _fzf_script
+            fi
+        fi
     elif [[ -n "$ZSH_VERSION" ]]; then
         if [ -d "$HOME/.local/share/forgit/completions" ]; then
             fpath=("$HOME/.local/share/forgit/completions" $fpath)
@@ -867,7 +880,19 @@ if ! $_IS_CONTAINER; then
             autoload -Uz compinit && compinit
         fi
         command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh)"
-        command -v fzf >/dev/null 2>&1 && eval "$(fzf --zsh)"
+        if command -v fzf >/dev/null 2>&1; then
+            if fzf --zsh >/dev/null 2>&1; then
+                eval "$(fzf --zsh)"
+            else
+                for _fzf_script in "/usr/share/doc/fzf/examples/key-bindings.zsh" \
+                                  "/usr/share/doc/fzf/examples/completion.zsh" \
+                                  "/usr/share/zsh/site-functions/zsh-fzf-autocomplete" \
+                                  "$HOME/.fzf.zsh"; do
+                    [ -f "$_fzf_script" ] && source "$_fzf_script"
+                done
+                unset _fzf_script
+            fi
+        fi
     fi
 
     # Plugins integration
