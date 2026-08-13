@@ -1019,12 +1019,15 @@ fhist() {
 }
 
 fkill() {
+    local sig="${1:-9}"
+    sig="${sig#SIG}"
+    sig="${sig#sig}"
+    sig="${sig#-}"
+
     local pid
     pid=$(ps -ef | fzf -m --header-lines=1 --header='[Process List] (TAB to multi-select)' | awk '{print $2}')
-    local sig="${1:-9}"
-    sig="${sig#-}"
     if [[ -n "$pid" ]]; then
-        echo "$pid" | xargs kill -"$sig"
+        echo "$pid" | xargs -r kill -"$sig"
     fi
 }
 
