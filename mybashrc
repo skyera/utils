@@ -264,7 +264,11 @@ _clean_prompt_command() {
                 [[ -n "$pc" ]] && new_pc+=("$pc")
             fi
         done
-        PROMPT_COMMAND=("${new_pc[@]}")
+        if [[ ${#new_pc[@]} -eq 0 ]]; then
+            unset PROMPT_COMMAND
+        else
+            PROMPT_COMMAND=("${new_pc[@]}")
+        fi
     else
         local cmd new_str=""
         local raw="${PROMPT_COMMAND//$'\n'/;}"
