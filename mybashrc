@@ -1049,9 +1049,37 @@ fcd() {
 }
 
 fvim() {
-    local file
-    file=$(fzf)
-    [ -n "$file" ] && "$EDITOR" "$file"
+    local base_dir="${1:-.}"
+    local list_cmd
+    if command -v fd >/dev/null 2>&1; then
+        list_cmd="fd --type f --hidden --exclude .git . \"$base_dir\""
+    elif command -v fdfind >/dev/null 2>&1; then
+        list_cmd="fdfind --type f --hidden --exclude .git . \"$base_dir\""
+    else
+        list_cmd="find \"$base_dir\" -type f -not -path '*/.*' 2>/dev/null"
+    fi
+
+    local results
+    results=$(eval "$list_cmd" | fzf --multi \
+        --prompt="Fuzzy Edit> " \
+        --header="[TAB to multi-select, ENTER to open]" \
+        --preview="bat -n --color=always --line-range :500 {} 2>/dev/null || head -500 {}" \
+        --preview-window=right:60%)
+    [[ -z "$results" ]] && return 0
+
+    local files=()
+    if [[ -n "$BASH_VERSION" ]]; then
+        mapfile -t files <<< "$results"
+    elif [[ -n "$ZSH_VERSION" ]]; then
+        # shellcheck disable=SC2296
+        files=("${(@f)results}")
+    fi
+
+    if [[ ${#files[@]} -gt 1 ]]; then
+        "${EDITOR:-vi}" -p "${files[@]}"
+    elif [[ ${#files[@]} -eq 1 ]]; then
+        "${EDITOR:-vi}" "${files[0]}"
+    fi
 }
 
 fhist() {
