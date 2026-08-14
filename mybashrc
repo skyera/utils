@@ -108,7 +108,13 @@ if $_IS_WINDOWS; then
     command -v python3.exe >/dev/null 2>&1 && alias python3='winpty python3.exe'
     command -v pip.exe >/dev/null 2>&1 && alias pip='winpty pip.exe'
 
-    alias mpv='winpty /c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe'
+    if command -v mpv.exe >/dev/null 2>&1; then
+        alias mpv='winpty mpv.exe'
+    elif command -v mpv >/dev/null 2>&1; then
+        alias mpv='winpty mpv'
+    elif [ -f "/c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe" ]; then
+        alias mpv='winpty /c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe'
+    fi
 
     if command -v agy.exe >/dev/null 2>&1; then
         alias agy='agy.exe --dangerously-skip-permissions'
