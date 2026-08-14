@@ -1318,15 +1318,46 @@ _apply_overrides
 
 
 alias st='switch_theme'
-alias git-branch-gone='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'''
-alias gbg='git-branch-gone'
+git_clean_gone() {
+    local force=false
+    if [[ "$1" == "-f" || "$1" == "--force" || "$1" == "-D" ]]; then
+        force=true
+    fi
+
+    echo "Fetching and pruning remote tracking branches..."
+    git fetch --prune || return 1
+
+    local branches
+    branches=$(git branch -vv | awk '/: gone]/{print $1}')
+
+    if [[ -z "$branches" ]]; then
+        echo "No stale (gone) branches found."
+        return 0
+    fi
+
+    if $force; then
+        echo "Force deleting stale branches:"
+        echo "$branches" | xargs git branch -D
+    else
+        echo "Safely deleting stale branches (use -f to force):"
+        echo "$branches" | xargs git branch -d
+    fi
+}
+
+alias gbgone='git fetch --prune && git branch -vv | awk '\''/: gone]/{print $1}'\'''
+alias gbg='gbgone'
+alias git-branch-gone='gbgone'
+
+alias gbclean='git_clean_gone'
+alias git-clean-gone='git_clean_gone'
+alias git-clean-branches='git_clean_gone'
+alias git-clean-branches-force='git_clean_gone -f'
+alias gbgd='git_clean_gone'
+alias gbgD='git_clean_gone -f'
+
 alias fzlog='git-fuzzy log'
 alias fzstash='git-fuzzy stash'
 alias fzbranch='git-fuzzy branch'
-alias gbgd='git fetch --prune && branches=$(git branch -vv | awk '\''/: gone]/{print $1}'\'') && [[ -n "$branches" ]] && echo "$branches" | xargs git branch -d'
-alias gbgD='git fetch --prune && branches=$(git branch -vv | awk '\''/: gone]/{print $1}'\'') && [[ -n "$branches" ]] && echo "$branches" | xargs git branch -D'
-alias git-clean-branches='gbgd'
-alias git-clean-branches-force='gbgD'
 alias putty-colors='putty_colors.py'
 alias putty_colors='putty_colors.py'
 
