@@ -1311,11 +1311,12 @@ _apply_overrides() {
         alias ll='eza -lh --icons=always --group-directories-first'
         alias la='eza -a --icons=always --group-directories-first'
         alias lt='eza --tree --icons=always'
-        alias lrt='eza -lh -s newest --icons=always'
+        alias lrt='eza -lh -s modified --icons=always'
     else
         alias ll='ls -lh'
         alias la='ls -la'
         alias lrt='ls -lhrt'
+        command -v tree >/dev/null 2>&1 && alias lt='tree -C'
     fi
     alias gsu='git submodule update --init --recursive -f'
 }
