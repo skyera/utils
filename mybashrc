@@ -1037,7 +1037,15 @@ fi
 fcd() {
     local base_dir="${1:-.}"
     local dir
-    dir=$(fd --type d --hidden --exclude .git . "$base_dir" | fzf --preview "$_eza_preview") && cd "$dir"
+    local list_cmd
+    if command -v fd >/dev/null 2>&1; then
+        list_cmd="fd --type d --hidden --exclude .git . \"$base_dir\""
+    elif command -v fdfind >/dev/null 2>&1; then
+        list_cmd="fdfind --type d --hidden --exclude .git . \"$base_dir\""
+    else
+        list_cmd="find \"$base_dir\" -mindepth 1 -type d -not -path '*/.*' 2>/dev/null"
+    fi
+    dir=$(eval "$list_cmd" | fzf --preview 'eza --tree --level=2 --icons=always --color=always {} 2>/dev/null || ls -la {} | head -200') && cd "$dir"
 }
 
 fvim() {
