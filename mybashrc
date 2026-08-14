@@ -853,10 +853,10 @@ _fzf_compgen_dir() { fd --type=d --hidden --exclude .git "$1"; }
 _fzf_comprun() {
     local command=$1; shift
     case "$command" in
-        cd) fzf --preview "$_eza_preview" "$@" ;;
-        export|unset) fzf --preview "eval 'echo ${}'" "$@" ;;
-        ssh) fzf --preview 'dig {}' "$@" ;;
-        *) fzf --preview "$show_file_or_dir_preview" "$@" ;;
+        cd)           fzf --preview 'eza --tree --level=2 --icons=always --color=always {} 2>/dev/null || ls -la {} | head -200' "$@" ;;
+        export|unset) fzf --preview 'eval "echo \${}"' "$@" ;;
+        ssh)          fzf --preview 'dig {} 2>/dev/null || host {} 2>/dev/null' "$@" ;;
+        *)            fzf --preview 'if [ -d {} ]; then eza --tree --level=2 --icons=always --color=always {} 2>/dev/null || ls -la {} | head -200; else bat -n --color=always --line-range :500 {} 2>/dev/null || head -500 {}; fi' "$@" ;;
     esac
 }
 
@@ -1397,4 +1397,4 @@ alias putty-colors='putty_colors.py'
 alias putty_colors='putty_colors.py'
 
 # Clean up internal temporary startup variables to leave a pristine environment
-unset _host _saved_prompt_style _GIT_VERSION _GIT_MAJOR _GIT_MINOR _rest _GIT_SUPPORTS_ZDIFF3 _GIT_EXTRA_ARGS _git_exec_dir _git_exec_path _prompt_script _comp_main _p _eza_cmd _bat_cmd _eza_preview _bat_preview _delta_preview
+unset _host _saved_prompt_style _GIT_VERSION _GIT_MAJOR _GIT_MINOR _rest _GIT_SUPPORTS_ZDIFF3 _GIT_EXTRA_ARGS _git_exec_dir _git_exec_path _prompt_script _comp_main _p _eza_cmd _bat_cmd _eza_preview _bat_preview _delta_preview show_file_or_dir_preview
