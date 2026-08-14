@@ -356,15 +356,48 @@ return {
 
           -- Helper for LSP navigation with fallback to native Vim gd / gD
           local jump_with_fallback = function(method, fallback_cmd)
-            local params = vim.lsp.util.make_position_params(0, _client and _client.offset_encoding)
-            vim.lsp.buf_request(bufnr, method, params, function(err, result, ctx, config)
-              if not err and result and not vim.tbl_isempty(result) then
-                vim.lsp.handlers[method](err, result, ctx, config)
-              else
-                vim.schedule(function()
-                  vim.cmd("normal! " .. fallback_cmd)
-                end)
+            local offset_enc = _client and _client.offset_encoding or "utf-16"
+            local params = vim.lsp.util.make_position_params(0, offset_enc)
+            vim.lsp.buf_request(bufnr, method, params, function(err, result, _ctx, _config)
+              local locations = {}
+              if not err and result then
+                locations = vim.islist(result) and result or { result }
+                locations = vim.tbl_filter(function(loc)
+                  return type(loc) == "table" and (loc.uri ~= nil or loc.targetUri ~= nil)
+                end, locations)
               end
+
+              if #locations == 0 then
+                vim.schedule(function()
+                  pcall(vim.cmd, "normal! " .. fallback_cmd)
+                end)
+                return
+              end
+
+              local ok, items = pcall(vim.lsp.util.locations_to_items, locations, offset_enc)
+              if not ok or not items or vim.tbl_isempty(items) then
+                vim.schedule(function()
+                  pcall(vim.cmd, "normal! " .. fallback_cmd)
+                end)
+                return
+              end
+
+              vim.schedule(function()
+                if #items == 1 then
+                  local item = items[1]
+                  local target_buf = item.bufnr or vim.fn.bufadd(item.filename)
+                  vim.cmd("normal! m'")
+                  vim.bo[target_buf].buflisted = true
+                  vim.api.nvim_set_current_buf(target_buf)
+                  local line = math.max(1, item.lnum or 1)
+                  local col = math.max(0, (item.col or 1) - 1)
+                  vim.api.nvim_win_set_cursor(0, { line, col })
+                  pcall(vim.cmd, "normal! zv")
+                else
+                  vim.fn.setqflist({}, " ", { title = "LSP Locations", items = items })
+                  vim.cmd("botright copen")
+                end
+              end)
             end)
           end
 
