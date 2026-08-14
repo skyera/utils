@@ -14,7 +14,7 @@ set "TMP_OUT=%TEMP%\fcd_res_%RANDOM%.txt"
 :: Check if fd is available for fast directory scanning
 where fd >nul 2>nul
 if %errorlevel%==0 (
-    fd --type d --hidden --exclude .git . "%BASE_DIR%" 2>nul | fzf --prompt="Fuzzy CD> " --preview "%PREVIEW_CMD%" > "%TMP_OUT%"
+    fd --type d --hidden --exclude .git -a . "%BASE_DIR%" 2>nul | fzf --prompt="Fuzzy CD> " --preview "%PREVIEW_CMD%" > "%TMP_OUT%"
 ) else (
     (cd /d "%BASE_DIR%" 2>nul && dir /ad /b /s 2>nul) | fzf --prompt="Fuzzy CD> " --preview "%PREVIEW_CMD%" > "%TMP_OUT%"
 )
