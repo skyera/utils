@@ -1144,9 +1144,24 @@ dexec() {
 }
 
 fcht() {
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "Error: curl is not installed or not in PATH."
+        return 1
+    fi
+
     local q="$*"
+    if [[ -n "$q" ]]; then
+        curl -s "https://cht.sh/${q// /+}"
+        return $?
+    fi
+
+    if ! command -v fzf >/dev/null 2>&1; then
+        echo "Usage: cheat <topic> (or install fzf for interactive browsing)"
+        return 1
+    fi
+
     local topic
-    topic=$(curl -s https://cht.sh/:list | IFS=+ fzf --preview 'curl -s https://cht.sh/{}' -q "$q")
+    topic=$(curl -s https://cht.sh/:list | fzf --prompt="Cheat.sh> " --preview 'curl -s "https://cht.sh/{}"')
     [[ -n "$topic" ]] && curl -s "https://cht.sh/$topic"
 }
 alias cheat='fcht'
