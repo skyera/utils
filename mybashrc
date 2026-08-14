@@ -1077,7 +1077,7 @@ fkill() {
     local pid
     pid=$(ps -ef | fzf -m --header-lines=1 --header='[Process List] (TAB to multi-select)' | awk '{print $2}')
     if [[ -n "$pid" ]]; then
-        echo "$pid" | xargs -r kill -"$sig"
+        echo "$pid" | xargs kill -"$sig"
     fi
 }
 
@@ -1202,7 +1202,7 @@ fgbd() {
     local branches
     branches=$(git branch --format="%(if)%(HEAD)%(then)%(else)%(refname:short)%(end)" | grep -v '^$' | fzf --multi --header="[Git Delete Local Branch] TAB to multi-select, ENTER to delete")
     if [[ -n "$branches" ]]; then
-        echo "$branches" | xargs -r git branch -d
+        echo "$branches" | xargs git branch -d
     fi
 }
 alias fbrd='fgbd'
@@ -1221,7 +1221,7 @@ fgbD() {
         fi
         echo
         if [[ "$reply" =~ ^[Yy]$ ]]; then
-            echo "$branches" | xargs -r git branch -D
+            echo "$branches" | xargs git branch -D
         fi
     fi
 }
