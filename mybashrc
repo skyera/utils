@@ -1104,6 +1104,14 @@ fcht() {
 alias cheat='fcht'
 
 valgrind_check() {
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: ${FUNCNAME[0]} <program> [args...]"
+        return 1
+    fi
+    if ! command -v valgrind >/dev/null 2>&1; then
+        echo "Error: valgrind is not installed or not in PATH."
+        return 1
+    fi
     local ts LOGFILE
     ts=$(date +%Y%m%d_%H%M%S)
     LOGFILE="valgrind_${ts}.log"
