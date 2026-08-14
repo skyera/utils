@@ -32,8 +32,16 @@ set /p TARGET_DIR=<"%TMP_OUT%"
 del "%TMP_OUT%" 2>nul
 
 if not "!TARGET_DIR!"=="" (
-    endlocal & cd /d "%TARGET_DIR%"
-    exit /b 0
+    :: Normalize forward slashes to backslashes
+    set "TARGET_DIR=!TARGET_DIR:/=\!"
+    :: Remove trailing backslash if present
+    if "!TARGET_DIR:~-1!"=="\" set "TARGET_DIR=!TARGET_DIR:~0,-1!"
+
+    for %%D in ("!TARGET_DIR!") do (
+        endlocal
+        cd /d "%%~fD"
+        exit /b 0
+    )
 )
 
 :end
