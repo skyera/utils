@@ -1096,11 +1096,23 @@ up() {
 }
 
 dexec() {
-    local cid
-    cid=$(docker ps --format '{{.Names}}' | { grep "${USER}" 2>/dev/null || cat; } | fzf)
-    if [[ -n "$cid" ]]; then
-        docker exec -it -u "$USER" "$cid" bash 2>/dev/null || docker exec -it -u "$USER" "$cid" sh
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Error: docker is not installed or not in PATH."
+        return 1
     fi
+    local cid
+    if [[ -n "$1" ]] && docker inspect "$1" >/dev/null 2>&1; then
+        cid="$1"
+    else
+        cid=$(docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" 2>/dev/null | \
+            fzf --header-lines=1 --prompt="Docker Exec> " -q "$*" | awk '{print $1}')
+    fi
+    [[ -z "$cid" ]] && return 0
+
+    docker exec -it -u "$USER" "$cid" bash 2>/dev/null || \
+    docker exec -it -u "$USER" "$cid" sh 2>/dev/null || \
+    docker exec -it "$cid" bash 2>/dev/null || \
+    docker exec -it "$cid" sh
 }
 
 fcht() {
