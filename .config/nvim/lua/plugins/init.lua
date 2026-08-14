@@ -354,8 +354,22 @@ return {
             vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, silent = true, desc = "LSP: " .. desc })
           end
 
-          map("n", "gd", vim.lsp.buf.definition, "Goto Definition")
-          map("n", "gD", vim.lsp.buf.declaration, "Goto Declaration")
+          -- Helper for LSP navigation with fallback to native Vim gd / gD
+          local jump_with_fallback = function(method, fallback_cmd)
+            local params = vim.lsp.util.make_position_params(0, _client and _client.offset_encoding)
+            vim.lsp.buf_request(bufnr, method, params, function(err, result, ctx, config)
+              if not err and result and not vim.tbl_isempty(result) then
+                vim.lsp.handlers[method](err, result, ctx, config)
+              else
+                vim.schedule(function()
+                  vim.cmd("normal! " .. fallback_cmd)
+                end)
+              end
+            end)
+          end
+
+          map("n", "gd", function() jump_with_fallback("textDocument/definition", "gd") end, "Goto Definition (with Vim fallback)")
+          map("n", "gD", function() jump_with_fallback("textDocument/declaration", "gD") end, "Goto Declaration (with Vim fallback)")
           map("n", "gr", vim.lsp.buf.references, "Goto References")
           map("n", "gi", vim.lsp.buf.implementation, "Goto Implementation")
           -- K: Open LSP Hover documentation in a top split window (with Man page fallback)
