@@ -26,7 +26,7 @@ if (Get-Command eza -ErrorAction SilentlyContinue) {
     $previewCmd = 'eza --tree --level=2 --icons=always --color=always "{}" 2>nul'
 }
 
-$fzfArgs = @('--prompt=Fuzzy CD> ', "--preview=$previewCmd")
+$fzfArgs = @('--layout=reverse', '--prompt=Fuzzy CD> ', "--preview=$previewCmd")
 if ($query) {
     $fzfArgs += "--query=$query"
 }
@@ -42,4 +42,3 @@ if (Get-Command fd -ErrorAction SilentlyContinue) {
 if ($target) {
     Set-Location $target
 }
-
