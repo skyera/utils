@@ -7,13 +7,8 @@ set "QUERY="
 if not "%~1"=="" (
     if exist "%~1\*" (
         set "BASE_DIR=%~1"
-        shift
-        set "QUERY=%~1"
-        :collect_query
-        if not "%~2"=="" (
-            shift
-            set "QUERY=!QUERY! %~1"
-            goto collect_query
+        for /f "tokens=1* delims= " %%A in ("%*") do (
+            set "QUERY=%%B"
         )
     ) else (
         set "QUERY=%*"
