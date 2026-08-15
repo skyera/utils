@@ -559,26 +559,38 @@ _get_fzf_height_opt() {
     fi
 }
 
+_get_fzf_pointer_opt() {
+    if [[ -z "${_CACHED_FZF_POINTER_OPT+x}" ]]; then
+        if echo "" | fzf --filter="" --pointer="▶ " >/dev/null 2>&1; then
+            _CACHED_FZF_POINTER_OPT='--pointer=▶ '
+        else
+            _CACHED_FZF_POINTER_OPT=''
+        fi
+    fi
+    echo "$_CACHED_FZF_POINTER_OPT"
+}
+
 switch_prompt() {
     local style="$1"
     if [[ -z "$style" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            local choice options_str border_opt height_opt
+            local choice options_str border_opt height_opt pointer_opt
             border_opt="$(_get_fzf_border_opt)"
             height_opt="$(_get_fzf_height_opt 10)"
+            pointer_opt="$(_get_fzf_pointer_opt)"
             if [[ -n "$ZSH_VERSION" ]]; then
                 options_str="custom\t✦ Fast pastel prompt (Pure Zsh, zero-subshell Git)\nstarship\t🌌 Modern cross-shell Starship prompt"
             else
                 options_str="custom\t✦ Fast pastel prompt (Pure Bash, zero-subshell Git)\noh-my-bash\t🚀 Feature-rich Oh-My-Bash framework (Theme: ${OSH_THEME:-font})\nstarship\t🌌 Modern cross-shell Starship prompt"
             fi
             choice=$(printf "%b\n" "$options_str" | \
-                fzf --layout=reverse \
+                fzf --reverse \
                     $border_opt \
                     $height_opt \
+                    $pointer_opt \
                     --delimiter='\t' \
                     --with-nth=1,2 \
                     --prompt="❯ " \
-                    --pointer="▶ " \
                     --header="⚡ Select Shell Prompt Style (Active: $SH_PROMPT_STYLE)" \
                     --preview-window=hidden | cut -f1)
             [[ -z "$choice" ]] && return 0
@@ -689,18 +701,19 @@ switch_starship_theme() {
 
     if [[ -z "$preset" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            local choice border_opt height_opt
+            local choice border_opt height_opt pointer_opt
             border_opt="$(_get_fzf_border_opt)"
             height_opt="$(_get_fzf_height_opt 15)"
+            pointer_opt="$(_get_fzf_pointer_opt)"
             choice=$(printf "%b\n" \
                 "catppuccin-powerline\t✦ Catppuccin Mocha Powerline Pills ()\ntokyo-night\t🌌 Tokyo Night Powerline Pills ()\ngruvbox-rainbow\t🌈 Retro Gruvbox Rainbow Arrows ()\npastel-powerline\t🎨 Soft Pastel Arrows ()\npure-preset\t⚡ Minimalist 2-line prompt (Pure Zsh style)\nbracketed-segments\t📦 Clean bracketed segments [dir] [git]\njetpack\t🚀 High-contrast bold layout\nplain-text-symbols\t🔤 Clean Unicode text (No Nerd Fonts)\nno-nerd-font\t💻 Pure ASCII fallback" | \
-                fzf --layout=reverse \
+                fzf --reverse \
                     $border_opt \
                     $height_opt \
+                    $pointer_opt \
                     --delimiter='\t' \
                     --with-nth=1,2 \
                     --prompt="❯ " \
-                    --pointer="▶ " \
                     --header="⚡ Select Starship Preset/Theme" \
                     --preview-window=hidden | cut -f1)
             [[ -z "$choice" ]] && return 0
@@ -790,16 +803,17 @@ switch_theme() {
 
     if [[ -z "$theme" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            local border_opt height_opt
+            local border_opt height_opt pointer_opt
             border_opt="$(_get_fzf_border_opt)"
             height_opt="$(_get_fzf_height_opt 15)"
+            pointer_opt="$(_get_fzf_pointer_opt)"
             theme=$( (cd "$OSH/themes" 2>/dev/null && find . -maxdepth 1 -mindepth 1 -type d -exec basename {} \;) | sort | \
                 fzf --header="⚡ Select Oh-My-Bash Theme (Active: ${OSH_THEME:-font})" \
-                    --layout=reverse \
+                    --reverse \
                     $border_opt \
                     $height_opt \
+                    $pointer_opt \
                     --prompt="❯ " \
-                    --pointer="▶ " \
                     --preview-window=hidden)
             [[ -z "$theme" ]] && return 0
         else
