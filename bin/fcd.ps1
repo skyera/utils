@@ -26,7 +26,7 @@ if (Get-Command eza -ErrorAction SilentlyContinue) {
     $previewCmd = 'eza --tree --level=2 --icons=always --color=always "{}" 2>nul'
 }
 
-$fzfArgs = @('--layout=reverse', '--prompt=Fuzzy CD> ', "--preview=$previewCmd")
+$fzfArgs = @('--layout=reverse', "--preview=$previewCmd")
 if ($query) {
     $fzfArgs += "--query=$query"
 }

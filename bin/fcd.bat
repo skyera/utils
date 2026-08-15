@@ -20,7 +20,7 @@ where eza >nul 2>&1 && set "PREVIEW_CMD=eza --tree --level=2 --icons=always --co
 
 set "TMP_OUT=%TEMP%\fcd_res_%RANDOM%.txt"
 
-set "FZF_OPTS=--layout=reverse --prompt="Fuzzy CD> " --preview="%PREVIEW_CMD%""
+set "FZF_OPTS=--layout=reverse --preview="%PREVIEW_CMD%""
 if not "!QUERY!"=="" set "FZF_OPTS=!FZF_OPTS! --query="!QUERY!""
 
 where fd >nul 2>&1

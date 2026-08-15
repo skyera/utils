@@ -1045,7 +1045,7 @@ fcd() {
     else
         list_cmd="find \"$base_dir\" -mindepth 1 -type d -not -path '*/.*' 2>/dev/null"
     fi
-    dir=$(eval "$list_cmd" | fzf --layout=reverse --prompt="Fuzzy CD> " --preview 'eza --tree --level=2 --icons=always --color=always {} 2>/dev/null || ls -la {} | head -200') && cd "$dir"
+    dir=$(eval "$list_cmd" | fzf --layout=reverse --preview 'eza --tree --level=2 --icons=always --color=always {} 2>/dev/null || ls -la {} | head -200') && cd "$dir"
 }
 
 fvim() {
