@@ -543,12 +543,29 @@ _get_fzf_border_opt() {
     echo "$_CACHED_FZF_BORDER_OPT"
 }
 
+_get_fzf_height_opt() {
+    local h="${1:-10}"
+    if [[ -z "${_CACHED_FZF_ADAPTIVE_HEIGHT:-}" ]]; then
+        if echo "" | fzf --filter="" --height=~10 >/dev/null 2>&1; then
+            _CACHED_FZF_ADAPTIVE_HEIGHT="yes"
+        else
+            _CACHED_FZF_ADAPTIVE_HEIGHT="no"
+        fi
+    fi
+    if [[ "$_CACHED_FZF_ADAPTIVE_HEIGHT" == "yes" ]]; then
+        echo "--height=~${h}"
+    else
+        echo "--height=${h}"
+    fi
+}
+
 switch_prompt() {
     local style="$1"
     if [[ -z "$style" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            local choice options_str border_opt
+            local choice options_str border_opt height_opt
             border_opt="$(_get_fzf_border_opt)"
+            height_opt="$(_get_fzf_height_opt 10)"
             if [[ -n "$ZSH_VERSION" ]]; then
                 options_str="custom\t✦ Fast pastel prompt (Pure Zsh, zero-subshell Git)\nstarship\t🌌 Modern cross-shell Starship prompt"
             else
@@ -557,7 +574,7 @@ switch_prompt() {
             choice=$(printf "%b\n" "$options_str" | \
                 fzf --layout=reverse \
                     $border_opt \
-                    --height=~10 \
+                    $height_opt \
                     --delimiter='\t' \
                     --with-nth=1,2 \
                     --prompt="❯ " \
@@ -672,13 +689,14 @@ switch_starship_theme() {
 
     if [[ -z "$preset" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            local choice border_opt
+            local choice border_opt height_opt
             border_opt="$(_get_fzf_border_opt)"
+            height_opt="$(_get_fzf_height_opt 15)"
             choice=$(printf "%b\n" \
                 "catppuccin-powerline\t✦ Catppuccin Mocha Powerline Pills ()\ntokyo-night\t🌌 Tokyo Night Powerline Pills ()\ngruvbox-rainbow\t🌈 Retro Gruvbox Rainbow Arrows ()\npastel-powerline\t🎨 Soft Pastel Arrows ()\npure-preset\t⚡ Minimalist 2-line prompt (Pure Zsh style)\nbracketed-segments\t📦 Clean bracketed segments [dir] [git]\njetpack\t🚀 High-contrast bold layout\nplain-text-symbols\t🔤 Clean Unicode text (No Nerd Fonts)\nno-nerd-font\t💻 Pure ASCII fallback" | \
                 fzf --layout=reverse \
                     $border_opt \
-                    --height=~15 \
+                    $height_opt \
                     --delimiter='\t' \
                     --with-nth=1,2 \
                     --prompt="❯ " \
@@ -772,12 +790,14 @@ switch_theme() {
 
     if [[ -z "$theme" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            local border_opt="$(_get_fzf_border_opt)"
+            local border_opt height_opt
+            border_opt="$(_get_fzf_border_opt)"
+            height_opt="$(_get_fzf_height_opt 15)"
             theme=$( (cd "$OSH/themes" 2>/dev/null && find . -maxdepth 1 -mindepth 1 -type d -exec basename {} \;) | sort | \
                 fzf --header="⚡ Select Oh-My-Bash Theme (Active: ${OSH_THEME:-font})" \
                     --layout=reverse \
                     $border_opt \
-                    --height=~15 \
+                    $height_opt \
                     --prompt="❯ " \
                     --pointer="▶ " \
                     --preview-window=hidden)
