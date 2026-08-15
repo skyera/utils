@@ -303,7 +303,6 @@ return {
   "vimwiki/vimwiki",
   "psf/black",
   "Exafunction/windsurf.vim",
-  "preservim/nerdcommenter",
   "vim-scripts/a.vim",
   "rbgrouleff/bclose.vim",
 
