@@ -532,11 +532,23 @@ elif [[ -n "$ZSH_VERSION" ]]; then
     fi
 fi
 
+_get_fzf_border_opt() {
+    if [[ -z "${_CACHED_FZF_BORDER_OPT:-}" ]]; then
+        if echo "" | fzf --filter="" --border=rounded >/dev/null 2>&1; then
+            _CACHED_FZF_BORDER_OPT="--border=rounded"
+        else
+            _CACHED_FZF_BORDER_OPT="--border"
+        fi
+    fi
+    echo "$_CACHED_FZF_BORDER_OPT"
+}
+
 switch_prompt() {
     local style="$1"
     if [[ -z "$style" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            local choice options_str
+            local choice options_str border_opt
+            border_opt="$(_get_fzf_border_opt)"
             if [[ -n "$ZSH_VERSION" ]]; then
                 options_str="custom\t✦ Fast pastel prompt (Pure Zsh, zero-subshell Git)\nstarship\t🌌 Modern cross-shell Starship prompt"
             else
@@ -544,7 +556,7 @@ switch_prompt() {
             fi
             choice=$(printf "%b\n" "$options_str" | \
                 fzf --layout=reverse \
-                    --border=rounded \
+                    $border_opt \
                     --height=~10 \
                     --delimiter='\t' \
                     --with-nth=1,2 \
@@ -660,11 +672,12 @@ switch_starship_theme() {
 
     if [[ -z "$preset" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
-            local choice
+            local choice border_opt
+            border_opt="$(_get_fzf_border_opt)"
             choice=$(printf "%b\n" \
                 "catppuccin-powerline\t✦ Catppuccin Mocha Powerline Pills ()\ntokyo-night\t🌌 Tokyo Night Powerline Pills ()\ngruvbox-rainbow\t🌈 Retro Gruvbox Rainbow Arrows ()\npastel-powerline\t🎨 Soft Pastel Arrows ()\npure-preset\t⚡ Minimalist 2-line prompt (Pure Zsh style)\nbracketed-segments\t📦 Clean bracketed segments [dir] [git]\njetpack\t🚀 High-contrast bold layout\nplain-text-symbols\t🔤 Clean Unicode text (No Nerd Fonts)\nno-nerd-font\t💻 Pure ASCII fallback" | \
                 fzf --layout=reverse \
-                    --border=rounded \
+                    $border_opt \
                     --height=~15 \
                     --delimiter='\t' \
                     --with-nth=1,2 \
@@ -759,10 +772,11 @@ switch_theme() {
 
     if [[ -z "$theme" ]]; then
         if [[ -t 0 ]] && command -v fzf >/dev/null 2>&1; then
+            local border_opt="$(_get_fzf_border_opt)"
             theme=$( (cd "$OSH/themes" 2>/dev/null && find . -maxdepth 1 -mindepth 1 -type d -exec basename {} \;) | sort | \
                 fzf --header="⚡ Select Oh-My-Bash Theme (Active: ${OSH_THEME:-font})" \
                     --layout=reverse \
-                    --border=rounded \
+                    $border_opt \
                     --height=~15 \
                     --prompt="❯ " \
                     --pointer="▶ " \
