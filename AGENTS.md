@@ -25,9 +25,7 @@ When the user asks about an issue or problem, the agent MUST:
 1.  **Explain the problem**: Describe the root cause clearly.
 2.  **Propose a solution**: Explain what needs to change and why.
 3.  **Show code comparison**: Present a before/after diff so the user can see exactly what changes.
-4.  **Approval Mode**:
-    *   If the user has indicated **"approve always"**, **"do it"**, **"auto approve"**, or explicitly asks to fix/implement directly: proceed immediately with implementation and verification without asking for confirmation.
-    *   Otherwise: wait for user approval before applying changes.
+4.  **Wait for approval**: Do not apply changes until the user confirms.
 
 ## Commit Workflow
 
