@@ -1,22 +1,22 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: Check if git-forgit is available in PATH
-where git-forgit >nul 2>nul
+:: 1. Try git forgit if available
+git forgit help >nul 2>nul
 if %errorlevel% equ 0 (
     git forgit branch_delete %*
     goto :end
 )
 
-:: Verify git and fzf are installed
+:: 2. Verify git and fzf are installed
 where git >nul 2>nul || (echo Error: git is not installed or not in PATH.& goto :end)
 where fzf >nul 2>nul || (echo Error: fzf is not installed or not in PATH.& goto :end)
 
-:: Temporary file to capture fzf output
+:: 3. Temporary file for fzf selection
 set "TMP_OUT=%TEMP%\gbd_branches_%RANDOM%.txt"
 
-:: Run interactive fzf branch selector with git log preview
-git branch --format="%(refname:short)" | fzf -m --preview "git log --oneline --graph --color=always {}" --preview-window=right:60%% > "%TMP_OUT%"
+:: 4. Run interactive fzf with rich branch formatting (like forgit)
+git branch --sort=-committerdate --color=always --format="%%(color:bold green)%%(refname:short)%%(color:reset) %%(color:yellow)%%(objectname:short)%%(color:reset) %%(color:white)%%(subject)%%(color:reset) %%(color:green)(%%(committerdate:relative))%%(color:reset)" | fzf -m --ansi --nth=1 --preview "git log --oneline --graph --color=always {1}" --preview-window=right:60%% > "%TMP_OUT%"
 
 if not exist "%TMP_OUT%" goto :end
 for %%A in ("%TMP_OUT%") do if %%~zA equ 0 (
@@ -24,10 +24,10 @@ for %%A in ("%TMP_OUT%") do if %%~zA equ 0 (
     goto :end
 )
 
-:: Delete each selected branch
-for /f "usebackq delims=" %%B in ("%TMP_OUT%") do (
-    if not "%%B"=="" (
-        git branch -d "%%B" 2>nul || git branch -D "%%B"
+:: 5. Extract branch names (first token) and delete
+for /f "usebackq tokens=1" %%B in ("%TMP_OUT%") do (
+    if not "%%B"=="" if not "%%B"=="*" (
+        git branch -D "%%B"
     )
 )
 
