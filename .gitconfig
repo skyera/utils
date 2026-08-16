@@ -72,7 +72,6 @@
 
 [fetch]
 	prune = true
-	pruneTags = true
 
 [rebase]
 	autoStash = true
