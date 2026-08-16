@@ -10,6 +10,8 @@ import shutil
 import filecmp
 import platform
 import difflib
+import subprocess
+import urllib.request
 from datetime import datetime
 
 
@@ -17,14 +19,16 @@ class DotfilesDeployGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Dotfiles Deployer")
-        self.root.geometry("1150x800")
+        self.root.geometry("1200x820")
         
         self.repo_dir = os.path.dirname(os.path.abspath(__file__))
         self.system = platform.system()
         
         # UI State
         self.backup_var = tk.BooleanVar(value=True)
+        self.symlink_var = tk.BooleanVar(value=False)
         self.nvim_choice = tk.StringVar(value="lua")
+        self.filter_var = tk.StringVar(value="")
         self.dark_mode = True  # Starts in Dark Mode by default
         
         # Store metadata for tree items
@@ -45,6 +49,7 @@ class DotfilesDeployGUI:
                 "category": "Shell Configs",
                 "items": [
                     {"src": "mybashrc", "dest": {"Unix": "~/.mybashrc", "Windows": "%USERPROFILE%/.mybashrc"}},
+                    {"src": ".minttyrc", "dest": {"Windows": "%USERPROFILE%/.minttyrc"}},
                 ]
             },
             {
@@ -59,7 +64,6 @@ class DotfilesDeployGUI:
                 "category": "Dotfiles",
                 "items": [
                     {"src": ".gitconfig", "dest": {"Unix": "~/.gitconfig", "Windows": "%USERPROFILE%/.gitconfig"}},
-                    {"src": ".gitmessage", "dest": {"Unix": "~/.gitmessage", "Windows": "%USERPROFILE%/.gitmessage"}},
                     {"src": ".tmux.conf", "dest": {"Unix": "~/.tmux.conf"}},
                     {"src": ".tigrc", "dest": {"Unix": "~/.tigrc"}},
                     {"src": ".ripgreprc", "dest": {"Unix": "~/.ripgreprc", "Windows": "%USERPROFILE%/.ripgreprc"}},
@@ -70,6 +74,11 @@ class DotfilesDeployGUI:
             {
                 "category": "Tool Configs",
                 "items": [
+                    {"src": ".config/starship.toml", "dest": {"Unix": "~/.config/starship.toml", "Windows": "%APPDATA%/starship.toml"}},
+                    {"src": ".config/clangd/config.yaml", "dest": {"Unix": "~/.config/clangd/config.yaml", "Windows": "%LOCALAPPDATA%/clangd/config.yaml"}},
+                    {"src": ".config/tmuxp/dev.yaml", "dest": {"Unix": "~/.config/tmuxp/dev.yaml"}},
+                    {"src": ".config/powershell/fzf_keybindings.ps1", "dest": {"Windows": "%APPDATA%/powershell/fzf_keybindings.ps1"}},
+                    {"src": ".config/putty/themes", "dest": {"Windows": "%APPDATA%/putty/themes"}, "is_dir": True},
                     {"src": ".config/lf/lfrc", "dest": {"Unix": "~/.config/lf/lfrc"}},
                     {"src": ".config/lf/lfrc_windows", "dest": {"Windows": "%APPDATA%/lf/lfrc"}},
                     {"src": ".config/lf/icons", "dest": {"Unix": "~/.config/lf/icons", "Windows": "%APPDATA%/lf/icons"}},
@@ -150,29 +159,41 @@ class DotfilesDeployGUI:
         toolbar = ttk.Frame(self.root, padding="10")
         toolbar.pack(fill=tk.X)
         
-        btn_refresh = ttk.Button(toolbar, text="🔄 Refresh", command=self.refresh_file_lists)
-        btn_refresh.pack(side=tk.LEFT, padx=5)
+        btn_refresh = ttk.Button(toolbar, text="🔄 Refresh (F5)", command=self.refresh_file_lists)
+        btn_refresh.pack(side=tk.LEFT, padx=4)
         
-        btn_sel = ttk.Button(toolbar, text="🚀 Deploy Selected", command=self.deploy_selected)
-        btn_sel.pack(side=tk.LEFT, padx=5)
+        btn_sel = ttk.Button(toolbar, text="🚀 Deploy Selected (Ctrl+D)", command=self.deploy_selected)
+        btn_sel.pack(side=tk.LEFT, padx=4)
         
+        btn_outdated = ttk.Button(toolbar, text="⚡ Deploy Outdated", command=self.deploy_outdated)
+        btn_outdated.pack(side=tk.LEFT, padx=4)
+
         btn_all = ttk.Button(toolbar, text="🔥 Deploy All", command=self.deploy_all)
-        btn_all.pack(side=tk.LEFT, padx=5)
+        btn_all.pack(side=tk.LEFT, padx=4)
         
-        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
         
-        chk_bak = ttk.Checkbutton(toolbar, text="💾 Auto Backup (.bak)", variable=self.backup_var)
-        chk_bak.pack(side=tk.LEFT, padx=5)
+        chk_bak = ttk.Checkbutton(toolbar, text="💾 Backup (.bak)", variable=self.backup_var)
+        chk_bak.pack(side=tk.LEFT, padx=4)
         
-        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
+        chk_sym = ttk.Checkbutton(toolbar, text="🔗 Symlink Mode", variable=self.symlink_var)
+        chk_sym.pack(side=tk.LEFT, padx=4)
         
-        ttk.Label(toolbar, text="⚙️ Neovim: ", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=5)
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
+        
+        ttk.Label(toolbar, text="⚙️ Nvim: ", font=("Arial", 9, "bold")).pack(side=tk.LEFT, padx=2)
         ttk.Radiobutton(toolbar, text="Lua", variable=self.nvim_choice, value="lua", command=self.refresh_file_lists).pack(side=tk.LEFT)
-        ttk.Radiobutton(toolbar, text="Vimscript", variable=self.nvim_choice, value="vim", command=self.refresh_file_lists).pack(side=tk.LEFT)
+        ttk.Radiobutton(toolbar, text="Vim", variable=self.nvim_choice, value="vim", command=self.refresh_file_lists).pack(side=tk.LEFT)
         
         # Theme toggle button
         self.btn_theme = ttk.Button(toolbar, text="🌙 Dark", command=self.toggle_theme)
-        self.btn_theme.pack(side=tk.RIGHT, padx=5)
+        self.btn_theme.pack(side=tk.RIGHT, padx=4)
+        
+        # Live filter box
+        ttk.Label(toolbar, text="🔍 Filter:", font=("Arial", 9)).pack(side=tk.RIGHT, padx=(10, 2))
+        self.filter_entry = ttk.Entry(toolbar, textvariable=self.filter_var, width=15)
+        self.filter_entry.pack(side=tk.RIGHT, padx=2)
+        self.filter_entry.bind("<KeyRelease>", lambda e: self.refresh_file_lists())
         
         # Main content area
         main_content = ttk.Frame(self.root, padding="5")
@@ -247,6 +268,12 @@ class DotfilesDeployGUI:
         
         self.dest_tree.bind("<Button-3>", self.on_dest_right_click)
         self.dest_tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+
+        # Global shortcuts
+        self.root.bind("<F5>", lambda e: self.refresh_file_lists())
+        self.root.bind("<Control-r>", lambda e: self.refresh_file_lists())
+        self.root.bind("<Control-d>", lambda e: self.deploy_selected())
+        self.root.bind("<Control-Shift-D>", lambda e: self.deploy_outdated())
 
     def apply_theme(self):
         """Apply theme colors and styles based on the active mode (Light or Dark)"""
@@ -653,7 +680,7 @@ class DotfilesDeployGUI:
         self.diff_text.config(state=tk.DISABLED)
 
     def refresh_file_lists(self):
-        """Refresh both treeviews based on current config and nvim choice"""
+        """Refresh both treeviews based on current config, filter term, and nvim choice"""
         for tree in [self.source_tree, self.dest_tree]:
             for item in tree.get_children():
                 tree.delete(item)
@@ -662,13 +689,15 @@ class DotfilesDeployGUI:
         self.dest_metadata.clear()
         
         total_items = 0
+        synced_count = 0
+        outdated_count = 0
+        missing_count = 0
+        filter_text = self.filter_var.get().strip().lower()
         
         for cat_config in self.file_configs:
             category = cat_config["category"]
-            src_cat_id = self.source_tree.insert("", tk.END, text=category, open=True)
-            dest_cat_id = self.dest_tree.insert("", tk.END, text=category, open=True)
+            cat_items = []
             
-            row_idx = 0
             for item in cat_config["items"]:
                 if "condition" in item:
                     if item["condition"] != self.nvim_choice.get():
@@ -683,6 +712,32 @@ class DotfilesDeployGUI:
                 is_dir = item.get("is_dir", False)
                 status, color = self.get_sync_status(src_path, dest_path, is_dir)
                 
+                if "Synced" in status or "Exists" in status:
+                    synced_count += 1
+                elif "Missing" in status:
+                    missing_count += 1
+                elif "Outdated" in status:
+                    outdated_count += 1
+                
+                total_items += 1
+                
+                # Check search filter
+                if filter_text:
+                    if (filter_text not in item["src"].lower() and
+                        filter_text not in dest_path.lower() and
+                        filter_text not in status.lower() and
+                        filter_text not in category.lower()):
+                        continue
+                
+                cat_items.append((item, src_path, dest_path, is_dir, status, color))
+            
+            if not cat_items:
+                continue
+                
+            src_cat_id = self.source_tree.insert("", tk.END, text=category, open=True)
+            dest_cat_id = self.dest_tree.insert("", tk.END, text=category, open=True)
+            
+            for row_idx, (item, src_path, dest_path, is_dir, status, color) in enumerate(cat_items):
                 stripe_tag = "even" if row_idx % 2 == 0 else "odd"
                 
                 # Source Tree
@@ -692,7 +747,10 @@ class DotfilesDeployGUI:
                     values=(status, dest_path),
                     tags=(color, stripe_tag)
                 )
-                self.source_metadata[sid] = {"src": src_path, "dest": dest_path, "is_dir": is_dir}
+                self.source_metadata[sid] = {
+                    "src": src_path, "dest": dest_path, "is_dir": is_dir,
+                    "status": status, "color": color
+                }
                 
                 # Dest Tree
                 did = self.dest_tree.insert(
@@ -701,12 +759,15 @@ class DotfilesDeployGUI:
                     values=(status, item["src"]),
                     tags=(color, stripe_tag)
                 )
-                self.dest_metadata[did] = {"src": src_path, "dest": dest_path, "is_dir": is_dir}
-                
-                total_items += 1
-                row_idx += 1
+                self.dest_metadata[did] = {
+                    "src": src_path, "dest": dest_path, "is_dir": is_dir,
+                    "status": status, "color": color
+                }
         
-        self.status_bar.config(text=f" 📋 Total items: {total_items} | System: {self.system} ")
+        status_msg = f" 📋 Total: {total_items} | ✅ Synced: {synced_count} | ⚠️ Outdated: {outdated_count} | ❌ Missing: {missing_count} | System: {self.system} "
+        if filter_text:
+            status_msg += f" | (Filtered by '{filter_text}')"
+        self.status_bar.config(text=status_msg)
 
     def _post_deploy_shell_config(self, dest):
         """Ensure ~/.mybashrc is sourced in ~/.bashrc (and ~/.zshrc on macOS)"""
@@ -738,23 +799,27 @@ class DotfilesDeployGUI:
         if "mpv" not in dest.lower():
             return
         mpv_dir = os.path.dirname(dest)
+        scripts_dir = os.path.join(mpv_dir, "scripts")
+        fonts_dir = os.path.join(mpv_dir, "fonts")
+        script_opts_dir = os.path.join(mpv_dir, "script-opts")
+
+        try:
+            os.makedirs(scripts_dir, exist_ok=True)
+            os.makedirs(fonts_dir, exist_ok=True)
+            os.makedirs(script_opts_dir, exist_ok=True)
+        except Exception as e:
+            print(f"Error creating mpv directories: {e}")
+
+        # 1. uosc plugin
         uosc_repo = os.path.join(mpv_dir, "uosc")
         if not os.path.exists(uosc_repo):
             try:
-                import subprocess
                 subprocess.run(["git", "clone", "--depth", "1", "https://github.com/tomasklaen/uosc.git", uosc_repo], check=True)
             except Exception as e:
                 print(f"Error cloning uosc: {e}")
 
         if os.path.exists(uosc_repo):
             try:
-                scripts_dir = os.path.join(mpv_dir, "scripts")
-                fonts_dir = os.path.join(mpv_dir, "fonts")
-                script_opts_dir = os.path.join(mpv_dir, "script-opts")
-                os.makedirs(scripts_dir, exist_ok=True)
-                os.makedirs(fonts_dir, exist_ok=True)
-                os.makedirs(script_opts_dir, exist_ok=True)
-
                 src_uosc = os.path.join(uosc_repo, "src", "uosc")
                 if os.path.exists(src_uosc):
                     dest_uosc = os.path.join(scripts_dir, "uosc")
@@ -848,7 +913,6 @@ class DotfilesDeployGUI:
         autoload_dest = os.path.join(scripts_dir, "autoload.lua")
         if not os.path.exists(autoload_dest):
             try:
-                import urllib.request
                 urllib.request.urlretrieve("https://raw.githubusercontent.com/mpv-player/mpv/master/TOOLS/lua/autoload.lua", autoload_dest)
             except Exception as e:
                 print(f"Error downloading autoload.lua: {e}")
@@ -857,20 +921,19 @@ class DotfilesDeployGUI:
         webm_dest = os.path.join(scripts_dir, "webm.lua")
         if not os.path.exists(webm_dest):
             try:
-                import urllib.request
                 urllib.request.urlretrieve("https://github.com/ekisu/mpv-webm/releases/download/latest/webm.lua", webm_dest)
             except Exception as e:
                 print(f"Error downloading webm.lua: {e}")
 
     def deploy_file(self, src, dest, is_dir=False):
-        """Core deployment logic for single file or directory, handling symlinks and conflicts safely"""
+        """Core deployment logic for single file or directory, handling symlinks, CRLF normalization, and conflicts safely"""
         if not os.path.lexists(src):
             return False, f"Source not found: {src}"
         
         try:
             dest_dir = os.path.dirname(dest)
             if not os.path.lexists(dest_dir):
-                os.makedirs(dest_dir)
+                os.makedirs(dest_dir, exist_ok=True)
             
             # Backup
             if self.backup_var.get() and os.path.lexists(dest):
@@ -910,26 +973,41 @@ class DotfilesDeployGUI:
                         else:
                             shutil.rmtree(lua_dir_path)
             
-            # Deploy
-            if is_dir:
-                if os.path.lexists(dest):
-                    if os.path.islink(dest) or os.path.isfile(dest):
-                        os.remove(dest)
-                    elif os.path.isdir(dest):
-                        shutil.rmtree(dest)
-                shutil.copytree(src, dest)
+            # Remove previous target if it exists
+            if os.path.lexists(dest):
+                if os.path.islink(dest) or os.path.isfile(dest):
+                    os.remove(dest)
+                elif os.path.isdir(dest):
+                    shutil.rmtree(dest)
+
+            # Deploy: Symlink or Copy
+            if self.symlink_var.get():
+                target_src = os.path.abspath(src)
+                if self.system == "Windows" and is_dir:
+                    try:
+                        import _winapi
+                        _winapi.CreateJunction(target_src, dest)
+                    except Exception:
+                        os.symlink(target_src, dest, target_is_directory=True)
+                else:
+                    os.symlink(target_src, dest, target_is_directory=is_dir)
             else:
-                if os.path.lexists(dest):
-                    if os.path.islink(dest) or os.path.isfile(dest):
-                        os.remove(dest)
-                    elif os.path.isdir(dest):
-                        shutil.rmtree(dest)
-                shutil.copy2(src, dest)
-                
-                # Permissions
-                if self.system != "Windows":
-                    if "/bin/" in src or src.endswith(".sh"):
-                        os.chmod(dest, 0o755)
+                if is_dir:
+                    shutil.copytree(src, dest)
+                else:
+                    # Normalize CRLF to LF for text files on Unix/macOS
+                    if self.system != "Windows" and not self.is_binary_file(src):
+                        with open(src, "rb") as sf:
+                            content = sf.read().replace(b"\r\n", b"\n")
+                        with open(dest, "wb") as df:
+                            df.write(content)
+                    else:
+                        shutil.copy2(src, dest)
+                    
+                    # Set executable permissions for bin scripts on Unix
+                    if self.system != "Windows":
+                        if src.startswith("bin/") or "/bin/" in src or src.endswith(".sh"):
+                            os.chmod(dest, 0o755)
             
             # Post-deployment sourcing hook for mybashrc
             if dest_basename == ".mybashrc" or dest_basename == "mybashrc":
@@ -942,6 +1020,19 @@ class DotfilesDeployGUI:
             return True, f"Deployed to {dest}"
         except Exception as e:
             return False, str(e)
+
+    def deploy_outdated(self):
+        """Deploy only items that are missing or have outdated contents"""
+        count = 0
+        for item_id, m in list(self.source_metadata.items()):
+            color = m.get("color", "")
+            status = m.get("status", "")
+            if color in ["orange", "red"] or "Outdated" in status or "Missing" in status:
+                success, _ = self.deploy_file(m["src"], m["dest"], m["is_dir"])
+                if success:
+                    count += 1
+        self.refresh_file_lists()
+        messagebox.showinfo("Done", f"Deployed {count} outdated/missing items")
 
     def on_source_double_click(self, event):
         selection = self.source_tree.selection()
