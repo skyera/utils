@@ -55,6 +55,9 @@
 [branch]
 	sort = -committerdate
 
+[tag]
+	forceUpdate = true
+
 [diff]
 	algorithm = histogram
 	colorMoved = default
