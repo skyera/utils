@@ -16,7 +16,7 @@ where fzf >nul 2>nul || (echo Error: fzf is not installed or not in PATH.& goto 
 set "TMP_OUT=%TEMP%\gbd_branches_%RANDOM%.txt"
 
 :: 4. Run interactive fzf with rich branch formatting (like forgit)
-git branch --sort=-committerdate --color=always --format="%%(color:bold green)%%(refname:short)%%(color:reset) %%(color:yellow)%%(objectname:short)%%(color:reset) %%(color:white)%%(subject)%%(color:reset) %%(color:green)(%%(committerdate:relative))%%(color:reset)" | fzf -m --ansi --nth=1 --preview "git log --oneline --graph --color=always {1}" --preview-window=right:60%% > "%TMP_OUT%"
+git branch --sort=-committerdate --color=always --format="%%(if)%%(HEAD)%%(then)%%(else)%%(color:bold green)%%(refname:short)%%(color:reset) %%(color:yellow)%%(objectname:short)%%(color:reset) %%(color:white)%%(subject)%%(color:reset) %%(color:green)(%%(committerdate:relative))%%(color:reset)%%(end)" | findstr /r /v "^$" | fzf -m --ansi --nth=1 --preview "git log --oneline --graph --color=always {1}" --preview-window=right:60%% > "%TMP_OUT%"
 
 if not exist "%TMP_OUT%" goto :end
 for %%A in ("%TMP_OUT%") do if %%~zA equ 0 (
