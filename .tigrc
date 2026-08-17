@@ -11,7 +11,7 @@ set tab-size = 4
 # Fixed main-view: graph is an option of commit-title, not a separate column
 set main-view = date:default author:email-user,maxwidth=15 id:yes,color commit-title:graph=yes,refs=yes
 
-color date             cyan   black
+color date             cyan   default
 color cursor           black  yellow bold
 color author           yellow default
 color "---"            red    default
