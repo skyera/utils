@@ -25,7 +25,8 @@ color "- "             red    default
 set ignore-case = smart-case
 set wrap-search = yes
 set refresh-mode = auto
-set diff-options = -C5 --diff-merges=m
+set diff-options = -C --diff-merges=m
+set diff-context = 5
 
 # --- Keybindings ---
 # Diff & Pager View Scrolling
