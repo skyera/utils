@@ -47,3 +47,23 @@ bind pager <Ctrl-y>    scroll-line-up
 bind generic W     :toggle diff-options --ignore-all-space
 bind generic Y     !@sh -c "echo -n %(commit) | ~/test/utils/bin/osc52-yank.sh"
 bind generic V     !nvim +%(line) %(file)
+
+# --- Main View Actions ---
+bind main    C     ?git checkout %(commit)
+bind main    F     ?git commit --fixup=%(commit)
+bind main    B     ?git rebase -i %(commit)~1
+bind main    P     ?git cherry-pick %(commit)
+
+# --- Status View Actions ---
+bind status  C     !git commit
+bind status  A     !git commit --amend
+bind status  S     ?git stash save "%(prompt Enter stash name: )"
+bind status  P     ?git stash pop
+
+# --- Refs (Branch/Tag) View Actions ---
+bind refs    C     ?git checkout %(branch)
+bind refs    D     ?git branch -d %(branch)
+
+# --- Diff View Actions ---
+bind diff    [     :toggle diff-context -3
+bind diff    ]     :toggle diff-context +3
