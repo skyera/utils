@@ -27,6 +27,7 @@ set wrap-search = yes
 set refresh-mode = auto
 set diff-options = -C --diff-merges=m
 set diff-context = 5
+set status-show-untracked-dirs = yes
 
 # --- Keybindings ---
 # Diff & Pager View Scrolling
@@ -46,8 +47,12 @@ bind pager <Ctrl-y>    scroll-line-up
 
 # Actions
 bind generic W     :toggle diff-options --ignore-all-space
-bind generic Y     !@sh -c "echo -n %(commit) | ~/test/utils/bin/osc52-yank.sh"
+bind generic Y     !@sh -c "echo -n %(commit) | { osc52-yank.sh 2>/dev/null || ~/test/utils/bin/osc52-yank.sh; }"
 bind generic V     !nvim +%(line) %(file)
+
+# --- File Path Copying (Status & Tree Views) ---
+bind status  y     !@sh -c "echo -n %(file) | { osc52-yank.sh 2>/dev/null || ~/test/utils/bin/osc52-yank.sh; }"
+bind tree    y     !@sh -c "echo -n %(file) | { osc52-yank.sh 2>/dev/null || ~/test/utils/bin/osc52-yank.sh; }"
 
 # --- Main View Actions ---
 bind main    C     ?git checkout %(commit)
