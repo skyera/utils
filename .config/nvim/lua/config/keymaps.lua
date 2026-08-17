@@ -16,7 +16,7 @@ vim.keymap.set("n", "<F2>", "<Esc>:1,$!xmllint --format -<CR>")
 vim.keymap.set("n", "<F12>", "<Esc>:syntax sync fromstart<CR>")
 vim.keymap.set("n", "<space>", "za")
 vim.keymap.set("v", "<space>", "zf")
-vim.keymap.set("n", "cp", ':let @* = expand("%:p") <cr>')
+vim.keymap.set("n", "<leader>cp", ':let @* = expand("%:p")<cr>', { desc = "Copy Full File Path" })
 
 -- Tmux Navigator
 vim.keymap.set("n", "<M-h>", ":TmuxNavigateLeft<cr>", { silent = true })

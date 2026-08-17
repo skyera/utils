@@ -181,7 +181,7 @@ nmap <F11> :silent !start explorer /select,%:p<CR>
 noremap <F12> <Esc>:syntax sync fromstart<CR>
 nnoremap <space> za
 vnoremap <space> zf
-nmap cp :let @* = expand("%:p") <cr>
+nmap <leader>cp :let @* = expand("%:p")<cr>
 
 " --- Mouse Helpers ---
 map <MiddleMouse> <Nop>
