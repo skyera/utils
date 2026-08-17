@@ -1,5 +1,7 @@
 # --- Visuals & Layout ---
 set vertical-split = auto
+set split-view-height = 70%
+set split-view-width = 60%
 set main-view-line-number = yes
 set diff-view-line-number = yes
 set tab-size = 4
@@ -23,7 +25,12 @@ set diff-options = -C5 --diff-merges=m
 
 # --- Keybindings ---
 # General Navigation
-# (C-f, C-b, C-d, C-u, C-e, C-y are Tig defaults, so we only add arrow-key variants)
+bind generic <C-d>    move-half-page-down
+bind generic <C-u>    move-half-page-up
+bind generic <C-f>    move-page-down
+bind generic <C-b>    move-page-up
+bind generic <C-e>    scroll-line-down
+bind generic <C-y>    scroll-line-up
 bind generic <C-Down> scroll-line-down
 bind generic <C-Up>   scroll-line-up
 
