@@ -7,6 +7,8 @@ set mouse-scroll = 3
 set main-view-line-number = yes
 set diff-view-line-number = yes
 set tab-size = 4
+set line-graphics = utf-8
+set show-changes = yes
 
 # Fixed main-view: graph is an option of commit-title, not a separate column
 set main-view = date:default author:email-user,maxwidth=15 id:yes,color commit-title:graph=yes,refs=yes
@@ -20,7 +22,7 @@ color "+ "             green  default
 color "- "             red    default
 
 # --- Behavior ---
-set ignore-case = yes
+set ignore-case = smart-case
 set wrap-search = yes
 set refresh-mode = auto
 set diff-options = -C5 --diff-merges=m
