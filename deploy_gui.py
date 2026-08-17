@@ -65,7 +65,7 @@ class DotfilesDeployGUI:
                 "items": [
                     {"src": ".gitconfig", "dest": {"Unix": "~/.gitconfig", "Windows": "%USERPROFILE%/.gitconfig"}},
                     {"src": ".tmux.conf", "dest": {"Unix": "~/.tmux.conf"}},
-                    {"src": ".tigrc", "dest": {"Unix": "~/.tigrc"}},
+                    {"src": ".tigrc", "dest": {"Unix": "~/.tigrc", "Windows": "%USERPROFILE%/.tigrc"}},
                     {"src": ".ripgreprc", "dest": {"Unix": "~/.ripgreprc", "Windows": "%USERPROFILE%/.ripgreprc"}},
                     {"src": ".gdbinit", "dest": {"Unix": "~/.gdbinit", "Windows": "%USERPROFILE%/.gdbinit"}},
                     {"src": ".wezterm.lua", "dest": {"Unix": "~/.wezterm.lua", "Windows": "%USERPROFILE%/.wezterm.lua"}},
