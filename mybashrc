@@ -1484,14 +1484,24 @@ alias gbgD='git_clean_gone -f'
 # Force checkout selected branch via interactive fzf
 gcbf() {
     local branch
-    branch=$(git branch --all --color=always --sort=-committerdate 2>/dev/null |
-        grep -v 'HEAD' |
-        fzf --height 40% --reverse --ansi --preview 'git log -15 --color=always --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset" $(echo {} | sed -E "s/\x1B\[[0-9;]*[a-zA-Z]//g; s/^\*?[[:space:]]+//; s#^remotes/[^/]+/##")') || return 0
-    branch=$(echo "$branch" | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g; s/^\*?[[:space:]]+//; s#^remotes/[^/]+/##')
+    branch=$(git branch --all --sort=-committerdate --format="%(refname:short)" 2>/dev/null |
+        grep -v '/HEAD$' |
+        fzf --height 40% --reverse --preview 'git log -15 --color=always --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset" {1}') || return 0
+    branch=$(echo "$branch" | sed -E 's#^(origin/|remotes/origin/|remotes/[^/]+/)##')
     [ -n "$branch" ] && git checkout -f -- "$branch" "$@"
 }
 gswf() { gcbf "$@"; }
 alias gswf='gcbf'
+
+gdbf() {
+    local branches
+    branches=$(git branch --sort=-committerdate --format="%(if)%(HEAD)%(then)%(else)%(refname:short)%(end)" 2>/dev/null |
+        grep -v '^$' |
+        fzf --multi --height 40% --reverse --header="[Git Delete Branch] TAB to multi-select, ENTER to delete (-D)" --preview 'git log -15 --color=always --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset" {1}') || return 0
+    if [[ -n "$branches" ]]; then
+        echo "$branches" | xargs git branch -D "$@"
+    fi
+}
 
 alias fzlog='git-fuzzy log'
 alias fzstash='git-fuzzy stash'
