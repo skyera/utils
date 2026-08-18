@@ -1481,18 +1481,14 @@ alias git-clean-branches-force='git_clean_gone -f'
 alias gbgd='git_clean_gone'
 alias gbgD='git_clean_gone -f'
 
-# Force checkout selected branch via interactive fzf / forgit
+# Force checkout selected branch via interactive fzf
 gcbf() {
-    if type forgit::checkout::branch >/dev/null 2>&1; then
-        FORGIT_CHECKOUT_BRANCH_GIT_OPTS="-f" forgit::checkout::branch "$@"
-    else
-        local branch
-        branch=$(git branch --all --color=always --sort=-committerdate 2>/dev/null |
-            grep -v '/HEAD\s' |
-            fzf --height 40% --reverse --ansi --preview 'git log -15 --color=always --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset" $(echo {} | sed "s/.* //" | sed "s#remotes/[^/]*/##")') || return 0
-        branch=$(echo "$branch" | sed "s/.* //" | sed "s#remotes/[^/]*/##")
-        [ -n "$branch" ] && git checkout -f "$branch" "$@"
-    fi
+    local branch
+    branch=$(git branch --all --color=always --sort=-committerdate 2>/dev/null |
+        grep -v '/HEAD\s' |
+        fzf --height 40% --reverse --ansi --preview 'git log -15 --color=always --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset" $(echo {} | sed "s/.* //" | sed "s#remotes/[^/]*/##")') || return 0
+    branch=$(echo "$branch" | sed "s/.* //" | sed "s#remotes/[^/]*/##")
+    [ -n "$branch" ] && git checkout -f "$branch" "$@"
 }
 gswf() { gcbf "$@"; }
 alias gswf='gcbf'
