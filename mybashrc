@@ -1485,10 +1485,10 @@ alias gbgD='git_clean_gone -f'
 gcbf() {
     local branch
     branch=$(git branch --all --color=always --sort=-committerdate 2>/dev/null |
-        grep -v '/HEAD\s' |
-        fzf --height 40% --reverse --ansi --preview 'git log -15 --color=always --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset" $(echo {} | sed "s/.* //" | sed "s#remotes/[^/]*/##")') || return 0
-    branch=$(echo "$branch" | sed "s/.* //" | sed "s#remotes/[^/]*/##")
-    [ -n "$branch" ] && git checkout -f "$branch" "$@"
+        grep -v 'HEAD' |
+        fzf --height 40% --reverse --ansi --preview 'git log -15 --color=always --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset" $(echo {} | sed -E "s/\x1B\[[0-9;]*[a-zA-Z]//g; s/^\*?[[:space:]]+//; s#^remotes/[^/]+/##")') || return 0
+    branch=$(echo "$branch" | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g; s/^\*?[[:space:]]+//; s#^remotes/[^/]+/##')
+    [ -n "$branch" ] && git checkout -f -- "$branch" "$@"
 }
 gswf() { gcbf "$@"; }
 alias gswf='gcbf'
