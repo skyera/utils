@@ -17,7 +17,7 @@ where fzf >nul 2>nul || (echo Error: fzf is not installed or not in PATH.& goto 
 set "TMP_OUT=%TEMP%\gcbf_branch_%RANDOM%.txt"
 
 :: 5. Run interactive fzf with branch preview
-git branch --all --sort=-committerdate --format="%%(refname:short)" | findstr /v /i "/HEAD" | fzf --height 40%% --reverse --ansi --preview "git log -15 --color=always --graph --pretty=format:\"%%Cred%%h%%Creset -%%C(yellow)%%d%%Creset %%s %%Cgreen(%%cr)%%Creset\" {1}" > "%TMP_OUT%"
+git branch --all --sort=-committerdate --format="%%(refname:short)" | findstr /v /i /c:"/HEAD" | fzf --height 40%% --reverse --ansi --preview "git log -15 --color=always --graph --pretty=format:\"%%Cred%%h%%Creset -%%C(yellow)%%d%%Creset %%s %%Cgreen(%%cr)%%Creset\" {1}" > "%TMP_OUT%"
 
 if not exist "%TMP_OUT%" goto :end
 for %%A in ("%TMP_OUT%") do if %%~zA equ 0 (
