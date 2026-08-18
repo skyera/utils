@@ -16,6 +16,9 @@
 [init]
 	defaultBranch = main
 
+[fetch]
+	recurseSubmodules = false
+
 [alias]
 	st = status
 	co = checkout
