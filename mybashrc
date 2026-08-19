@@ -1481,25 +1481,6 @@ alias git-clean-branches-force='git_clean_gone -f'
 alias gbgd='git_clean_gone'
 alias gbgD='git_clean_gone -f'
 
-# Force checkout selected branch via interactive fzf
-gcbf() {
-    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "Not a git repository" >&2; return 1; }
-    if [ $# -gt 0 ]; then
-        git checkout -f "$@"
-        return $?
-    fi
-    local branch
-    branch=$(git branch --all --sort=-committerdate --format="%(refname:short)" |
-        grep -v '/HEAD$' |
-        fzf --height 40% --reverse --preview 'git log -15 --color=always --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset" {1}')
-    [[ -z "$branch" ]] && return 0
-    branch="${branch#origin/}"
-    branch="${branch#remotes/origin/}"
-    branch="${branch#remotes/*/}"
-    git checkout -f "$branch"
-}
-gswf() { gcbf "$@"; }
-alias gswf='gcbf'
 
 gdbf() {
     local branches
