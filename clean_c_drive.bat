@@ -54,7 +54,7 @@ echo ========================================================
 echo 2. Cleaning System Temp Directory...
 echo ========================================================
 del /f /s /q "%SystemRoot%\Temp\*.*" >nul 2>&1
-for /d %%x in ("%SystemRoot%\Temp\*") do rd /s /q "%%x" >nul 2>&1
+for /d %%x in ("%SystemRoot%\Temp\*") do rd /s /q "%x" >nul 2>&1
 echo [DONE] System temp cleaned.
 
 echo ========================================================
@@ -96,7 +96,7 @@ goto :eof
 
 :: Function to scan and display folder size
 :ScanFolder
-if exist "%~2\." (
+if exist "%~2" (
     for /f "tokens=*" %%i in ('powershell -Command "$s=(Get-ChildItem '%~2' -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum; if($s){$s}else{0}"') do (
         set "BYTES=%%i"
         set /a TOTAL_BYTES+=%%i 2>nul
@@ -104,7 +104,7 @@ if exist "%~2\." (
         echo [FOLDER] %~1: %~2 (!SIZE_MB! MB)
     )
 ) else (
-    echo [FOLDER] %~1: %~2 (Folder Not Found)
+    echo [FOLDER] %~1: %~2 (Not Found / 0 MB)
 )
 goto :eof
 
