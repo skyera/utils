@@ -26,7 +26,7 @@ where fzf >nul 2>nul || (echo Error: fzf is not installed or not in PATH.& goto 
 set "TMP_OUT=%TEMP%\fkill_%RANDOM%.txt"
 
 :: 5. Interactive process selector with detailed process preview
-tasklist /fo table | fzf -m --header-lines=3 --header="[Tab]: Multi-select | [Enter]: Terminate | [Esc]: Cancel" --preview="tasklist /fi \"PID eq {2}\" /fo list 2>nul" --preview-window=right:50%%:wrap > "%TMP_OUT%"
+tasklist /fo table | fzf -m --header-lines=3 --header="[Tab]: Multi-select - [Enter]: Terminate - [Esc]: Cancel" --preview="tasklist /fi \"PID eq {2}\" /fo list 2>nul" --preview-window=right:50%%:wrap > "%TMP_OUT%"
 
 if not exist "%TMP_OUT%" goto :end
 for %%A in ("%TMP_OUT%") do if %%~zA equ 0 (
