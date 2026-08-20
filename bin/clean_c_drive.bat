@@ -33,8 +33,8 @@ call :ScanFolder "Windows WER Logs" "%LOCALAPPDATA%\Microsoft\Windows\WER"
 call :ScanRecycleBin
 
 echo --------------------------------------------------------
-for /f "tokens=*" %%a in ('powershell -Command "[math]::Round(!TOTAL_BYTES! / 1MB, 2)"') do set "SAVED_MB=%%a"
-for /f "tokens=*" %%a in ('powershell -Command "[math]::Round(!TOTAL_BYTES! / 1GB, 2)"') do set "SAVED_GB=%%a"
+for /f "tokens=*" %%a in ('powershell -NoProfile -Command "[math]::Round(!TOTAL_BYTES! / 1MB, 2)"') do set "SAVED_MB=%%a"
+for /f "tokens=*" %%a in ('powershell -NoProfile -Command "[math]::Round(!TOTAL_BYTES! / 1GB, 2)"') do set "SAVED_GB=%%a"
 
 echo Total potential space to free: !SAVED_MB! MB (!SAVED_GB! GB)
 echo ========================================================
@@ -78,7 +78,7 @@ echo [DONE] WER logs cleaned.
 echo ========================================================
 echo 5. Emptying Recycle Bin...
 echo ========================================================
-powershell -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue" >nul 2>&1
+powershell -NoProfile -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue" >nul 2>&1
 echo [DONE] Recycle Bin emptied.
 
 echo ========================================================
@@ -96,23 +96,20 @@ goto :eof
 
 :: Function to scan and display folder size
 :ScanFolder
-if exist "%~2\." (
-    for /f "tokens=*" %%i in ('powershell -Command "$s=(Get-ChildItem '%~2' -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum; if($s){$s}else{0}"') do (
-        set "BYTES=%%i"
-        set /a TOTAL_BYTES+=%%i 2>nul
-        for /f "tokens=*" %%m in ('powershell -Command "[math]::Round(%%i / 1MB, 2)"') do set "SIZE_MB=%%m"
-        echo [FOLDER] %~1: %~2 (!SIZE_MB! MB)
+for /f "tokens=1,2 delims=|" %%a in ('powershell -NoProfile -Command "$p='%~2'; if (Test-Path -Path $p) { $b=(Get-ChildItem -Path $p -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum; if(-not $b){$b=0}; $m=[math]::Round($b/1MB, 2); Write-Output \"$b|$m\" } else { Write-Output \"NOT_FOUND|0\" }"') do (
+    if "%%a"=="NOT_FOUND" (
+        echo [FOLDER] %~1: %~2 (Folder Not Found)
+    ) else (
+        set /a TOTAL_BYTES+=%%a 2>nul
+        echo [FOLDER] %~1: %~2 (%%b MB)
     )
-) else (
-    echo [FOLDER] %~1: %~2 (Folder Not Found)
 )
 goto :eof
 
 :: Function to scan Recycle Bin size
 :ScanRecycleBin
-for /f "tokens=*" %%i in ('powershell -Command "$s=(Get-ChildItem 'C:\$Recycle.Bin' -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum; if($s){$s}else{0}"') do (
-    set /a TOTAL_BYTES+=%%i 2>nul
-    for /f "tokens=*" %%m in ('powershell -Command "[math]::Round(%%i / 1MB, 2)"') do set "SIZE_MB=%%m"
-    echo [FOLDER] Recycle Bin: C:\$Recycle.Bin (!SIZE_MB! MB)
+for /f "tokens=1,2 delims=|" %%a in ('powershell -NoProfile -Command "if (Test-Path -Path 'C:\$Recycle.Bin') { $b=(Get-ChildItem 'C:\$Recycle.Bin' -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum; if(-not $b){$b=0}; $m=[math]::Round($b/1MB, 2); Write-Output \"$b|$m\" } else { Write-Output \"0|0\" }"') do (
+    set /a TOTAL_BYTES+=%%a 2>nul
+    echo [FOLDER] Recycle Bin: C:\$Recycle.Bin (%%b MB)
 )
 goto :eof
