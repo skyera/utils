@@ -7,7 +7,7 @@ where taskkill >nul 2>nul || (echo Error: taskkill is not available.& goto :end)
 
 :: 2. Direct mode: if argument passed, kill directly by PID or Image Name
 if not "%~1"=="" (
-    :: Check if first argument is numeric (PID)
+    REM Check if first argument is numeric (PID)
     echo %~1| findstr /r "^[0-9][0-9]*$" >nul
     if !errorlevel! equ 0 (
         taskkill /F /PID %*
