@@ -62,6 +62,10 @@ def get_sessions_winreg() -> List[Dict[str, Any]]:
                     "port": get_val(sub_key, "PortNumber", "22"),
                     "user": get_val(sub_key, "UserName", ""),
                     "protocol": get_val(sub_key, "Protocol", "ssh"),
+                    "key_file": get_val(sub_key, "PublicKeyFile", ""),
+                    "cert_file": get_val(sub_key, "CertificateFile", ""),
+                    "agent_fwd": get_val(sub_key, "AgentFwd", "0"),
+                    "auth_gssapi": get_val(sub_key, "AuthGSSAPI", "0"),
                 })
                 winreg.CloseKey(sub_key)
                 idx += 1
@@ -98,6 +102,10 @@ def get_sessions_reg_exe() -> List[Dict[str, Any]]:
                     "port": "22",
                     "user": "",
                     "protocol": "ssh",
+                    "key_file": "",
+                    "cert_file": "",
+                    "agent_fwd": "0",
+                    "auth_gssapi": "0",
                 }
                 detail_res = subprocess.run(
                     [reg_cmd, "query", line],
@@ -116,6 +124,14 @@ def get_sessions_reg_exe() -> List[Dict[str, Any]]:
                             info["user"] = val
                         elif v_lower == "protocol":
                             info["protocol"] = val
+                        elif v_lower == "publickeyfile":
+                            info["key_file"] = val
+                        elif v_lower == "certificatefile":
+                            info["cert_file"] = val
+                        elif v_lower == "agentfwd":
+                            info["agent_fwd"] = str(int(val, 16) if val.startswith("0x") else val)
+                        elif v_lower == "authgssapi":
+                            info["auth_gssapi"] = str(int(val, 16) if val.startswith("0x") else val)
                 sessions.append(info)
     except Exception:
         pass
@@ -137,6 +153,10 @@ def get_sessions_linux() -> List[Dict[str, Any]]:
                     "port": "22",
                     "user": "",
                     "protocol": "ssh",
+                    "key_file": "",
+                    "cert_file": "",
+                    "agent_fwd": "0",
+                    "auth_gssapi": "0",
                 }
                 try:
                     with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -149,6 +169,14 @@ def get_sessions_linux() -> List[Dict[str, Any]]:
                                 info["user"] = line.split("=", 1)[1].strip()
                             elif line.startswith("Protocol="):
                                 info["protocol"] = line.split("=", 1)[1].strip()
+                            elif line.startswith("PublicKeyFile="):
+                                info["key_file"] = line.split("=", 1)[1].strip()
+                            elif line.startswith("CertificateFile="):
+                                info["cert_file"] = line.split("=", 1)[1].strip()
+                            elif line.startswith("AgentFwd="):
+                                info["agent_fwd"] = line.split("=", 1)[1].strip()
+                            elif line.startswith("AuthGSSAPI="):
+                                info["auth_gssapi"] = line.split("=", 1)[1].strip()
                 except Exception:
                     pass
                 sessions.append(info)
@@ -169,12 +197,14 @@ def fetch_all_sessions() -> List[Dict[str, Any]]:
 def format_table(sessions: List[Dict[str, Any]]) -> str:
     """Format session records into an aligned, human-readable text table."""
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    header_fmt = "{:<26} {:<26} {:<6} {:<14} {:<8} {:<10} {:<32}"
+    divider = "-" * 128
     lines = [
         f"# Saved PuTTY Sessions (Exported: {now_str})",
         f"# Total: {len(sessions)} session(s)",
         "",
-        f"{'SESSION NAME':<32} {'HOST / IP':<32} {'PORT':<8} {'USER':<16} {'PROTOCOL':<10}",
-        "-" * 102,
+        header_fmt.format("SESSION NAME", "HOST / IP", "PORT", "USER", "PROTOCOL", "AGENT_FWD", "KEY / AUTH FILE"),
+        divider,
     ]
     for s in sessions:
         name = s.get("name", "")
@@ -182,8 +212,20 @@ def format_table(sessions: List[Dict[str, Any]]) -> str:
         port = str(s.get("port", "22"))
         user = s.get("user", "") or "-"
         proto = (s.get("protocol", "ssh") or "ssh").upper()
-        lines.append(f"{name:<32} {host:<32} {port:<8} {user:<16} {proto:<10}")
-    lines.append("-" * 102)
+        agent_fwd = "Yes" if str(s.get("agent_fwd", "0")) in ("1", "true") else "No"
+        
+        # Display key/cert summary
+        key_file = s.get("key_file", "") or ""
+        cert_file = s.get("cert_file", "") or ""
+        auth_parts = []
+        if key_file:
+            auth_parts.append(os.path.basename(key_file) if len(key_file) > 30 else key_file)
+        if cert_file:
+            auth_parts.append(f"cert:{os.path.basename(cert_file)}")
+        auth_display = "; ".join(auth_parts) if auth_parts else "-"
+
+        lines.append(header_fmt.format(name[:25], host[:25], port[:5], user[:13], proto[:7], agent_fwd, auth_display))
+    lines.append(divider)
     return "\n".join(lines) + "\n"
 
 
@@ -201,6 +243,11 @@ def format_ssh_config(sessions: List[Dict[str, Any]]) -> str:
         host = s.get("host", "").strip()
         port = str(s.get("port", "22")).strip()
         user = s.get("user", "").strip()
+        key_file = s.get("key_file", "").strip()
+        cert_file = s.get("cert_file", "").strip()
+        agent_fwd = str(s.get("agent_fwd", "0")).strip()
+        auth_gssapi = str(s.get("auth_gssapi", "0")).strip()
+
         if not host:
             continue
         # Replace spaces in SSH config Host alias
@@ -211,6 +258,14 @@ def format_ssh_config(sessions: List[Dict[str, Any]]) -> str:
             block.append(f"    Port {port}")
         if user:
             block.append(f"    User {user}")
+        if key_file:
+            block.append(f"    IdentityFile {key_file}")
+        if cert_file:
+            block.append(f"    CertificateFile {cert_file}")
+        if agent_fwd in ("1", "true"):
+            block.append("    ForwardAgent yes")
+        if auth_gssapi in ("1", "true"):
+            block.append("    GSSAPIAuthentication yes")
         blocks.append("\n".join(block))
     return "\n\n".join(blocks) + "\n"
 
@@ -219,10 +274,12 @@ def format_csv(sessions: List[Dict[str, Any]]) -> str:
     """Format sessions as CSV text."""
     import io
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["name", "host", "port", "user", "protocol"])
+    fieldnames = ["name", "host", "port", "user", "protocol", "key_file", "cert_file", "agent_fwd", "auth_gssapi"]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
     for s in sessions:
-        writer.writerow(s)
+        row = {k: s.get(k, "") for k in fieldnames}
+        writer.writerow(row)
     return output.getvalue()
 
 
@@ -239,7 +296,7 @@ def main():
         "filter",
         nargs="?",
         default="",
-        help="Optional search/filter string for session names or hosts",
+        help="Optional search/filter string for session names, hosts, users, or auth key files",
     )
     parser.add_argument(
         "-o", "--output",
@@ -290,6 +347,8 @@ def main():
             if pat in s.get("name", "").lower()
             or pat in s.get("host", "").lower()
             or pat in s.get("user", "").lower()
+            or pat in s.get("key_file", "").lower()
+            or pat in s.get("cert_file", "").lower()
         ]
 
     # Render formatted content
