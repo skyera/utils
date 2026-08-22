@@ -62,7 +62,22 @@ def parse_ssh_config(filepath: str) -> List[Dict[str, Any]]:
     if not os.path.isfile(filepath):
         return hosts
 
-    current_host: Optional[Dict[str, Any]] = None
+    current_aliases: List[str] = []
+    current_params: Dict[str, Any] = {}
+
+    def flush_block():
+        nonlocal current_aliases, current_params
+        if not current_aliases:
+            return
+        explicit_hostname = current_params.get("hostname", "")
+        for alias in current_aliases:
+            entry = dict(current_params)
+            entry["name"] = alias
+            entry["hostname"] = explicit_hostname if explicit_hostname else alias
+            entry["raw_config"] = list(current_params.get("raw_config", []))
+            hosts.append(entry)
+        current_aliases = []
+        current_params = {}
 
     try:
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
@@ -71,46 +86,46 @@ def parse_ssh_config(filepath: str) -> List[Dict[str, Any]]:
                 if not line_str or line_str.startswith("#"):
                     continue
 
-                parts = line_str.split(None, 1)
-                if not parts:
+                m = re.match(r"^([A-Za-z0-9_]+)\s*=?\s*(.*)$", line_str)
+                if not m:
                     continue
 
-                key = parts[0].lower()
-                val = parts[1] if len(parts) > 1 else ""
+                key = m.group(1).lower()
+                val = m.group(2).strip().strip("\"'")
 
                 if key == "host":
+                    flush_block()
                     # Can have multiple host aliases on one line
                     host_aliases = [h for h in val.split() if not any(c in h for c in "*?")]
-                    for alias in host_aliases:
-                        if alias:
-                            if current_host:
-                                hosts.append(current_host)
-                            current_host = {
-                                "name": alias,
-                                "hostname": alias,
-                                "user": "",
-                                "port": "22",
-                                "key": "",
-                                "proxy": "",
-                                "source": "ssh-config",
-                                "source_file": filepath,
-                                "raw_config": []
-                            }
-                elif current_host:
-                    current_host["raw_config"].append(line_str)
+                    if host_aliases:
+                        current_aliases = host_aliases
+                        current_params = {
+                            "name": host_aliases[0],
+                            "hostname": "",
+                            "user": "",
+                            "port": "22",
+                            "key": "",
+                            "proxy": "",
+                            "source": "ssh-config",
+                            "source_file": filepath,
+                            "raw_config": []
+                        }
+                elif key == "match":
+                    flush_block()
+                elif current_aliases:
+                    current_params["raw_config"].append(line_str)
                     if key == "hostname":
-                        current_host["hostname"] = val
+                        current_params["hostname"] = val
                     elif key == "user":
-                        current_host["user"] = val
+                        current_params["user"] = val
                     elif key == "port":
-                        current_host["port"] = val
+                        current_params["port"] = val
                     elif key in ("identityfile", "identity_file"):
-                        current_host["key"] = val
+                        current_params["key"] = val
                     elif key in ("proxyjump", "proxycommand"):
-                        current_host["proxy"] = val
+                        current_params["proxy"] = val
 
-            if current_host:
-                hosts.append(current_host)
+            flush_block()
     except Exception:
         pass
 
