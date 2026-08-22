@@ -44,7 +44,8 @@ regex = '(https?://|git@|git://|ssh://|ftp://)[^\u0000-\u001F\u007F-\u009F<>"\\s
 hyperlinks = true
 command = "xdg-open"
 post_processing = true
-mouse = { mods = "Control", mouse = "Left" }
+mouse = { enabled = true, mods = "Control" }
+binding = { key = "U", mods = "Control|Shift" }
 
 [colors.primary]
 background = "0x2E3440"
