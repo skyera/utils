@@ -2,7 +2,8 @@
 live_config_reload = true
 ipc_socket = true
 import = [
-  "theme.toml"
+  "theme.toml",
+  "shell.toml"
 ]
 
 [terminal]

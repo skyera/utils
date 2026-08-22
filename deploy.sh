@@ -127,6 +127,7 @@ deploy_file "$REPO_DIR/.config/starship.toml"        "$HOME/.config/starship.tom
 # Alacritty configuration
 deploy_file "$REPO_DIR/.config/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
 deploy_file "$REPO_DIR/.config/alacritty/theme.toml"     "$HOME/.config/alacritty/theme.toml"
+deploy_file "$REPO_DIR/.config/alacritty/shell.toml"     "$HOME/.config/alacritty/shell.toml"
 if [ -d "$REPO_DIR/.config/alacritty/themes" ]; then
     mkdir -p "$HOME/.config/alacritty/themes"
     cp -r "$REPO_DIR/.config/alacritty/themes/"* "$HOME/.config/alacritty/themes/" 2>/dev/null || true
