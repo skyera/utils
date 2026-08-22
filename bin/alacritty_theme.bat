@@ -1,6 +1,15 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: Capture script and repository directory early before shift affects %0
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%..") do set "REPO_DIR=%%~fI"
+set "ALACRITTY_DIR=%APPDATA%\alacritty"
+set "THEMES_DIR=%ALACRITTY_DIR%\themes"
+set "TARGET_FILE=%ALACRITTY_DIR%\theme.toml"
+set "REPO_THEMES=!REPO_DIR!\.config\alacritty\themes"
+set "REPO_TARGET=!REPO_DIR!\.config\alacritty\theme.toml"
+
 :: Parse command-line flags (-w / --window / -l / --local / -h / --help)
 set "WINDOW_ONLY=0"
 set "QUERY="
@@ -19,14 +28,8 @@ shift
 goto :parse_args
 :args_done
 
-:: Determine Alacritty configuration directory
-set "ALACRITTY_DIR=%APPDATA%\alacritty"
-set "THEMES_DIR=%ALACRITTY_DIR%\themes"
-set "TARGET_FILE=%ALACRITTY_DIR%\theme.toml"
-
 :: Fallback to repository directory if APPDATA themes not yet deployed
 if not exist "%THEMES_DIR%" (
-    set "REPO_THEMES=%~dp0..\.config\alacritty\themes"
     if exist "!REPO_THEMES!" (
         set "THEMES_DIR=!REPO_THEMES!"
         if not exist "%ALACRITTY_DIR%" mkdir "%ALACRITTY_DIR%" 2>nul
@@ -35,7 +38,7 @@ if not exist "%THEMES_DIR%" (
 
 if not exist "%THEMES_DIR%" (
     echo [ERROR] Alacritty themes directory not found.
-    echo Expected at: "%ALACRITTY_DIR%\themes" or "%~dp0..\.config\alacritty\themes"
+    echo Expected at: "%ALACRITTY_DIR%\themes" or "!REPO_THEMES!"
     exit /b 1
 )
 
@@ -130,9 +133,8 @@ if !errorlevel! equ 0 (
 )
 
 :: Also update repository theme.toml if inside repo
-set "REPO_TARGET=%~dp0..\.config\alacritty\theme.toml"
-if exist "%~dp0..\.config\alacritty" (
-    copy /Y "%SRC_FILE%" "%REPO_TARGET%" >nul 2>&1
+if exist "!REPO_DIR!\.config\alacritty\." (
+    copy /Y "%SRC_FILE%" "!REPO_TARGET!" >nul 2>&1
 )
 
 endlocal

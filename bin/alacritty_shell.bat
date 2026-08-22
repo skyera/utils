@@ -1,6 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: Capture script and repository directory early before shift affects %0
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%..") do set "REPO_DIR=%%~fI"
+set "ALACRITTY_DIR=%APPDATA%\alacritty"
+set "TARGET_FILE=%ALACRITTY_DIR%\shell.toml"
+set "REPO_TARGET=!REPO_DIR!\.config\alacritty\shell.toml"
+
 :: Parse command-line flags (-w / --window / -n / --new / -c / --current / -h / --help)
 set "NEW_WINDOW=0"
 set "SHOW_CURRENT=0"
@@ -21,11 +28,6 @@ if not defined QUERY set "QUERY=%~1"
 shift
 goto :parse_args
 :args_done
-
-:: Determine Alacritty configuration directory
-set "ALACRITTY_DIR=%APPDATA%\alacritty"
-set "TARGET_FILE=%ALACRITTY_DIR%\shell.toml"
-set "REPO_TARGET=%~dp0..\.config\alacritty\shell.toml"
 
 if "%SHOW_CURRENT%"=="1" (
     if exist "%TARGET_FILE%" (
@@ -188,8 +190,8 @@ set "TMP_CONFIG=%TEMP%\alacritty_shell_gen_%RANDOM%.toml"
 
 if not exist "%ALACRITTY_DIR%" mkdir "%ALACRITTY_DIR%" 2>nul
 copy /Y "!TMP_CONFIG!" "%TARGET_FILE%" >nul 2>&1
-if exist "%~dp0..\.config\alacritty" (
-    copy /Y "!TMP_CONFIG!" "%REPO_TARGET%" >nul 2>&1
+if exist "!REPO_DIR!\.config\alacritty\." (
+    copy /Y "!TMP_CONFIG!" "!REPO_TARGET!" >nul 2>&1
 )
 if exist "!TMP_CONFIG!" del "!TMP_CONFIG!" 2>nul
 
