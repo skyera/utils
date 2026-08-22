@@ -58,6 +58,7 @@ if exist "%LocalAppData%\Programs\Git" set "GIT_BASH_FOUND=1"
 
 if "%GIT_BASH_FOUND%"=="1" (
     call :deploy_file "%REPO_DIR%\.minttyrc" "%USERPROFILE%\.minttyrc"
+    call :deploy_file "%REPO_DIR%\mybashrc" "%USERPROFILE%\.mybashrc"
 )
 
 :: Ranger configuration

@@ -903,7 +903,7 @@ _fzf_comprun() {
     case "$command" in
         cd)           fzf --preview 'eza --tree --level=2 --icons=always --color=always {} 2>/dev/null || ls -la {} | head -200' "$@" ;;
         export|unset) fzf --preview 'eval "echo \${}"' "$@" ;;
-        ssh)          fzf --preview 'dig {} 2>/dev/null || host {} 2>/dev/null' "$@" ;;
+        ssh)          fzf --preview 'fssh.py --preview-only {} 2>/dev/null || dig {} 2>/dev/null || host {} 2>/dev/null' "$@" ;;
         *)            fzf --preview 'if [ -d {} ]; then eza --tree --level=2 --icons=always --color=always {} 2>/dev/null || ls -la {} | head -200; else bat -n --color=always --line-range :500 {} 2>/dev/null || head -500 {}; fi' "$@" ;;
     esac
 }
@@ -1438,10 +1438,11 @@ _apply_overrides() {
         command -v tree >/dev/null 2>&1 && alias lt='tree -C'
     fi
     alias gsu='git submodule update --init --recursive -f'
+    command -v shell.sh >/dev/null 2>&1 && alias shell='shell.sh'
+    command -v theme.sh >/dev/null 2>&1 && alias theme='theme.sh'
+    command -v fssh.sh >/dev/null 2>&1 && alias fssh='fssh.sh'
 }
 _apply_overrides
-
-
 
 alias st='switch_theme'
 git_clean_gone() {
