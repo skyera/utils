@@ -8,9 +8,10 @@ set "ALACRITTY_DIR=%APPDATA%\alacritty"
 set "TARGET_FILE=%ALACRITTY_DIR%\shell.toml"
 set "REPO_TARGET=!REPO_DIR!\.config\alacritty\shell.toml"
 
-:: Parse command-line flags (-w / --window / -n / --new / -c / --current / -h / --help)
+:: Parse command-line flags (-w / --window / -n / --new / -e / --exec / -i / -r / -c / --current / -h / --help)
 set "NEW_WINDOW=0"
 set "SHOW_CURRENT=0"
+set "EXEC_SHELL=0"
 set "QUERY="
 
 :parse_args
@@ -19,6 +20,11 @@ if /i "%~1"=="-w" (set "NEW_WINDOW=1" & shift & goto :parse_args)
 if /i "%~1"=="--window" (set "NEW_WINDOW=1" & shift & goto :parse_args)
 if /i "%~1"=="-n" (set "NEW_WINDOW=1" & shift & goto :parse_args)
 if /i "%~1"=="--new" (set "NEW_WINDOW=1" & shift & goto :parse_args)
+if /i "%~1"=="-e" (set "EXEC_SHELL=1" & shift & goto :parse_args)
+if /i "%~1"=="--exec" (set "EXEC_SHELL=1" & shift & goto :parse_args)
+if /i "%~1"=="-i" (set "EXEC_SHELL=1" & shift & goto :parse_args)
+if /i "%~1"=="-r" (set "EXEC_SHELL=1" & shift & goto :parse_args)
+if /i "%~1"=="--run" (set "EXEC_SHELL=1" & shift & goto :parse_args)
 if /i "%~1"=="-c" (set "SHOW_CURRENT=1" & shift & goto :parse_args)
 if /i "%~1"=="--current" (set "SHOW_CURRENT=1" & shift & goto :parse_args)
 if /i "%~1"=="-h" goto :show_help
@@ -129,7 +135,7 @@ if defined QUERY (
                 echo !SHELL_KEY_%%i!	!SHELL_LABEL_%%i!	!SHELL_PROG_%%i!
             )
         ) > "!TMP_SHELLS!"
-        type "!TMP_SHELLS!" | fzf --prompt="Select Alacritty Shell > " --with-nth=1,2 --delimiter="\t" --layout=reverse --height=40%% --border --header="TAB: key / description" > "!TMP_OUT!"
+        type "!TMP_SHELLS!" | fzf --prompt="Select Alacritty Shell > " --with-nth=1,2 --delimiter="\t" --layout=reverse --height=40%% --border --header="TAB: key / description" --no-preview > "!TMP_OUT!"
         if exist "!TMP_SHELLS!" del "!TMP_SHELLS!" 2>nul
         if exist "!TMP_OUT!" (
             for /f "usebackq tokens=1 delims=	" %%I in ("!TMP_OUT!") do (
@@ -210,6 +216,15 @@ if "%NEW_WINDOW%"=="1" (
     )
 )
 
+:: If -e / --exec / -i / -r flag specified, launch shell in current console
+if "%EXEC_SHELL%"=="1" (
+    if not "!TARGET_ARGS!"=="" (
+        "!TARGET_PROG!" !TARGET_ARGS!
+    ) else (
+        "!TARGET_PROG!"
+    )
+)
+
 endlocal
 exit /b 0
 
@@ -227,6 +242,7 @@ echo.
 echo Switch Alacritty's default shell dynamically or launch a new window.
 echo.
 echo Options:
+echo   -e, --exec, -i, -r         Launch/enter the selected shell in current console
 echo   -w, --window, -n, --new    Open a new Alacritty window with the selected shell
 echo   -c, --current              Display currently configured shell
 echo   -h, --help                 Show this help message
@@ -236,8 +252,9 @@ echo   cmd, powershell, pwsh, git-bash, bash, wsl, cygwin, nu
 echo.
 echo Examples:
 echo   shell                      Interactive selection via fzf
+echo   shell -e                   Interactive selection and launch in current console
 echo   shell cmd                  Set default shell to Command Prompt
-echo   shell powershell           Set default shell to Windows PowerShell
-echo   shell git-bash             Set default shell to Git Bash
+echo   shell -e powershell        Enter Windows PowerShell immediately
+echo   shell -e git-bash          Enter Git Bash immediately
 echo   shell -w wsl               Open new WSL window immediately
 exit /b 0

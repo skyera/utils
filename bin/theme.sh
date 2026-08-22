@@ -32,7 +32,32 @@ while [ $# -gt 0 ]; do
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ALACRITTY_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/alacritty"
+
+# Detect environment
+IS_WINDOWS=0
+case "$(uname -s)" in
+    CYGWIN*|MINGW*|MSYS*) IS_WINDOWS=1 ;;
+    *)
+        if [ -n "$APPDATA" ] || [ -n "$WINDIR" ] || [ -n "$USERPROFILE" ]; then
+            IS_WINDOWS=1
+        fi
+        ;;
+esac
+
+if [ "$IS_WINDOWS" -eq 1 ]; then
+    if [ -n "$APPDATA" ]; then
+        if command -v cygpath >/dev/null 2>&1; then
+            ALACRITTY_DIR="$(cygpath -u "$APPDATA")/alacritty"
+        else
+            ALACRITTY_DIR="${APPDATA//\\//}/alacritty"
+        fi
+    else
+        ALACRITTY_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/alacritty"
+    fi
+else
+    ALACRITTY_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/alacritty"
+fi
+
 THEMES_DIR="$ALACRITTY_DIR/themes"
 TARGET_FILE="$ALACRITTY_DIR/theme.toml"
 
