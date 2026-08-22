@@ -461,7 +461,7 @@ def run_fzf_interactive(hosts: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]
     # Command for fzf preview
     self_script = os.path.abspath(__file__)
     py_exec = sys.executable
-    preview_cmd = f'"{py_exec}" "{self_script}" --preview-only {{1}}'
+    preview_cmd = f'"{py_exec}" "{self_script}" --preview-only "{{1}}"'
 
     cmd = [
         fzf_bin,
