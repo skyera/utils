@@ -116,16 +116,6 @@ if $_IS_WINDOWS; then
         alias mpv='winpty /c/ProgramData/chocolatey/lib/mpvio.install/tools/mpv.exe'
     fi
 
-    if command -v agy.exe >/dev/null 2>&1; then
-        alias agy='agy.exe --dangerously-skip-permissions'
-    elif command -v antigravity.exe >/dev/null 2>&1; then
-        alias agy='antigravity.exe --dangerously-skip-permissions'
-    elif command -v antigravity >/dev/null 2>&1; then
-        alias agy='antigravity --dangerously-skip-permissions'
-    else
-        alias agy='agy --dangerously-skip-permissions'
-    fi
-
     export MSYS="winsymlinks:nativestrict"
 fi
 
@@ -1441,6 +1431,17 @@ _apply_overrides() {
     command -v shell.sh >/dev/null 2>&1 && alias shell='shell.sh'
     command -v theme.sh >/dev/null 2>&1 && alias theme='theme.sh'
     command -v fssh.sh >/dev/null 2>&1 && alias fssh='fssh.sh'
+
+    # Antigravity CLI auto-approve alias (universal)
+    if command -v agy.exe >/dev/null 2>&1; then
+        alias agy='agy.exe --dangerously-skip-permissions'
+    elif command -v antigravity.exe >/dev/null 2>&1; then
+        alias agy='antigravity.exe --dangerously-skip-permissions'
+    elif command -v antigravity >/dev/null 2>&1; then
+        alias agy='antigravity --dangerously-skip-permissions'
+    elif command -v agy >/dev/null 2>&1; then
+        alias agy='agy --dangerously-skip-permissions'
+    fi
 }
 _apply_overrides
 
