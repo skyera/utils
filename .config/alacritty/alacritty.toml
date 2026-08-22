@@ -35,9 +35,6 @@ semantic_escape_chars = ",│`|:\"' ()[]{}<>\t"
 
 [mouse]
 hide_when_typing = true
-bindings = [
-  { mouse = "Middle", mods = "None", action = "PasteSelection" },
-]
 
 [hints]
 alphabet = "jfkdls;ahgurieowpq"
