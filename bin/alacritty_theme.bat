@@ -39,7 +39,7 @@ if not "%QUERY%"=="" (
     if not defined SELECTED_THEME (
         echo [ERROR] Theme "%QUERY%" not found in "%THEMES_DIR%".
         echo Available themes:
-        for %%F in ("%THEMES_DIR%\*.toml") do echo   - %%~nF
+        for /f "delims=" %%F in ('dir /b /a-d "%THEMES_DIR%\*.toml" 2^>nul') do echo   - %%~nF
         exit /b 1
     )
 ) else (
@@ -47,15 +47,18 @@ if not "%QUERY%"=="" (
     where fzf >nul 2>&1
     if !errorlevel! equ 0 (
         set "TMP_OUT=%TEMP%\alacritty_theme_%RANDOM%.txt"
-        (for %%F in ("%THEMES_DIR%\*.toml") do @echo %%~nF) | fzf --prompt="Select Alacritty Theme > " --preview="type \"%THEMES_DIR%\{}.toml\" 2>nul" --layout=reverse --height=40%% --border > "!TMP_OUT!"
+        (for /f "delims=" %%F in ('dir /b /a-d "%THEMES_DIR%\*.toml" 2^>nul') do @echo %%~nF) | fzf --prompt="Select Alacritty Theme > " --preview="type \"%THEMES_DIR%\{}.toml\" 2>nul" --layout=reverse --height=40%% --border > "!TMP_OUT!"
         if exist "!TMP_OUT!" (
-            for /f "usebackq delims=" %%I in ("!TMP_OUT!") do set "SELECTED_THEME=%%I"
+            for /f "usebackq delims=" %%I in ("!TMP_OUT!") do (
+                set "SELECTED_THEME=%%~nI"
+                if "!SELECTED_THEME!"=="" set "SELECTED_THEME=%%I"
+            )
             del "!TMP_OUT!" 2>nul
         )
     ) else (
         echo Available Alacritty Themes:
         set /a count=0
-        for %%F in ("%THEMES_DIR%\*.toml") do (
+        for /f "delims=" %%F in ('dir /b /a-d "%THEMES_DIR%\*.toml" 2^>nul') do (
             set /a count+=1
             echo   !count!. %%~nF
             set "theme_!count!=%%~nF"
@@ -74,6 +77,14 @@ if not "%QUERY%"=="" (
 if "%SELECTED_THEME%"=="" (
     echo No theme selected.
     exit /b 0
+)
+
+:: Strip any leading/trailing whitespace
+for /f "tokens=* delims= " %%A in ("!SELECTED_THEME!") do set "SELECTED_THEME=%%A"
+:trim_loop
+if "!SELECTED_THEME:~-1!"==" " (
+    set "SELECTED_THEME=!SELECTED_THEME:~0,-1!"
+    goto trim_loop
 )
 
 set "SRC_FILE=%THEMES_DIR%\%SELECTED_THEME%.toml"
