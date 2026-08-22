@@ -27,10 +27,13 @@ goto :parse_args
 
 echo Deploying for Windows...
 
-:: 1. Deploy binaries to %BIN_DIR%
+:: 1. Deploy binaries to %BIN_DIR% (and %USERPROFILE%\bin if present)
 echo [1/2] Deploying binaries...
 if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
 xcopy /Y /S /E "%REPO_DIR%\bin\*" "%BIN_DIR%\"
+if exist "%USERPROFILE%\bin" (
+    xcopy /Y /S /E "%REPO_DIR%\bin\*" "%USERPROFILE%\bin\"
+)
 
 :: 2. Deploy application configurations
 echo [2/2] Deploying configurations...
