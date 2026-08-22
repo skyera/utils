@@ -1,6 +1,24 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: Parse command-line flags (-w / --window / -l / --local / -h / --help)
+set "WINDOW_ONLY=0"
+set "QUERY="
+
+:parse_args
+if "%~1"=="" goto :args_done
+if /i "%~1"=="-w" (set "WINDOW_ONLY=1" & shift & goto :parse_args)
+if /i "%~1"=="--window" (set "WINDOW_ONLY=1" & shift & goto :parse_args)
+if /i "%~1"=="-l" (set "WINDOW_ONLY=1" & shift & goto :parse_args)
+if /i "%~1"=="--local" (set "WINDOW_ONLY=1" & shift & goto :parse_args)
+if /i "%~1"=="-h" goto :show_help
+if /i "%~1"=="--help" goto :show_help
+if /i "%~1"=="/?" goto :show_help
+if not defined QUERY set "QUERY=%~1"
+shift
+goto :parse_args
+:args_done
+
 :: Determine Alacritty configuration directory
 set "ALACRITTY_DIR=%APPDATA%\alacritty"
 set "THEMES_DIR=%ALACRITTY_DIR%\themes"
@@ -21,7 +39,6 @@ if not exist "%THEMES_DIR%" (
     exit /b 1
 )
 
-set "QUERY=%~1"
 set "SELECTED_THEME="
 
 :: If theme name is provided as argument, check directly
@@ -29,7 +46,7 @@ if not "%QUERY%"=="" (
     if exist "%THEMES_DIR%\%QUERY%.toml" (
         set "SELECTED_THEME=%QUERY%"
     ) else if exist "%THEMES_DIR%\%QUERY%" (
-        set "SELECTED_THEME=%~n1"
+        for %%A in ("%QUERY%") do set "SELECTED_THEME=%%~nA"
     ) else (
         :: Case-insensitive / partial prefix search
         for %%F in ("%THEMES_DIR%\*%QUERY%*.toml") do (
@@ -96,6 +113,12 @@ if not exist "%SRC_FILE%" (
     exit /b 1
 )
 
+if "%WINDOW_ONLY%"=="1" (
+    call :apply_osc "%SRC_FILE%"
+    echo [Alacritty] Switched current window theme to: %SELECTED_THEME%
+    exit /b 0
+)
+
 :: Copy to APPDATA
 if not exist "%ALACRITTY_DIR%" mkdir "%ALACRITTY_DIR%" 2>nul
 copy /Y "%SRC_FILE%" "%TARGET_FILE%" >nul 2>&1
@@ -113,3 +136,53 @@ if exist "%~dp0..\.config\alacritty" (
 )
 
 endlocal
+exit /b 0
+
+:apply_osc
+for /f %%a in ('echo prompt $E^| cmd') do set "ESC=%%a"
+set "SECTION="
+for /f "usebackq tokens=1* delims==" %%A in ("%~1") do (
+    set "KEY_RAW=%%A"
+    set "VAL_RAW=%%B"
+    set "KEY=!KEY_RAW: =!"
+    set "VAL=!VAL_RAW: =!"
+    set "VAL=!VAL:"=!"
+    set "VAL=!VAL:'=!"
+    if "!KEY:~0,1!"=="[" (
+        set "SECTION=!KEY!"
+    ) else if not "!VAL!"=="" (
+        if "!SECTION!"=="[colors.primary]" (
+            if /i "!KEY!"=="background" <nul set /p "=!ESC!]11;!VAL!!ESC!\"
+            if /i "!KEY!"=="foreground" <nul set /p "=!ESC!]10;!VAL!!ESC!\"
+        ) else if "!SECTION!"=="[colors.cursor]" (
+            if /i "!KEY!"=="cursor"     <nul set /p "=!ESC!]12;!VAL!!ESC!\"
+        ) else if "!SECTION!"=="[colors.normal]" (
+            if /i "!KEY!"=="black"   <nul set /p "=!ESC!]4;0;!VAL!!ESC!\"
+            if /i "!KEY!"=="red"     <nul set /p "=!ESC!]4;1;!VAL!!ESC!\"
+            if /i "!KEY!"=="green"   <nul set /p "=!ESC!]4;2;!VAL!!ESC!\"
+            if /i "!KEY!"=="yellow"  <nul set /p "=!ESC!]4;3;!VAL!!ESC!\"
+            if /i "!KEY!"=="blue"    <nul set /p "=!ESC!]4;4;!VAL!!ESC!\"
+            if /i "!KEY!"=="magenta" <nul set /p "=!ESC!]4;5;!VAL!!ESC!\"
+            if /i "!KEY!"=="cyan"    <nul set /p "=!ESC!]4;6;!VAL!!ESC!\"
+            if /i "!KEY!"=="white"   <nul set /p "=!ESC!]4;7;!VAL!!ESC!\"
+        ) else if "!SECTION!"=="[colors.bright]" (
+            if /i "!KEY!"=="black"   <nul set /p "=!ESC!]4;8;!VAL!!ESC!\"
+            if /i "!KEY!"=="red"     <nul set /p "=!ESC!]4;9;!VAL!!ESC!\"
+            if /i "!KEY!"=="green"   <nul set /p "=!ESC!]4;10;!VAL!!ESC!\"
+            if /i "!KEY!"=="yellow"  <nul set /p "=!ESC!]4;11;!VAL!!ESC!\"
+            if /i "!KEY!"=="blue"    <nul set /p "=!ESC!]4;12;!VAL!!ESC!\"
+            if /i "!KEY!"=="magenta" <nul set /p "=!ESC!]4;13;!VAL!!ESC!\"
+            if /i "!KEY!"=="cyan"    <nul set /p "=!ESC!]4;14;!VAL!!ESC!\"
+            if /i "!KEY!"=="white"   <nul set /p "=!ESC!]4;15;!VAL!!ESC!\"
+        )
+    )
+)
+exit /b 0
+
+:show_help
+echo Usage: theme [OPTIONS] [THEME_NAME]
+echo.
+echo Options:
+echo   -w, --window, -l, --local  Apply theme to current window only (via OSC sequences)
+echo   -h, --help                 Show this help message
+exit /b 0
