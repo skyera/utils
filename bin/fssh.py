@@ -33,6 +33,7 @@ import re
 import shutil
 import subprocess
 import urllib.parse
+import getpass
 from typing import List, Dict, Any, Optional
 
 
@@ -540,17 +541,39 @@ def main():
     # Build connection command
     name = selected_host["name"]
     hostname = selected_host["hostname"]
-    user = override_user or selected_host.get("user", "")
+    config_user = selected_host.get("user", "")
+    user = override_user or config_user
     port = selected_host.get("port", "22")
     key = selected_host.get("key", "")
     proxy = selected_host.get("proxy", "")
     source = selected_host.get("source", "")
+
+    # If no user is configured and no CLI override provided, prompt interactively
+    if not user and sys.stdin.isatty():
+        try:
+            default_user = getpass.getuser()
+        except Exception:
+            default_user = os.environ.get("USER") or os.environ.get("USERNAME") or ""
+
+        try:
+            prompt_str = (
+                f"[fssh] No user configured for '{name}'. Enter remote user [{default_user}]: "
+                if default_user
+                else f"[fssh] No user configured for '{name}'. Enter remote user: "
+            )
+            entered_user = input(prompt_str).strip()
+            user = entered_user if entered_user else default_user
+        except (KeyboardInterrupt, EOFError):
+            print("\n[fssh] Connection cancelled.")
+            return
 
     # Handle PuTTY connection if requested
     if use_putty or (source == "putty" and sys.platform == "win32" and not shutil.which("ssh")):
         putty_bin = shutil.which("putty") or shutil.which("putty.exe") or r"C:\app\putty\putty.exe"
         if os.path.isfile(putty_bin) or shutil.which("putty"):
             putty_cmd = [putty_bin, "-load", name]
+            if user and user != config_user:
+                putty_cmd.extend(["-l", user])
             if dry_run:
                 print("Dry run:", " ".join(putty_cmd))
                 return
@@ -572,8 +595,8 @@ def main():
 
     # Target
     if source == "ssh-config":
-        if override_user:
-            cmd.append(f"{override_user}@{name}")
+        if user and user != config_user:
+            cmd.append(f"{user}@{name}")
         else:
             cmd.append(name)
     else:
