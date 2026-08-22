@@ -461,7 +461,7 @@ def run_fzf_interactive(hosts: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]
     # Command for fzf preview
     self_script = os.path.abspath(__file__).replace("\\", "/")
     py_exec = sys.executable.replace("\\", "/")
-    preview_cmd = f'"{py_exec}" "{self_script}" --preview-only "{{1}}"'
+    preview_cmd = f'"{py_exec}" "{self_script}" --preview-only {{1}}'
 
     cmd = [
         fzf_bin,
@@ -496,13 +496,18 @@ def main():
 
     # 1. Preview Only mode (used by fzf)
     if len(args) >= 2 and args[0] in ("-p", "--preview-only"):
-        target_name = args[1].lower()
+        raw_target = " ".join(args[1:])
+        target_name = raw_target.replace("^", "").strip("\"'").strip().lower()
         for h in all_hosts:
             if h["name"].lower() == target_name or h["hostname"].lower() == target_name:
                 print(format_preview(h))
                 return
+        for h in all_hosts:
+            if target_name in h["name"].lower() or target_name in h["hostname"].lower():
+                print(format_preview(h))
+                return
         # If not found, print fallback
-        print(f"Host: {args[1]}")
+        print(f"Host: {raw_target}")
         return
 
     # 2. List mode (TSV output)
