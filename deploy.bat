@@ -51,6 +51,13 @@ call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
 call :deploy_file "%REPO_DIR%\.vifm\vifmrc"           "%APPDATA%\vifm\vifmrc"
 call :deploy_file "%REPO_DIR%\.gdbinit"               "%USERPROFILE%\.gdbinit"
 
+:: SSH configuration
+call :deploy_file "%REPO_DIR%\.config\ssh\config.base" "%USERPROFILE%\.ssh\config.base"
+if not exist "%USERPROFILE%\.ssh\conf.d" mkdir "%USERPROFILE%\.ssh\conf.d"
+if not exist "%USERPROFILE%\.ssh\config" (
+    echo Include ~/.ssh/config.base> "%USERPROFILE%\.ssh\config"
+)
+
 :: Git Bash / Mintty configuration
 set "GIT_BASH_FOUND=0"
 where git >nul 2>nul

@@ -1,0 +1,21 @@
+# =============================================================================
+# Universal OpenSSH Client Configuration (Base / Versioned)
+# =============================================================================
+
+# Include machine-local and private configs
+Include ~/.ssh/config.local
+Include ~/.ssh/conf.d/*.conf
+
+Host *
+    # Keep connections alive across flaky / idle connections
+    ServerAliveInterval 30
+    ServerAliveCountMax 3
+
+    # Fast connection reuse (multiplexing)
+    ControlMaster auto
+    ControlPath ~/.ssh/sockets/%r@%h-%p
+    ControlPersist 10m
+
+    # Security & Agent
+    AddKeysToAgent yes
+    IdentitiesOnly yes

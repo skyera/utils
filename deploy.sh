@@ -145,6 +145,24 @@ if [ -f "$REPO_DIR/.config/yazi/yazi.toml" ]; then
     deploy_file "$REPO_DIR/.config/yazi/yazi.toml"          "$HOME/.config/yazi/yazi.toml"
 fi
 
+# SSH base configuration
+echo "Deploying SSH base configuration..."
+mkdir -p "$HOME/.ssh/sockets" "$HOME/.ssh/conf.d"
+chmod 700 "$HOME/.ssh" "$HOME/.ssh/sockets" 2>/dev/null
+deploy_file "$REPO_DIR/.config/ssh/config.base" "$HOME/.ssh/config.base"
+chmod 600 "$HOME/.ssh/config.base" 2>/dev/null
+
+if [ ! -f "$HOME/.ssh/config" ]; then
+    echo "Include ~/.ssh/config.base" > "$HOME/.ssh/config"
+    chmod 600 "$HOME/.ssh/config" 2>/dev/null
+elif ! grep -q "config.base" "$HOME/.ssh/config" 2>/dev/null; then
+    _tmp_ssh_cfg=$(mktemp)
+    echo "Include ~/.ssh/config.base" > "$_tmp_ssh_cfg"
+    cat "$HOME/.ssh/config" >> "$_tmp_ssh_cfg"
+    mv "$_tmp_ssh_cfg" "$HOME/.ssh/config"
+    chmod 600 "$HOME/.ssh/config" 2>/dev/null
+fi
+
 # Binaries
 
 echo "Deploying binaries to ~/bin/..."
