@@ -56,6 +56,11 @@ call :deploy_file "%REPO_DIR%\.config\ssh\config.base" "%USERPROFILE%\.ssh\confi
 if not exist "%USERPROFILE%\.ssh\conf.d" mkdir "%USERPROFILE%\.ssh\conf.d"
 if not exist "%USERPROFILE%\.ssh\config" (
     echo Include ~/.ssh/config.base> "%USERPROFILE%\.ssh\config"
+) else (
+    findstr /i "config.base" "%USERPROFILE%\.ssh\config" >nul 2>nul
+    if errorlevel 1 (
+        powershell -NoProfile -Command "$cfg = \"$env:USERPROFILE\.ssh\config\"; $c = Get-Content $cfg -Raw -ErrorAction SilentlyContinue; Set-Content -Path $cfg -Value (\"Include ~/.ssh/config.base`r`n\" + $c)" 2>nul
+    )
 )
 
 :: Git Bash / Mintty configuration
