@@ -459,8 +459,8 @@ def run_fzf_interactive(hosts: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]
     fzf_input = "\n".join(tsv_lines).encode("utf-8")
 
     # Command for fzf preview
-    self_script = os.path.abspath(__file__)
-    py_exec = sys.executable
+    self_script = os.path.abspath(__file__).replace("\\", "/")
+    py_exec = sys.executable.replace("\\", "/")
     preview_cmd = f'"{py_exec}" "{self_script}" --preview-only "{{1}}"'
 
     cmd = [
