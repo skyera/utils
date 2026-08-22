@@ -46,8 +46,11 @@ if not "%QUERY%"=="" (
     :: Interactive selection via fzf or fallback prompt
     where fzf >nul 2>&1
     if !errorlevel! equ 0 (
+        set "TMP_THEMES=%TEMP%\alacritty_themes_%RANDOM%.txt"
         set "TMP_OUT=%TEMP%\alacritty_theme_%RANDOM%.txt"
-        (for /f "delims=" %%F in ('dir /b /a-d "%THEMES_DIR%\*.toml" 2^>nul') do @echo %%~nF) | fzf --prompt="Select Alacritty Theme > " --preview="type \"%THEMES_DIR%\{}.toml\" 2>nul" --layout=reverse --height=40%% --border > "!TMP_OUT!"
+        (for /f "delims=" %%F in ('dir /b /a-d "%THEMES_DIR%\*.toml" 2^>nul') do @echo %%~nF) > "!TMP_THEMES!"
+        type "!TMP_THEMES!" | fzf --prompt="Select Alacritty Theme > " --preview="type \"%THEMES_DIR%\{}.toml\"" --layout=reverse --height=40%% --border > "!TMP_OUT!"
+        if exist "!TMP_THEMES!" del "!TMP_THEMES!" 2>nul
         if exist "!TMP_OUT!" (
             for /f "usebackq delims=" %%I in ("!TMP_OUT!") do (
                 set "SELECTED_THEME=%%~nI"
