@@ -76,6 +76,11 @@ call :deploy_file "%REPO_DIR%\.config\yazi\yazi.toml"   "%APPDATA%\yazi\config\y
 
 :: Alacritty configuration
 call :deploy_file "%REPO_DIR%\.config\alacritty\alacritty.toml" "%APPDATA%\alacritty\alacritty.toml"
+call :deploy_file "%REPO_DIR%\.config\alacritty\theme.toml"     "%APPDATA%\alacritty\theme.toml"
+if exist "%REPO_DIR%\.config\alacritty\themes" (
+    if not exist "%APPDATA%\alacritty\themes" mkdir "%APPDATA%\alacritty\themes"
+    xcopy /Y /S /E "%REPO_DIR%\.config\alacritty\themes\*" "%APPDATA%\alacritty\themes\" >nul 2>&1
+)
 
 :: PuTTY theme collection deployment (Directory Junction / Incremental Copy)
 if exist "%REPO_DIR%\.config\putty\themes" (
