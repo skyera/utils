@@ -11,11 +11,6 @@ Host *
     ServerAliveInterval 30
     ServerAliveCountMax 3
 
-    # Fast connection reuse (multiplexing)
-    ControlMaster auto
-    ControlPath ~/.ssh/sockets/%r@%h-%p
-    ControlPersist 10m
-
     # Security & Agent
     AddKeysToAgent yes
     IdentitiesOnly yes
