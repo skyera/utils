@@ -30,11 +30,12 @@ Examples:
 import sys
 import os
 import re
+import glob
 import shutil
 import subprocess
 import urllib.parse
 import getpass
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 
 
 def get_home_dir() -> str:
@@ -56,11 +57,16 @@ def get_ssh_config_paths() -> List[str]:
     return paths
 
 
-def parse_ssh_config(filepath: str) -> List[Dict[str, Any]]:
-    """Parse OpenSSH configuration file and extract Host blocks."""
+def parse_ssh_config(filepath: str, visited_files: Optional[Set[str]] = None) -> List[Dict[str, Any]]:
+    """Parse OpenSSH configuration file and extract Host blocks, including nested Includes."""
     hosts = []
-    if not os.path.isfile(filepath):
+    if visited_files is None:
+        visited_files = set()
+
+    real_path = os.path.abspath(filepath)
+    if real_path in visited_files or not os.path.isfile(real_path):
         return hosts
+    visited_files.add(real_path)
 
     current_aliases: List[str] = []
     current_params: Dict[str, Any] = {}
@@ -80,7 +86,7 @@ def parse_ssh_config(filepath: str) -> List[Dict[str, Any]]:
         current_params = {}
 
     try:
-        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+        with open(real_path, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
                 line_str = line.strip()
                 if not line_str or line_str.startswith("#"):
@@ -93,7 +99,23 @@ def parse_ssh_config(filepath: str) -> List[Dict[str, Any]]:
                 key = m.group(1).lower()
                 val = m.group(2).strip().strip("\"'")
 
-                if key == "host":
+                if key == "include":
+                    flush_block()
+                    for pattern in val.split():
+                        expanded = os.path.expanduser(pattern)
+                        if not os.path.isabs(expanded):
+                            # Try relative to the config file's directory first
+                            cfg_dir = os.path.dirname(real_path)
+                            candidate = os.path.join(cfg_dir, expanded)
+                            if glob.glob(candidate):
+                                expanded = candidate
+                            else:
+                                # Fallback relative to ~/.ssh
+                                expanded = os.path.join(get_home_dir(), ".ssh", expanded)
+                        for inc_path in sorted(glob.glob(expanded)):
+                            if os.path.isfile(inc_path):
+                                hosts.extend(parse_ssh_config(inc_path, visited_files))
+                elif key == "host":
                     flush_block()
                     # Can have multiple host aliases on one line
                     host_aliases = [h for h in val.split() if not any(c in h for c in "*?")]
