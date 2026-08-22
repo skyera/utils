@@ -585,8 +585,8 @@ def main():
     proxy = selected_host.get("proxy", "")
     source = selected_host.get("source", "")
 
-    # If no user is configured and no CLI override provided, prompt interactively
-    if not user and sys.stdin.isatty():
+    # If no user is configured, no CLI override provided, and source is not ssh-config, prompt interactively
+    if not user and source != "ssh-config" and sys.stdin.isatty():
         try:
             default_user = getpass.getuser()
         except Exception:
