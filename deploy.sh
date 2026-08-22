@@ -124,6 +124,9 @@ deploy_file "$REPO_DIR/.config/fd/ignore"           "$HOME/.config/fd/ignore"
 # Starship configuration
 deploy_file "$REPO_DIR/.config/starship.toml"        "$HOME/.config/starship.toml"
 
+# Alacritty configuration
+deploy_file "$REPO_DIR/.config/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
+
 # MPV configuration
 deploy_file "$REPO_DIR/.config/mpv/mpv.conf" "$HOME/.config/mpv/mpv.conf"
 

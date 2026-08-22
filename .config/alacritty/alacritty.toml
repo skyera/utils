@@ -1,0 +1,94 @@
+[general]
+live_config_reload = true
+
+[env]
+TERM = "xterm-256color"
+
+[window]
+dimensions = { columns = 110, lines = 32 }
+padding = { x = 8, y = 8 }
+dynamic_padding = true
+decorations = "Full"
+opacity = 0.93
+blur = true
+title = "Alacritty"
+
+[scrolling]
+history = 10000
+multiplier = 3
+
+[font]
+size = 11.5
+normal = { family = "Hack Nerd Font Mono", style = "Regular" }
+bold = { family = "Hack Nerd Font Mono", style = "Bold" }
+italic = { family = "Hack Nerd Font Mono", style = "Italic" }
+bold_italic = { family = "Hack Nerd Font Mono", style = "Bold Italic" }
+
+[cursor]
+style = { shape = "Block", blinking = "On" }
+blink_interval = 600
+unfocused_hollow = true
+
+[selection]
+save_to_clipboard = true
+semantic_escape_chars = ",│`|:\"' ()[]{}<>\t"
+
+[mouse]
+hide_when_typing = true
+bindings = [
+  { mouse = "Middle", mods = "None", action = "PasteSelection" },
+]
+
+[hints]
+alphabet = "jfkdls;ahgurieowpq"
+
+[[hints.enabled]]
+regex = '(https?://|git@|git://|ssh://|ftp://)[^\u0000-\u001F\u007F-\u009F<>"\\s{-}\\^⟨⟩`]+'
+hyperlinks = true
+command = "xdg-open"
+post_processing = true
+mouse = { mods = "Control", mouse = "Left" }
+
+[colors.primary]
+background = "0x2E3440"
+foreground = "0xD8DEE9"
+
+[colors.cursor]
+text = "0x2E3440"
+cursor = "0x88C0D0"
+
+[colors.normal]
+black   = "0x3B4252"
+red     = "0xBF616A"
+green   = "0xA3BE8C"
+yellow  = "0xEBCB8B"
+blue    = "0x81A1C1"
+magenta = "0xB48EAD"
+cyan    = "0x88C0D0"
+white   = "0xE5E9F0"
+
+[colors.bright]
+black   = "0x4C566A"
+red     = "0xBF616A"
+green   = "0xA3BE8C"
+yellow  = "0xEBCB8B"
+blue    = "0x81A1C1"
+magenta = "0xB48EAD"
+cyan    = "0x8FBCBB"
+white   = "0xECEFF4"
+
+[keyboard]
+bindings = [
+  { key = "V",        mods = "Control|Shift", action = "Paste" },
+  { key = "C",        mods = "Control|Shift", action = "Copy" },
+  { key = "F",        mods = "Control|Shift", action = "SearchForward" },
+  { key = "B",        mods = "Control|Shift", action = "SearchBackward" },
+  { key = "Equals",   mods = "Control",       action = "IncreaseFontSize" },
+  { key = "Plus",     mods = "Control|Shift", action = "IncreaseFontSize" },
+  { key = "Minus",    mods = "Control",       action = "DecreaseFontSize" },
+  { key = "Key0",     mods = "Control",       action = "ResetFontSize" },
+  { key = "PageUp",   mods = "Shift",         action = "ScrollPageUp" },
+  { key = "PageDown", mods = "Shift",         action = "ScrollPageDown" },
+  { key = "Home",     mods = "Shift",         action = "ScrollToTop" },
+  { key = "End",      mods = "Shift",         action = "ScrollToBottom" },
+]
