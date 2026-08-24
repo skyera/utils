@@ -1170,7 +1170,7 @@ dexec() {
     if [[ -n "$1" ]] && docker inspect "$1" >/dev/null 2>&1; then
         cid="$1"
     else
-        cid=$(docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" 2>/dev/null | \
+        cid=$(docker ps --filter "name=^${USER}" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" 2>/dev/null | \
             fzf --header-lines=1 --prompt="Docker Exec> " -q "$*" | awk '{print $1}')
     fi
     [[ -z "$cid" ]] && return 0
