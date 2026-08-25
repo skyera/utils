@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 :: Call fd and fzf
-fd . --type f | fzf --preview "bat --color=always --style=numbers {}" > "%TEMP%\fzf_result.txt"
+fd --type f --follow --hidden --exclude .git | fzf --preview "bat --color=always --style=numbers {} 2>nul || type {}" > "%TEMP%\fzf_result.txt"
 
 :: Read result
 set /p selected_file=<"%TEMP%\fzf_result.txt"
