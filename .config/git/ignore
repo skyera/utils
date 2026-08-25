@@ -1,21 +1,51 @@
-# Ignore cscope files
+# Cscope & Tags
 cscope.*
-
-# Ignore tags files
 tags
+tags.files
 filenametags
 
-# Ignore temporary files
+# Temporary & Editor Swap Files
 *.bak
 *.swp
+*.swo
 *.tmp
+*~
+
+# Build Artifacts & Binaries
 *.o
 *.obj
+*.sbr
+*.dll
+*.so
+*.dylib
+*.pdb
+*.class
+*.exe
+*.bin
+*.pyc
 
-# Ignore build directories
+# Build Directories
 build/
 dist/
 Debug/
 Release/
 obj/
+ThirdParty/
+
+# Dependency & Cache Directories
+node_modules/
+.cache/
+__pycache__/
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# IDE & Editor Directories
+.vs/
+.vscode/
+.idea/
+
+# OS Metadata
+.DS_Store
+Thumbs.db
 

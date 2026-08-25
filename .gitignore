@@ -1,0 +1,18 @@
+# Python caches & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# Backup & editor swap files
+*.bak
+*.swp
+*.swo
+*~
+*.tmp
+
+# OS metadata
+.DS_Store
+Thumbs.db
