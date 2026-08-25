@@ -50,6 +50,7 @@ call :deploy_file "%REPO_DIR%\.config\git\ignore"     "%USERPROFILE%\.config\git
 call :deploy_file "%REPO_DIR%\myvimrc"                "%USERPROFILE%\_vimrc"
 call :deploy_file "%REPO_DIR%\.vifm\vifmrc"           "%APPDATA%\vifm\vifmrc"
 call :deploy_file "%REPO_DIR%\.gdbinit"               "%USERPROFILE%\.gdbinit"
+call :deploy_file "%REPO_DIR%\.cgdb\cgdbrc"             "%USERPROFILE%\.cgdb\cgdbrc"
 
 :: SSH configuration
 call :deploy_file "%REPO_DIR%\.config\ssh\config.base" "%USERPROFILE%\.ssh\config.base"

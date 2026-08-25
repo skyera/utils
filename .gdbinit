@@ -1,34 +1,25 @@
+# History Settings
 set history save on
-set print pretty on
+set history filename ~/.gdb_history
+set history size 10000
+set history remove-duplicates 50
+
+# Safety & UI Settings
 set pagination off
 set confirm off
-set history filename ~/.gdb_history
-set history size 1000
-set auto-load safe-path /
+set auto-load safe-path $debugdir:$datadir:~
 
-# logging
+# Printing & Formatting (Ideal for CGDB)
+set print pretty on
+set print array on
+set print object on
+set print vtbl on
+set print asm-demangle on
+set listsize 10
+
+# Logging
+set logging enabled off
 set logging file ~/gdb.log
 set logging overwrite on
 set logging redirect off
-set logging on
-
-set print array on
-set print object on
-set width 0
-set height 0
-set listsize 10
-
-# GDB Dashboard
-source ~/bin/gdb-dashboard.py
-
-# Dashboard Configuration
-dashboard -layout source assembly registers stack variables expressions threads
-dashboard -style syntax_highlighting 'monokai'
-dashboard source -style context 5
-dashboard registers -style compact True
-
-# Auto-open dashboard on start
-define hook-stop
-  dashboard
-end
-
+set logging enabled on

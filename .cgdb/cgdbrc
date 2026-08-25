@@ -1,0 +1,15 @@
+" ==============================================================================
+" CGDB Configuration (~/.cgdb/cgdbrc)
+" ==============================================================================
+
+" --- UI & Appearance ---
+set autosourcereload        " Automatically reload source file if modified on disk
+set ignorecase              " Case-insensitive search in source window
+set tabstop=4               " Tab display width in source window
+set winsplit=top            " Keep source window on top, GDB terminal on bottom
+set winsplitmode=fraction   " Split ratio based on percentage
+set winminheight=10         " Minimum height for the source window
+
+" --- Color Syntax & Visuals ---
+set arrowstyle=long         " Use a visible arrow (-->) to mark current execution line
+set color=currentline:white:black:bold
