@@ -1,33 +1,56 @@
+# General Search Options
 --smart-case
 --follow
 --hidden
 
-# Limit column length to avoid terminal lag on huge lines
+# Output Limiting (Prevents terminal lag on minified lines)
 --max-columns=150
 --max-columns-preview
 
-# Ignore cscope files and tags
+# Tags & Index Files
 --glob=!cscope.*
 --glob=!tags
 --glob=!filenametags
 
-# Build and Binary artifacts
+# Build Artifacts & Binaries
 --glob=!*.o
 --glob=!*.obj
 --glob=!*.exe
 --glob=!*.bin
+--glob=!*.dll
+--glob=!*.so
+--glob=!*.dylib
+--glob=!*.pdb
+--glob=!*.class
 --glob=!*.swp
 --glob=!*.tmp
 --glob=!*.lck
+--glob=!*.pyc
+--glob=!*.tar.gz
+--glob=!*.zip
 
-# Directories to skip
---glob=!.git/*
---glob=!.vs/*
---glob=!.vscode/*
---glob=!node_modules/*
---glob=!build/*
---glob=!Debug/*
---glob=!Release/*
---glob=!dist/*
---glob=!obj/*
---glob=!ThirdParty/*
+# Minified Assets & Lockfiles
+--glob=!*.min.js
+--glob=!*.min.css
+--glob=!*.map
+--glob=!package-lock.json
+--glob=!pnpm-lock.yaml
+--glob=!yarn.lock
+--glob=!Cargo.lock
+
+# Directories to Skip (Recursive matching)
+--glob=!.git
+--glob=!**/.cache/**
+--glob=!**/__pycache__/**
+--glob=!**/.venv/**
+--glob=!**/.pytest_cache/**
+--glob=!**/.mypy_cache/**
+--glob=!**/node_modules/**
+--glob=!**/build/**
+--glob=!**/dist/**
+--glob=!**/Debug/**
+--glob=!**/Release/**
+--glob=!**/obj/**
+--glob=!**/.vs/**
+--glob=!**/.vscode/**
+--glob=!**/ThirdParty/**
