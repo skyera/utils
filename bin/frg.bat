@@ -24,7 +24,7 @@ if "%PATTERN%"=="" goto :end
 set "TMP_OUT=%TEMP%\frg_res_%RANDOM%.txt"
 
 :: 4. Run ripgrep + fzf
-rg --smart-case --line-number --no-heading "%PATTERN%" | fzf -m --delimiter : --preview "bat --color=always --highlight-line {2} {1} 2>nul || type {1}" --preview-window=right:60%% > "%TMP_OUT%"
+rg --color=always --smart-case --line-number --no-heading "%PATTERN%" | fzf --ansi -m --delimiter : --preview "bat --color=always --highlight-line {2} {1} 2>nul || type {1}" --preview-window=right:60%% > "%TMP_OUT%"
 
 if not exist "%TMP_OUT%" goto :end
 for %%A in ("%TMP_OUT%") do if %%~zA equ 0 (

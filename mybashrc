@@ -1236,8 +1236,8 @@ frg() {
     fi
 
     results="$(
-        rg --smart-case --line-number --no-heading "$pattern" |
-        fzf --multi --delimiter : \
+        rg --color=always --smart-case --line-number --no-heading "$pattern" |
+        fzf --ansi --multi --delimiter : \
             --preview "bat --color=always --highlight-line {2} {1} 2>/dev/null || cat {1}" \
             --preview-window=right:60%
     )"
@@ -1246,7 +1246,7 @@ frg() {
     if [[ $(echo "$results" | wc -l) -eq 1 ]]; then
         file=$(echo "$results" | cut -d: -f1)
         line=$(echo "$results" | cut -d: -f2)
-        "$EDITOR" "+${line}" "$file"
+        "${EDITOR:-vim}" "+${line}" "$file"
         return
     fi
 
@@ -1256,7 +1256,7 @@ frg() {
         # shellcheck disable=SC2296
         files=("${(@f)$(echo "$results" | cut -d: -f1 | sort -u)}")
     fi
-    "$EDITOR" -p "${files[@]}"
+    "${EDITOR:-vim}" -p "${files[@]}"
 }
 
 git_tag() {
