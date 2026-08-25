@@ -71,6 +71,12 @@ vim.g.LookupFile_ignorecase = 1
 vim.g.LookupFile_EnableRemapCmd = 0
 vim.g.LookupFile_TagExpr = '"filenametags"'
 
+-- Use Ripgrep for native :grep if available
+if vim.fn.executable("rg") == 1 then
+  vim.opt.grepprg = "rg --vimgrep --no-heading --smart-case"
+  vim.opt.grepformat = "%f:%l:%c:%m"
+end
+
 -- Tagbar TypeScript
 vim.g.tagbar_type_typescript = {
   ctagstype = 'typescript',
@@ -86,7 +92,7 @@ vim.env.FZF_DEFAULT_OPTS = (vim.env.FZF_DEFAULT_OPTS or "") .. ' --layout=revers
 -- Custom Frg and interactive FzfRG live ripgrep command
 vim.cmd([[
   function! RipgrepFzf(query, fullscreen)
-    let command_fmt = 'rg --column --line-number --no-heading --color=always --smart-case --hidden --glob "!.git/*" -- %s || true'
+    let command_fmt = 'rg --column --line-number --no-heading --color=always --smart-case --hidden --glob "!.git" -- %s || true'
     let initial_command = printf(command_fmt, shellescape(a:query))
     let reload_command = printf(command_fmt, '{q}')
     let spec = {'options': ['--phony', '--query', a:query, '--bind', 'change:reload:'.reload_command]}
