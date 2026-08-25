@@ -1,17 +1,52 @@
+# Version Control & Tags
 .git/
 cscope.*
 tags
 tags.files
 filenametags
+
+# Temporary & Swap Files
 *.bak
-boost*
+*.swp
+*.tmp
+*~
+
+# Dependencies & Build Artifacts
 *.dep
 *.d
-*.obj
-*.sbr
 *.o
 *.obj
+*.sbr
+*.dll
+*.so
+*.dylib
+*.pdb
+*.class
+*.exe
+*.bin
+*.pyc
+*.tar.gz
+*.zip
+
+# Lockfiles (Reduce FZF search noise)
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+Cargo.lock
+
+# Build & Cache Directories
+build/
+dist/
 Debug/
 Release/
 obj/
 ThirdParty/
+node_modules/
+.cache/
+__pycache__/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.vs/
+.vscode/
+boost*

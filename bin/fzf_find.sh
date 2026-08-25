@@ -1,7 +1,7 @@
 #!/bin/bash
 # Call fd and fzf to select a file/dir with bat preview
 tmpfile=$(mktemp /tmp/lf_fzf.XXXXXX)
-fd . --type f --type d | fzf --preview "bat --color=always --style=numbers {}" > "$tmpfile"
+fd --follow --hidden --exclude .git | fzf --preview "bat --color=always --style=numbers {} 2>/dev/null || ls -la {}" > "$tmpfile"
 
 # Read the selected file from the temp file
 selected_file=$(cat "$tmpfile")
