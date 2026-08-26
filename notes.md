@@ -904,12 +904,28 @@ sudo systemctl restart sshd
 ```
 
 ### SSH Port Forwarding
-```
-# local port on local machine: no need to be the same as user@localhost
 
-ssh -L 0.0.0.0:8888:192.168.1.13:22 -o GatewayPorts=yes user@localhost
-ssh pi@192.168.1.13 -o GatewayPorts=yes -L 8888:192.168.1.38:22
-ssh -p 8888 pi@192.168.1.26
+#### Local Port Forwarding (`ssh -L`)
+Forward a local port through an SSH connection to a remote destination (e.g. reach a target SSH server via a jump host):
+```bash
+# Forward local port 2222 through jump host to destination SSH port 22:
+ssh -g -N -L 2222:192.168.1.100:22 user@jump-host
+
+# Options:
+# -L [bind_address:]local_port:target_host:target_port
+# -g : Gateway mode (allows remote/LAN hosts to connect to local forwarded port)
+# -N : Do not execute a remote command (port forwarding only)
+# -f : Run in background
+
+# Example with GatewayPorts option:
+ssh -o GatewayPorts=yes -N -L 0.0.0.0:8888:192.168.1.38:22 user@jump-host
+```
+
+#### Remote / Reverse Port Forwarding (`ssh -R`)
+Forward a port from the remote server back to the local machine:
+```bash
+# Expose local SSH (port 22) on remote server's port 2222:
+ssh -R 2222:localhost:22 user@remote-server
 ```
 
 ### sshfs
@@ -939,12 +955,22 @@ sudo apt update
 sudo apt install iptables-persistent
 ```
 
-### Windows Port Forwarding
+### Windows Port Forwarding (PortProxy & Firewall)
+Native Windows kernel-level forwarding (no client/software needed, stays active in background):
+
 ```cmd
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=2201 connectaddress=127.0.0.1 connectport=22
-netsh interface portproxy show all
-netsh interface portproxy delete v4tov4 listenaddress=0.0.0.0 listenport=8080
-netsh advfirewall firewall add rule name="Allow Port 2201" dir=in action=allow protocol=TCP localport=2201
+:: 1. Add PortProxy rule (listen on Windows port 2222, forward to target SSH server)
+netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=2222 connectaddress=192.168.1.100 connectport=22
+
+:: 2. Allow incoming traffic through Windows Firewall (Run CMD as Administrator)
+netsh advfirewall firewall add rule name="SSH_PortProxy_2222" dir=in action=allow protocol=TCP localport=2222
+
+:: 3. View active forwarding rules
+netsh interface portproxy show v4tov4
+
+:: 4. Delete the rule when finished
+netsh interface portproxy delete v4tov4 listenaddress=0.0.0.0 listenport=2222
+netsh advfirewall firewall delete rule name="SSH_PortProxy_2222"
 ```
 
 ---
