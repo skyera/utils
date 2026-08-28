@@ -34,6 +34,8 @@
 	dt = difftool
 	dtd = difftool --dir-diff
 	gsu = submodule update --init --recursive -f
+	sms = submodule status
+	smsr = submodule status --recursive
 	rho = !git reset --hard origin/$(git branch --show-current)
 	mt = mergetool
 	lo = log --pretty=format:'%C(yellow)%h %C(cyan)%ad %Creset%s' --date=short
@@ -47,6 +49,8 @@
 	dm = !git branch --merged | grep -v '\\*' | grep -v 'master' | grep -v 'main' | xargs -r git branch -d
 	tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit
 	recent = for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'
+	cleanf = clean -fd
+	fap = fetch --all --prune
 
 [rerere]
 	enabled = true
