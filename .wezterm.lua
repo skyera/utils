@@ -19,7 +19,7 @@ config.launch_menu = {
 -- Default Shell per OS
 local target = wezterm.target_triple
 if target:find("windows") then
-    config.default_prog = { "powershell.exe", "-NoLogo" }
+    config.default_prog = { "cmd.exe" }
 elseif target:find("darwin") then
     config.default_prog = { "/bin/zsh" }
 else
