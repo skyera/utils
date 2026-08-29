@@ -35,6 +35,7 @@ vim.opt.laststatus = 2
 vim.opt.wrapscan = true
 vim.opt.cindent = true
 vim.opt.cinoptions = "g-1"
+vim.opt.listchars = { tab = "▸ ", trail = "·", extends = "❯", precedes = "❮", nbsp = "␣" }
 vim.opt.directory:prepend(vim.fn.expand("$HOME") .. "/.vim/tmp//")
 
 -- Clipboard logic

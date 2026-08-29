@@ -99,6 +99,7 @@ set ai
 set shiftround
 set cindent
 set cinoptions=g-1
+set listchars=tab:▸\ ,trail:·,extends:❯,precedes:❮,nbsp:␣
 
 " --- Clipboard Logic ---
 if has('clipboard')
