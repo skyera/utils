@@ -48,7 +48,7 @@ return {
       dim = { enabled = true },
       explorer = { enabled = true },
       git = { enabled = true },
-      indent = { enabled = true, only_scope = true },
+      indent = { enabled = false, only_scope = true },
       input = { enabled = true },
       lazygit = { enabled = true },
       notifier = { enabled = true, timeout = 3000 },
