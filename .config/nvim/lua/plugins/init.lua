@@ -412,7 +412,7 @@ return {
   },
   {
     "rbgrouleff/bclose.vim",
-    cmd = { "Bclose", "Bclose!" },
+    cmd = "Bclose",
   },
 
   -- LSP & Autocomplete (C/C++, Python, Bash, Lua)
