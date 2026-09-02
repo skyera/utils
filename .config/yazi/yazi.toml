@@ -13,11 +13,14 @@ suppress_preload = true
 
 [opener]
 edit = [
-    { run = 'nvim %s', block = true, desc = "nvim" },
-    { run = 'vim %s', block = true, desc = "vim" }
+    { run = 'nvim "$@"', block = true, desc = "nvim", for = "unix" },
+    { run = 'vim "$@"', block = true, desc = "vim", for = "unix" },
+    { run = 'nvim "%1"', block = true, desc = "nvim", for = "windows" },
+    { run = 'vim "%1"', block = true, desc = "vim", for = "windows" }
 ]
 
 [open]
-rules = [
+prepend_rules = [
+    { mime = "*", use = "edit" },
     { url = "*", use = "edit" }
 ]
