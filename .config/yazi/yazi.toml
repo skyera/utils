@@ -1,4 +1,4 @@
-[manager]
+[mgr]
 ratio = [1, 4, 3]
 sort_by = "alphabetical"
 sort_sensitive = false
@@ -13,9 +13,8 @@ suppress_preload = true
 
 [opener]
 edit = [
-    { run = 'nvim "$@"', block = true, for = "unix" },
-    { run = 'vim "$@"', block = true, for = "unix" },
-    { run = 'cmd /c "where nvim >nul 2>nul && nvim %* || vim %*"', block = true, for = "windows" }
+    { run = 'nvim %s', block = true, desc = "nvim" },
+    { run = 'vim %s', block = true, desc = "vim" }
 ]
 
 [open]
