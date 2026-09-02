@@ -128,6 +128,7 @@ return {
   },
   {
     "nvim-lualine/lualine.nvim",
+    event = "VeryLazy",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
       require("lualine").setup({
@@ -228,38 +229,68 @@ return {
   },
 
   -- Navigation (Classic Tools)
-  "scrooloose/nerdtree",
+  {
+    "scrooloose/nerdtree",
+    cmd = { "NERDTree", "NERDTreeToggle", "NERDTreeFind", "NERDTreeFocus", "NERDTreeCWD", "NERDTreeFromBookmark" },
+  },
   {
     "tiagofumo/vim-nerdtree-syntax-highlight",
     dependencies = { "scrooloose/nerdtree" },
+    cmd = { "NERDTree", "NERDTreeToggle", "NERDTreeFind", "NERDTreeFocus" },
   },
-  "jlanzarotta/bufexplorer",
-  "yegappan/mru",
+  {
+    "jlanzarotta/bufexplorer",
+    cmd = { "BufExplorer", "BufExplorerHorizontalSplit", "BufExplorerVerticalSplit", "ToggleBufExplorer" },
+  },
+  {
+    "yegappan/mru",
+    cmd = { "MRU" },
+  },
   {
     "vim-scripts/lookupfile",
     dependencies = { "vim-scripts/genutils" },
+    cmd = { "LookupFile" },
   },
-  "junegunn/fzf",
+  {
+    "junegunn/fzf",
+    build = "./install --all",
+  },
   {
     "junegunn/fzf.vim",
     dependencies = { "junegunn/fzf" },
+    cmd = { "Files", "GFiles", "Buffers", "Colors", "Ag", "Rg", "RG", "Frg", "FzfRG", "FRG", "Lines", "BLines", "Tags", "BTags", "Marks", "Windows", "Locate", "History", "Snippets", "Commits", "BCommits", "Commands", "Maps", "Helptags", "Filetypes" },
   },
-  "jremmen/vim-ripgrep",
-  "mhinz/vim-grepper",
-  "mileszs/ack.vim",
-  "vim-scripts/Color-Scheme-Explorer",
+  {
+    "jremmen/vim-ripgrep",
+    cmd = { "Rg" },
+  },
+  {
+    "mhinz/vim-grepper",
+    cmd = { "Grepper" },
+  },
+  {
+    "mileszs/ack.vim",
+    cmd = { "Ack", "AckAdd", "AckFile", "AckHelp", "AckWindow" },
+  },
+  {
+    "vim-scripts/Color-Scheme-Explorer",
+    cmd = { "ColorExplorer" },
+  },
 
   -- Tree
   {
     "nvim-tree/nvim-tree.lua",
     dependencies = { "nvim-tree/nvim-web-devicons" },
+    cmd = { "NvimTreeToggle", "NvimTreeOpen", "NvimTreeFocus", "NvimTreeFindFile", "NvimTreeCollapse" },
+    keys = {
+      { "<leader>e", "<cmd>NvimTreeToggle<cr>", desc = "Toggle NvimTree" },
+      { "<leader>E", "<cmd>NvimTreeFindFile<cr>", desc = "Find file in NvimTree" },
+    },
     config = function()
       require("nvim-tree").setup({
         view = { width = 30, preserve_window_proportions = true },
         actions = { open_file = { resize_window = false } },
       })
-      vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<cr>", { desc = "Toggle NvimTree" })
-      vim.keymap.set("n", "<leader>E", ":NvimTreeFindFile<cr>", { desc = "Find file in NvimTree" })
     end,
   },
 
@@ -285,12 +316,25 @@ return {
   -- Coding
   {
     "dhananjaylatkar/cscope_maps.nvim",
+    event = { "BufReadPre", "BufNewFile" },
     config = function() require("cscope_maps").setup({ prefix = "<C-\\>", skip_input_prompt = true }) end,
   },
-  "tpope/vim-surround",
-  "tpope/vim-commentary",
-  "tpope/vim-unimpaired",
-  "tpope/vim-fugitive",
+  {
+    "tpope/vim-surround",
+    event = { "BufReadPre", "BufNewFile" },
+  },
+  {
+    "tpope/vim-commentary",
+    event = { "BufReadPre", "BufNewFile" },
+  },
+  {
+    "tpope/vim-unimpaired",
+    event = { "BufReadPre", "BufNewFile" },
+  },
+  {
+    "tpope/vim-fugitive",
+    cmd = { "G", "Git", "Gdiffsplit", "Gvdiffsplit", "Gedit", "Gread", "Gwrite", "Ggrep", "Glgrep", "Gclog" },
+  },
   {
     "lewis6991/gitsigns.nvim",
     event = { "BufReadPre", "BufNewFile" },
@@ -337,15 +381,44 @@ return {
     event = "InsertEnter",
     config = true,
   },
-  "godlygeek/tabular",
-  "christoomey/vim-tmux-navigator",
-  "tmhedberg/SimpylFold",
-  "majutsushi/tagbar",
-  "vimwiki/vimwiki",
-  "psf/black",
-  "Exafunction/windsurf.vim",
-  "vim-scripts/a.vim",
-  "rbgrouleff/bclose.vim",
+  {
+    "godlygeek/tabular",
+    cmd = { "Tabularize" },
+  },
+  {
+    "christoomey/vim-tmux-navigator",
+    event = "VeryLazy",
+  },
+  {
+    "tmhedberg/SimpylFold",
+    ft = "python",
+  },
+  {
+    "majutsushi/tagbar",
+    cmd = { "Tagbar", "TagbarToggle", "TagbarOpen" },
+  },
+  {
+    "vimwiki/vimwiki",
+    ft = { "vimwiki", "markdown" },
+    cmd = { "VimwikiIndex", "VimwikiUISelect" },
+  },
+  {
+    "psf/black",
+    cmd = { "Black", "BlackSync" },
+    ft = "python",
+  },
+  {
+    "Exafunction/windsurf.vim",
+    event = "InsertEnter",
+  },
+  {
+    "vim-scripts/a.vim",
+    cmd = { "A", "AS", "AV", "AT", "AN", "IH", "IHS", "IHV", "IHT", "IHN" },
+  },
+  {
+    "rbgrouleff/bclose.vim",
+    cmd = { "Bclose", "Bclose!" },
+  },
 
   -- LSP & Autocomplete (C/C++, Python, Bash, Lua)
   {
