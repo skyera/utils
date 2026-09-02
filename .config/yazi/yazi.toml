@@ -15,8 +15,9 @@ suppress_preload = true
 edit = [
     { run = 'nvim "$@"', block = true, desc = "nvim", for = "unix" },
     { run = 'vim "$@"', block = true, desc = "vim", for = "unix" },
-    { run = 'nvim "%1"', block = true, desc = "nvim", for = "windows" },
-    { run = 'vim "%1"', block = true, desc = "vim", for = "windows" }
+    { run = 'cmd /c "where nvim >nul 2>nul && nvim %* || vim %*"', block = true, desc = "nvim", for = "windows" },
+    { run = 'nvim "%*"', block = true, desc = "nvim", for = "windows" },
+    { run = 'vim "%*"', block = true, desc = "vim", for = "windows" }
 ]
 
 [open]
