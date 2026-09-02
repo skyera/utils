@@ -403,11 +403,6 @@ return {
     cmd = { "VimwikiIndex", "VimwikiUISelect" },
   },
   {
-    "psf/black",
-    cmd = { "Black", "BlackSync" },
-    ft = "python",
-  },
-  {
     "Exafunction/windsurf.vim",
     event = "InsertEnter",
   },

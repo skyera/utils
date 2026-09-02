@@ -6,6 +6,12 @@ if vim.fn.has("win32") == 1 and vim.env.MSYSTEM then
     vim.opt.shellxquote = ""
 end
 
+-- Disable legacy remote providers for fast startup
+vim.g.loaded_python3_provider = 0
+vim.g.loaded_ruby_provider = 0
+vim.g.loaded_perl_provider = 0
+vim.g.loaded_node_provider = 0
+
 -- General settings (translated from myvimrc)
 vim.opt.backspace = { "indent", "eol", "start" }
 vim.opt.history = 10000
