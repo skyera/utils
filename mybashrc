@@ -522,6 +522,18 @@ elif [[ -n "$ZSH_VERSION" ]]; then
     fi
 fi
 
+# Set or restore terminal / PuTTY window title
+title() {
+    local u="${USER:-$(id -un 2>/dev/null || whoami 2>/dev/null)}"
+    u="${u%$'\r'}"
+    local h="${HOSTNAME:-${HOST:-$(hostname 2>/dev/null)}}"
+    h="${h%$'\r'}"
+    local dir="${PWD/#$HOME/\~}"
+    dir="${dir%$'\r'}"
+    local t="${*:-${u}@${h}: ${dir}}"
+    printf '\033]0;%s\007' "$t"
+}
+
 _get_fzf_border_opt() {
     if [[ -z "${_CACHED_FZF_BORDER_OPT:-}" ]]; then
         if echo "" | fzf --filter="" --border=rounded >/dev/null 2>&1; then
