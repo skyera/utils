@@ -137,6 +137,10 @@ fi
 # MPV configuration
 deploy_file "$REPO_DIR/.config/mpv/mpv.conf" "$HOME/.config/mpv/mpv.conf"
 
+# w3m configuration
+deploy_file "$REPO_DIR/.w3m/config" "$HOME/.w3m/config"
+deploy_file "$REPO_DIR/.w3m/keymap" "$HOME/.w3m/keymap"
+
 # Yazi configuration
 echo "Deploying Yazi configuration..."
 deploy_file "$REPO_DIR/.config/yazi/theme.toml"             "$HOME/.config/yazi/theme.toml"

@@ -1,0 +1,30 @@
+# ==============================================================================
+# ~/.w3m/keymap - Vimium / modern browser style keybindings
+# ==============================================================================
+
+# Fast paging (like less / Vim)
+keymap  d       NEXT_PAGE
+keymap  u       PREV_PAGE
+keymap  C-d     NEXT_HALF_PAGE
+keymap  C-u     PREV_HALF_PAGE
+keymap  C-f     NEXT_PAGE
+keymap  C-b     PREV_PAGE
+
+# History navigation (Vimium style)
+keymap  H       BACK
+keymap  L       NEXT
+
+# Document jump
+keymap  g       BEGIN
+keymap  G       END
+
+# Tabs
+keymap  t       NEW_TAB
+keymap  c       CLOSE_TAB
+keymap  J       PREV_TAB
+keymap  K       NEXT_TAB
+
+# Browser navigation
+keymap  o       GOTO
+keymap  O       GOTO_RELATIVE
+keymap  r       RELOAD

@@ -1,0 +1,28 @@
+# ==============================================================================
+# ~/.w3m/config - Modern best-practice configuration for w3m
+# ==============================================================================
+
+# Mouse & Scrolling
+use_mouse 1
+reverse_mouse 0
+
+# Cookies: silently accept to eliminate endless confirmation prompts
+use_cookie 1
+accept_cookie 1
+show_cookie 0
+
+# Vim-like Search
+wrap_search 1
+ignorecase_search 1
+smartcase_search 1
+
+# Display & Appearance
+color 1
+high-intensity 1
+active_style 1
+display_link 1
+display_lineinfo 1
+display_borders 1
+
+# Exit Behavior: quit immediately without confirmation on 'q'
+confirm_qq 0
