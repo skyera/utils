@@ -178,6 +178,11 @@ for f in "$REPO_DIR/bin/"*; do
     fi
 done
 
+# Check sshfs availability
+if ! command -v sshfs >/dev/null 2>&1; then
+    echo "Tip: 'sshfs' is not installed. Install it via package manager (e.g. sudo apt install sshfs) to use rsshfs.sh."
+fi
+
 # 4. Handle legacy Git versions (< 2.35.0) for 'zdiff3' compatibility
 if command -v git >/dev/null 2>&1; then
     GIT_VER=$(git --version | awk '{print $3}' | grep -oE '^[0-9]+\.[0-9]+')

@@ -1434,6 +1434,7 @@ _apply_overrides() {
     command -v shell.sh >/dev/null 2>&1 && alias shell='shell.sh'
     command -v theme.sh >/dev/null 2>&1 && alias theme='theme.sh'
     command -v fssh.sh >/dev/null 2>&1 && alias fssh='fssh.sh'
+    command -v rsshfs.sh >/dev/null 2>&1 && alias rsshfs='rsshfs.sh'
 
     # Antigravity CLI auto-approve alias (universal)
     if command -v agy.exe >/dev/null 2>&1; then
