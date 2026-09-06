@@ -1506,7 +1506,8 @@ alias putty_colors='putty_colors.py'
 # Machine Report alias and login greeting (runs once upon SSH login, silent in tmux)
 alias sysreport='machine_report.sh'
 alias machinereport='machine_report.sh'
-if [[ $- == *i* && ( -n "$SSH_CONNECTION" || -n "$SSH_TTY" ) && -z "$TMUX" ]]; then
+if [[ $- == *i* && ( -n "$SSH_CONNECTION" || -n "$SSH_TTY" ) && -z "$TMUX" && -z "$_MACHINE_REPORT_SHOWN" ]]; then
+    export _MACHINE_REPORT_SHOWN=1
     if command -v machine_report.sh &>/dev/null; then
         machine_report.sh
     fi
