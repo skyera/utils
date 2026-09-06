@@ -1503,5 +1503,14 @@ alias fzbranch='git-fuzzy branch'
 alias putty-colors='putty_colors.py'
 alias putty_colors='putty_colors.py'
 
+# Machine Report alias and login greeting (runs once upon SSH login, silent in tmux)
+alias sysreport='machine_report.sh'
+alias machinereport='machine_report.sh'
+if [[ $- == *i* && ( -n "$SSH_CONNECTION" || -n "$SSH_TTY" ) && -z "$TMUX" ]]; then
+    if command -v machine_report.sh &>/dev/null; then
+        machine_report.sh
+    fi
+fi
+
 # Clean up internal temporary startup variables to leave a pristine environment
 unset _host _saved_prompt_style _GIT_VERSION _GIT_MAJOR _GIT_MINOR _rest _GIT_SUPPORTS_ZDIFF3 _GIT_EXTRA_ARGS _git_exec_dir _git_exec_path _prompt_script _comp_main _p _eza_cmd _bat_cmd _eza_preview _bat_preview _delta_preview show_file_or_dir_preview
