@@ -6,16 +6,17 @@ SCRIPT_NAME="$(basename "$0")"
 show_help() {
     cat <<HELPEOF
 Usage:
-  $SCRIPT_NAME <user@host> <remote_dir> <local_mount>
+  $SCRIPT_NAME <user@host> [<remote_dir>] <local_mount>
   $SCRIPT_NAME -u <local_mount>
   $SCRIPT_NAME -h | --help
 
 Description:
   Mount a remote directory locally via SSHFS, or unmount an existing mount.
+  If <remote_dir> is omitted, it defaults to the remote user's home directory.
 
 Arguments:
   <user@host>     Remote SSH target (e.g., user@server.com or SSH config host)
-  <remote_dir>    Absolute path on remote host to mount
+  <remote_dir>    Optional path on remote host to mount (defaults to remote home)
   <local_mount>   Local directory to mount into
 
 Options:
@@ -23,11 +24,14 @@ Options:
   -h, --help      Display this help message and exit
 
 Examples:
-  # Mount remote directory:
-  $SCRIPT_NAME user@remote-box /home/user/project ~/mnt/project
+  # Mount remote home directory (defaults to remote \$HOME):
+  $SCRIPT_NAME user@remote-box ~/mnt/remote
+
+  # Mount specific remote directory:
+  $SCRIPT_NAME user@remote-box /var/www ~/mnt/webserver
 
   # Unmount directory:
-  $SCRIPT_NAME -u ~/mnt/project
+  $SCRIPT_NAME -u ~/mnt/remote
 HELPEOF
 }
 
@@ -82,15 +86,24 @@ case "${1:-}" in
         ;;
 esac
 
-if [[ $# -lt 3 ]]; then
+if [[ $# -lt 2 ]]; then
     echo "Error: Missing required arguments." >&2
     echo "Run '$SCRIPT_NAME --help' for usage." >&2
     exit 1
 fi
 
 REMOTE_HOST="$1"
-REMOTE_DIR="$2"
-LOCAL_MOUNT="$3"
+if [[ $# -eq 2 ]]; then
+    REMOTE_DIR=""
+    LOCAL_MOUNT="$2"
+    REMOTE_SPEC="${REMOTE_HOST}:"
+    DISPLAY_DIR="remote \$HOME"
+else
+    REMOTE_DIR="$2"
+    LOCAL_MOUNT="$3"
+    REMOTE_SPEC="${REMOTE_HOST}:${REMOTE_DIR}"
+    DISPLAY_DIR="$REMOTE_DIR"
+fi
 
 SSHFS_OPTS=(
     -o reconnect
@@ -110,8 +123,8 @@ if mountpoint -q "$LOCAL_MOUNT" 2>/dev/null; then
     exit 0
 fi
 
-echo "Mounting $REMOTE_HOST:$REMOTE_DIR to $LOCAL_MOUNT..."
-sshfs "$REMOTE_HOST:$REMOTE_DIR" "$LOCAL_MOUNT" "${SSHFS_OPTS[@]}"
+echo "Mounting $REMOTE_HOST ($DISPLAY_DIR) to $LOCAL_MOUNT..."
+sshfs "$REMOTE_SPEC" "$LOCAL_MOUNT" "${SSHFS_OPTS[@]}"
 
 if mountpoint -q "$LOCAL_MOUNT" 2>/dev/null; then
     echo "Successfully mounted to $LOCAL_MOUNT"
