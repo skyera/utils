@@ -2,3 +2,8 @@
 on   = [ "<Enter>" ]
 run  = "open"
 desc = "Open the selected files"
+
+[[mgr.prepend_keymap]]
+on   = [ "P" ]
+run  = 'shell --block "mpv --vo=tct \"%s\""'
+desc = "Play video in terminal (TCT)"

@@ -16,10 +16,18 @@ edit = [
     { run = 'nvim %s', block = true, desc = "nvim" },
     { run = 'vim %s', block = true, desc = "vim" }
 ]
+play = [
+    { run = 'mpv "%s"', orphan = true, desc = "mpv (GUI Window)" },
+    { run = 'mpv --vo=tct "%s"', block = true, desc = "mpv (Terminal TCT)" }
+]
 
 
 [open]
 prepend_rules = [
+    { mime = "video/*", use = "play" },
+    { mime = "audio/*", use = "play" },
+    { url = "*.{mp4,mkv,avi,mov,wmv,flv,webm,m4v,ts,mp3,flac,wav,ogg,m4a}", use = "play" },
     { mime = "*", use = "edit" },
     { url = "*", use = "edit" }
 ]
+
