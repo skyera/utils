@@ -399,8 +399,7 @@ return {
   },
   {
     "vimwiki/vimwiki",
-    ft = { "vimwiki", "markdown" },
-    cmd = { "VimwikiIndex", "VimwikiUISelect" },
+    lazy = false,
   },
   {
     "Exafunction/windsurf.vim",
