@@ -29,9 +29,14 @@ dexec() {
 
 ### Nerd Fonts
 ```bash
-# Linux
+# Linux (Release archive - all variations)
 mkdir -p ~/.local/share/fonts
-cd ~/.local/share/fonts
+curl -sSLo /tmp/Hack.tar.xz https://github.com/ryanoasis/nerd-fonts/releases/latest/download/Hack.tar.xz
+tar -xJf /tmp/Hack.tar.xz -C ~/.local/share/fonts --wildcards "*.ttf"
+rm /tmp/Hack.tar.xz
+fc-cache -f ~/.local/share/fonts
+
+# Linux (Single font)
 curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack/HackNerdFont-Regular.ttf
 
 # macOS (Homebrew)

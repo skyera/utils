@@ -261,14 +261,12 @@ elif [[ "$OSTYPE" == linux* ]]; then
     if [ ! -f "$HOME/.local/share/fonts/HackNerdFont-Regular.ttf" ]; then
         echo "Installing all Hack Nerd Font variations..."
         mkdir -p "$HOME/.local/share/fonts"
-        BASE_URL="https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack"
-        for style in "" "Mono" "Propo"; do
-            for weight in "Regular" "Bold" "Italic" "BoldItalic"; do
-                FILE="HackNerdFont${style}-${weight}.ttf"
-                curl -sfLo "$HOME/.local/share/fonts/$FILE" "$BASE_URL/$FILE"
-            done
-        done
-        command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$HOME/.local/share/fonts"
+        _tmp_font=$(mktemp)
+        if curl -sSLo "$_tmp_font" "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/Hack.tar.xz"; then
+            tar -xJf "$_tmp_font" -C "$HOME/.local/share/fonts" --wildcards "*.ttf"
+            command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$HOME/.local/share/fonts"
+        fi
+        rm -f "$_tmp_font"
     fi
 fi
 
