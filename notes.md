@@ -32,7 +32,7 @@ dexec() {
 # Linux
 mkdir -p ~/.local/share/fonts
 cd ~/.local/share/fonts
-curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack/Regular/HackNerdFont-Regular.ttf
+curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/Hack/HackNerdFont-Regular.ttf
 
 # macOS (Homebrew)
 brew tap homebrew/cask-fonts

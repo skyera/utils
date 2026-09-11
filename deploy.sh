@@ -265,7 +265,7 @@ elif [[ "$OSTYPE" == linux* ]]; then
         for style in "" "Mono" "Propo"; do
             for weight in "Regular" "Bold" "Italic" "BoldItalic"; do
                 FILE="HackNerdFont${style}-${weight}.ttf"
-                curl -sfLo "$HOME/.local/share/fonts/$FILE" "$BASE_URL/${weight}/$FILE"
+                curl -sfLo "$HOME/.local/share/fonts/$FILE" "$BASE_URL/$FILE"
             done
         done
         command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$HOME/.local/share/fonts"
