@@ -136,21 +136,18 @@ local function is_admin()
         return (ffi.C.getuid() == 0)
     end
 
-    local hToken = ffi.new("HANDLE[1]")
-    if ffi.C.OpenProcessToken(ffi.C.GetCurrentProcess(), 0x0008, hToken) == 0 then
-        return false
-    end
+    local ok, adv = pcall(ffi.load, "advapi32")
+    if not ok then return false end
 
     local ntAuthority = ffi.new("unsigned char[6]", {0, 0, 0, 0, 0, 5}) -- SECURITY_NT_AUTHORITY
     local pAdminSid = ffi.new("void*[1]")
     local isAdmin = ffi.new("BOOL[1]", 0)
 
     -- SECURITY_BUILTIN_DOMAIN_RID = 0x00000020, DOMAIN_ALIAS_RID_ADMINS = 0x00000220
-    if ffi.C.AllocateAndInitializeSid(ntAuthority, 2, 0x20, 0x220, 0, 0, 0, 0, 0, 0, pAdminSid) ~= 0 then
-        ffi.C.CheckTokenMembership(hToken[0], pAdminSid[0], isAdmin)
-        ffi.C.FreeSid(pAdminSid[0])
+    if adv.AllocateAndInitializeSid(ntAuthority, 2, 0x20, 0x220, 0, 0, 0, 0, 0, 0, pAdminSid) ~= 0 then
+        adv.CheckTokenMembership(nil, pAdminSid[0], isAdmin)
+        adv.FreeSid(pAdminSid[0])
     end
-    ffi.C.CloseHandle(hToken[0])
     return (isAdmin[0] ~= 0)
 end
 
