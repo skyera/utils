@@ -546,37 +546,32 @@ local function run_fzf_interactive(hosts)
         script_path = pwd .. "/" .. script_path
     end
 
+    local list_cmd    = string.format("luajit %q -l", script_path)
     local preview_cmd = string.format("luajit %q -p {1}", script_path)
 
-    local tsv_lines = {}
-    local host_map = {}
-    for _, h in ipairs(hosts) do
-        local dest = (h.user ~= "") and (h.user .. "@" .. h.hostname) or h.hostname
-        table.insert(tsv_lines, string.format("%s\t%s\t%s\t%s", h.name, dest, h.port, h.source))
-        host_map[h.name] = h
-    end
-
     local fzf_cmd = string.format(
-        'fzf --prompt="Select SSH Host > " --delimiter="\t" --with-nth=1,2,3,4 ' ..
+        '%s | fzf --prompt="Select SSH Host > " --delimiter="\t" --with-nth=1,2,3,4 ' ..
         '--layout=reverse --height=50%% --border --preview=%q --preview-window=right:55%%:wrap ' ..
         '--header="ENTER: Connect | ESC: Cancel"',
-        preview_cmd
+        list_cmd, preview_cmd
     )
 
-    local pipe = io.popen(fzf_cmd, "w+")
+    local pipe = io.popen(fzf_cmd, "r")
     if not pipe then
         io.stderr:write("Error: fzf is not installed or failed to launch.\n")
         return nil
     end
 
-    pipe:write(table.concat(tsv_lines, "\n") .. "\n")
-    pipe:flush()
     local output = pipe:read("*line")
     pipe:close()
 
     if output and output ~= "" then
         local key = output:match("^[^\t]+")
-        return host_map[key]
+        for _, h in ipairs(hosts) do
+            if h.name == key then
+                return h
+            end
+        end
     end
     return nil
 end
