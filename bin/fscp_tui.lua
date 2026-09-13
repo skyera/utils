@@ -625,6 +625,19 @@ local function parse_host_string(str)
     }
 end
 
+local function save_host_to_ssh_config(alias, hostname, user, port)
+    local home = os.getenv("USERPROFILE") or os.getenv("HOME") or "."
+    local ssh_dir = home .. "/.ssh"
+    local path = ssh_dir .. "/config"
+    local f, err = io.open(path, "a")
+    if not f then return false, err end
+    f:write(string.format("\nHost %s\n    HostName %s\n", alias, hostname))
+    if user and user ~= "" then f:write(string.format("    User %s\n", user)) end
+    if port and port ~= "" and port ~= "22" then f:write(string.format("    Port %s\n", port)) end
+    f:close()
+    return true
+end
+
 local function aggregate_ssh_hosts()
     local hosts = {}
     local seen = {}
@@ -1186,7 +1199,7 @@ function App.draw()
 
     -- 6. Keyboard Guide Footer Bar
     local foot_y = content_h + 5
-    local keyguide = string.format(" [Tab] Switch  [Space] Select  [.] Hidden:%s  [u] Upload ->  [d] <- Download  [r] Refresh  [?] Help  [q] Quit ",
+    local keyguide = string.format(" [Tab] Switch  [Space] Select  [H] Host/IP  [.] Hidden:%s  [u] Upload  [d] Download  [r] Refresh  [?] Help  [q] Quit ",
         App.show_hidden and "ON" or "OFF"
     )
     table.insert(buf, string.format("\27[%d;1H%s%s%s%s\27[K",
@@ -1203,6 +1216,8 @@ function App.draw()
         App.draw_confirm_modal()
     elseif App.modal == "host_picker" then
         App.draw_host_picker_modal()
+    elseif App.modal == "new_host_form" then
+        App.draw_new_host_modal()
     elseif App.modal == "help" then
         App.draw_help_modal()
     end
@@ -1294,18 +1309,17 @@ function App.draw_host_picker_modal()
 
     local lines = {
         BOX.tl .. pad_string(" Connect to Remote Server ", mw - 2) .. BOX.tr,
-        BOX.v .. pad_string(" [↑/↓ or j/k] Navigate   [Enter] Connect   [Type] Filter / Custom Host   [Esc] Cancel", mw - 2) .. BOX.v,
+        BOX.v .. pad_string(" [↑/↓] Navigate   [Enter] Connect   [Type] Quick Connect   [n] New Form   [Esc] Cancel", mw - 2) .. BOX.v,
     }
 
-    if filter_str ~= "" then
-        table.insert(lines, BOX.v .. pad_string(" Filter: " .. filter_str .. "_", mw - 2) .. BOX.v)
-    end
+    local filter_prompt = (filter_str ~= "") and (" Filter / IP: " .. filter_str .. "_") or " Filter / IP: _ (Type user@host:port or press 'n' for form)"
+    table.insert(lines, BOX.v .. pad_string(filter_prompt, mw - 2) .. BOX.v)
 
     table.insert(lines, BOX.v .. BOX.h:rep(mw - 2) .. BOX.v)
     table.insert(lines, BOX.v .. pad_string(string.format("   %-18s %-26s %-10s %-6s %s", "NAME", "HOST / IP", "USER", "PORT", "SOURCE"), mw - 2) .. BOX.v)
     table.insert(lines, BOX.v .. BOX.h:rep(mw - 2) .. BOX.v)
 
-    local view_h = mh - (filter_str ~= "" and 7 or 6)
+    local view_h = mh - 7
     if view_h < 4 then view_h = 4 end
     local scroll = math.max(1, cur - view_h + 1)
 
@@ -1332,7 +1346,63 @@ function App.draw_host_picker_modal()
     end
 
     table.insert(lines, BOX.v .. BOX.h:rep(mw - 2) .. BOX.v)
-    table.insert(lines, BOX.v .. pad_string(string.format(" Total: %d server(s) | Press [Enter] to connect", #hosts), mw - 2) .. BOX.v)
+    table.insert(lines, BOX.v .. pad_string(string.format(" Total: %d option(s) | [Enter] Connect | [n] New Form Dialog", #hosts), mw - 2) .. BOX.v)
+    table.insert(lines, BOX.bl .. BOX.h:rep(mw - 2) .. BOX.br)
+
+    local modal_buf = {}
+    for i, line in ipairs(lines) do
+        table.insert(modal_buf, string.format("\27[%d;%dH%s%s%s%s",
+            my + i - 1, mx, C.bold, C.bright_cyan, line, C.reset
+        ))
+    end
+    io.write(table.concat(modal_buf))
+    io.flush()
+end
+
+function App.draw_new_host_modal()
+    local w, h = App.term_w, App.term_h
+    local mw = math.min(74, w - 4)
+    local mh = 15
+    local mx = math.floor((w - mw) / 2)
+    local my = math.floor((h - mh) / 2)
+
+    local d = App.modal_data
+    local f_idx = d.field or 1
+
+    local function field_line(num, label, val, is_active, hint)
+        local prefix = is_active and "> " or "  "
+        local cur_mark = is_active and "_" or ""
+        local text = string.format("%s%d. %-12s: [ %s%s ]%s", prefix, num, label, val or "", cur_mark, hint or "")
+        local col = is_active and (C.bold .. C.bright_yellow) or C.bright_white
+        return BOX.v .. col .. pad_string(text, mw - 2) .. C.reset .. C.bright_cyan .. BOX.v
+    end
+
+    local function check_line(num, label, checked, is_active, hint)
+        local prefix = is_active and "> " or "  "
+        local box_char = checked and "[X]" or "[ ]"
+        local text = string.format("%s%d. %s %s%s", prefix, num, box_char, label, hint or "")
+        local col = is_active and (C.bold .. C.bright_yellow) or C.bright_white
+        return BOX.v .. col .. pad_string(text, mw - 2) .. C.reset .. C.bright_cyan .. BOX.v
+    end
+
+    local lines = {
+        BOX.tl .. pad_string(" New Remote Connection (Guided Form) ", mw - 2) .. BOX.tr,
+        BOX.v .. pad_string(" Fill in connection details, or press [Esc] to return.", mw - 2) .. BOX.v,
+        BOX.v .. BOX.h:rep(mw - 2) .. BOX.v,
+        field_line(1, "Host / IP", d.host, f_idx == 1, " (Required, e.g. 192.168.1.50)"),
+        field_line(2, "Port", d.port, f_idx == 2, " (Default: 22)"),
+        field_line(3, "User", d.user, f_idx == 3, " (Optional)"),
+        field_line(4, "Remote Dir", d.dir, f_idx == 4, " (Default: ~)"),
+        check_line(5, "Save to ~/.ssh/config", d.save, f_idx == 5, " (Space to toggle)"),
+        field_line(6, "Host Alias", d.alias, f_idx == 6, d.save and " (Alias in ssh config)" or " (Enable #5 to save)"),
+        BOX.v .. BOX.h:rep(mw - 2) .. BOX.v,
+    }
+
+    if d.error and d.error ~= "" then
+        table.insert(lines, BOX.v .. C.bright_red .. pad_string(" Error: " .. d.error, mw - 2) .. C.reset .. C.bright_cyan .. BOX.v)
+    else
+        table.insert(lines, BOX.v .. pad_string(" [Tab/Down] Next   [Up] Prev   [Space] Toggle   [Enter] Connect", mw - 2) .. BOX.v)
+    end
     table.insert(lines, BOX.bl .. BOX.h:rep(mw - 2) .. BOX.br)
 
     local modal_buf = {}
@@ -1484,18 +1554,44 @@ function App.handle_input(key)
             d.cursor = math.max(1, cur - 10)
         elseif key == "pagedown" then
             d.cursor = math.min(total, cur + 10)
+        elseif key == "n" then
+            App.modal = "new_host_form"
+            App.modal_data = {
+                field = 1,
+                host = (d.filter or ""):gsub("^%s+", ""):gsub("%s+$", ""),
+                port = "22",
+                user = "",
+                dir = "~",
+                save = false,
+                alias = "",
+                error = nil,
+            }
         elseif key == "enter" or key == "l" or key == "right" then
             local sel = filtered[cur]
             if sel then
-                App.host_cfg = sel
-                App.modal = nil
-                App.active_pane = "right"
-                App.right.dir = sel.is_demo and "/home/user" or "~"
-                remote_cache = {}
-                local target_name = (sel.hostname and sel.hostname ~= "") and sel.hostname or sel.name
-                App.status_msg = "Connecting to " .. target_name .. "..."
-                App.status_color = C.bright_cyan
-                App.refresh_right(true)
+                if sel.is_form_launcher then
+                    App.modal = "new_host_form"
+                    App.modal_data = {
+                        field = 1,
+                        host = (d.filter or ""):gsub("^%s+", ""):gsub("%s+$", ""),
+                        port = "22",
+                        user = "",
+                        dir = "~",
+                        save = false,
+                        alias = "",
+                        error = nil,
+                    }
+                else
+                    App.host_cfg = sel
+                    App.modal = nil
+                    App.active_pane = "right"
+                    App.right.dir = sel.is_demo and "/home/user" or "~"
+                    remote_cache = {}
+                    local target_name = (sel.hostname and sel.hostname ~= "") and sel.hostname or sel.name
+                    App.status_msg = "Connecting to " .. target_name .. "..."
+                    App.status_color = C.bright_cyan
+                    App.refresh_right(true)
+                end
             end
         elseif key == "backspace" then
             if d.filter and #d.filter > 0 then
@@ -1515,6 +1611,103 @@ function App.handle_input(key)
         elseif key:len() == 1 and (key:match("[%w_%-%.%@%:]") or key == "@" or key == ":") then
             d.filter = (d.filter or "") .. key
             update_filter()
+        end
+        return
+    elseif App.modal == "new_host_form" then
+        local d = App.modal_data
+        local max_fields = d.save and 6 or 5
+        if key == "esc" then
+            local hosts = aggregate_ssh_hosts()
+            table.insert(hosts, 1, {
+                name = "[+] New Form",
+                hostname = "(press 'n' for form dialog)",
+                user = "-",
+                port = "22",
+                source = "form",
+                is_form_launcher = true,
+            })
+            table.insert(hosts, 2, {
+                name = "[Demo Server]",
+                hostname = "demo-server.local",
+                user = "user",
+                port = "22",
+                source = "demo",
+                is_demo = true,
+            })
+            App.modal = "host_picker"
+            App.modal_data = {
+                hosts = hosts,
+                filtered = hosts,
+                cursor = 1,
+                filter = "",
+            }
+        elseif key == "tab" or key == "down" then
+            d.field = (d.field % max_fields) + 1
+            d.error = nil
+        elseif key == "up" then
+            d.field = d.field - 1
+            if d.field < 1 then d.field = max_fields end
+            d.error = nil
+        elseif key == "space" and d.field == 5 then
+            d.save = not d.save
+            if d.save and (not d.alias or d.alias == "") then
+                d.alias = d.host or ""
+            end
+        elseif key == "enter" then
+            local host_val = (d.host or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if host_val == "" then
+                d.error = "Host / IP cannot be empty."
+                d.field = 1
+            else
+                local port_val = (d.port or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                if port_val == "" then port_val = "22" end
+                local user_val = (d.user or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                local dir_val = (d.dir or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                if dir_val == "" then dir_val = "~" end
+                local alias_val = (d.alias or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                if alias_val == "" then alias_val = host_val end
+
+                if d.save then
+                    save_host_to_ssh_config(alias_val, host_val, user_val, port_val)
+                end
+
+                App.host_cfg = {
+                    name = alias_val,
+                    hostname = host_val,
+                    user = user_val,
+                    port = port_val,
+                    source = d.save and "ssh-config" or "custom",
+                    is_demo = false,
+                }
+                App.modal = nil
+                App.active_pane = "right"
+                App.right.dir = dir_val
+                remote_cache = {}
+                App.status_msg = "Connecting to " .. App.host_cfg.hostname .. "..."
+                App.status_color = C.bright_cyan
+                App.refresh_right(true)
+            end
+        elseif key == "backspace" then
+            d.error = nil
+            if d.field == 1 then d.host = (d.host or ""):sub(1, -2)
+            elseif d.field == 2 then d.port = (d.port or ""):sub(1, -2)
+            elseif d.field == 3 then d.user = (d.user or ""):sub(1, -2)
+            elseif d.field == 4 then d.dir = (d.dir or ""):sub(1, -2)
+            elseif d.field == 6 then d.alias = (d.alias or ""):sub(1, -2)
+            end
+        elseif key:len() == 1 then
+            d.error = nil
+            if d.field == 1 and (key:match("[%w_%-%.%@%:]") or key == "@" or key == ":") then
+                d.host = (d.host or "") .. key
+            elseif d.field == 2 and key:match("%d") then
+                d.port = (d.port or "") .. key
+            elseif d.field == 3 and key:match("[%w_%-%.]") then
+                d.user = (d.user or "") .. key
+            elseif d.field == 4 and (key:match("[%w_%-%./~]") or key == "/" or key == "~") then
+                d.dir = (d.dir or "") .. key
+            elseif d.field == 6 and key:match("[%w_%-%.]") then
+                d.alias = (d.alias or "") .. key
+            end
         end
         return
     end
@@ -1675,6 +1868,14 @@ function App.handle_input(key)
     elseif key == "H" then
         local hosts = aggregate_ssh_hosts()
         table.insert(hosts, 1, {
+            name = "[+] New Form",
+            hostname = "(press 'n' for form dialog)",
+            user = "-",
+            port = "22",
+            source = "form",
+            is_form_launcher = true,
+        })
+        table.insert(hosts, 2, {
             name = "[Demo Server]",
             hostname = "demo-server.local",
             user = "user",
@@ -1817,6 +2018,23 @@ local function main(...)
             assert(parse_host_string("user@host:") == nil, "Trailing colon should return nil")
             print("  [PASS] Ad-hoc host and IP parsing unit tests")
 
+            -- 11. Test new_host_form modal state initialization and validation
+            App.modal = "new_host_form"
+            App.modal_data = {
+                field = 1,
+                host = "192.168.1.99",
+                port = "2222",
+                user = "admin",
+                dir = "/srv",
+                save = false,
+                alias = "my-box",
+            }
+            assert(App.modal_data.field == 1, "Field index should be 1")
+            assert(App.modal_data.host == "192.168.1.99", "Host should match")
+            assert(App.modal_data.port == "2222", "Port should match")
+            App.modal = nil
+            print("  [PASS] Hybrid new connection form state tests")
+
             print(C.bold .. C.bright_green .. "[ALL TESTS PASSED SUCCESSFULLY]" .. C.reset)
             return
         elseif arg == "--snapshot" then
@@ -1913,6 +2131,14 @@ Keybindings:
         -- No host provided: aggregate all saved sessions and show server picker at start
         local available_hosts = aggregate_ssh_hosts()
         table.insert(available_hosts, 1, {
+            name = "[+] New Form",
+            hostname = "(press 'n' for form dialog)",
+            user = "-",
+            port = "22",
+            source = "form",
+            is_form_launcher = true,
+        })
+        table.insert(available_hosts, 2, {
             name = "[Demo Server]",
             hostname = "demo-server.local",
             user = "user",
@@ -1920,7 +2146,7 @@ Keybindings:
             source = "demo",
             is_demo = true,
         })
-        App.host_cfg = available_hosts[1]
+        App.host_cfg = available_hosts[2]
         App.modal = "host_picker"
         App.modal_data = {
             hosts = available_hosts,
