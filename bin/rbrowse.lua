@@ -224,6 +224,26 @@ local function get_home_dir()
     return os.getenv("HOME") or os.getenv("USERPROFILE") or "."
 end
 
+local function normalize_remote_path(p)
+    if not p then return "~" end
+    if IS_WINDOWS then
+        local local_home = get_home_dir()
+        if local_home and #local_home > 0 then
+            local norm_p = p:gsub("\\", "/")
+            local norm_home = local_home:gsub("\\", "/")
+            if norm_p:sub(1, #norm_home) == norm_home then
+                local sub = norm_p:sub(#norm_home + 1):gsub("^/", "")
+                if #sub == 0 then return "~" else return "~/" .. sub end
+            end
+        end
+        local user_sub = p:gsub("\\", "/"):match("^[A-Za-z]:/Users/[^/]+/(.*)$")
+        if user_sub then
+            return "~/" .. user_sub
+        end
+    end
+    return p
+end
+
 local function file_exists(path)
     local f = io.open(path, "rb")
     if f then
@@ -381,18 +401,37 @@ end
 local function base64_decode(s)
     if not s or #s == 0 then return "" end
     local out = {}
-    local buf, bits = 0, 0
-    for i = 1, #s do
-        local c = s:byte(i)
-        local val = B64_MAP[c]
+    local b0, b1, b2, b3
+    local count = 0
+    local len = #s
+    for i = 1, len do
+        local val = B64_MAP[s:byte(i)]
         if val then
-            buf = bit.bor(bit.lshift(buf, 6), val)
-            bits = bits + 6
-            if bits >= 8 then
-                bits = bits - 8
-                table.insert(out, string.char(bit.band(bit.rshift(buf, bits), 0xFF)))
+            count = count + 1
+            if count == 1 then
+                b0 = val
+            elseif count == 2 then
+                b1 = val
+            elseif count == 3 then
+                b2 = val
+            elseif count == 4 then
+                b3 = val
+                table.insert(out, string.char(
+                    bit.bor(bit.lshift(b0, 2), bit.rshift(b1, 4)),
+                    bit.bor(bit.lshift(bit.band(b1, 0x0F), 4), bit.rshift(b2, 2)),
+                    bit.bor(bit.lshift(bit.band(b2, 0x03), 6), b3)
+                ))
+                count = 0
             end
         end
+    end
+    if count == 2 then
+        table.insert(out, string.char(bit.bor(bit.lshift(b0, 2), bit.rshift(b1, 4))))
+    elseif count == 3 then
+        table.insert(out, string.char(
+            bit.bor(bit.lshift(b0, 2), bit.rshift(b1, 4)),
+            bit.bor(bit.lshift(bit.band(b1, 0x0F), 4), bit.rshift(b2, 2))
+        ))
     end
     return table.concat(out)
 end
@@ -1549,6 +1588,7 @@ function Crawler.get_ssh_cmd(host_cfg)
 end
 
 function Crawler.list_directory(host_cfg, remote_dir)
+    remote_dir = normalize_remote_path(remote_dir)
     if not remote_dir or remote_dir == "" then remote_dir = "~" end
     local cache_key = (host_cfg.hostname or host_cfg.name or "demo") .. ":" .. remote_dir
     if Crawler.dir_cache[cache_key] then
@@ -1587,7 +1627,7 @@ function Crawler.list_directory(host_cfg, remote_dir)
 
     local ssh_base = Crawler.get_ssh_cmd(host_cfg)
     local esc_dir = shell_escape(remote_dir)
-    local remote_sh = string.format([=[d=%s; if [ -z "$d" ] || [ "$d" = "~" ]; then cd ~ 2>/dev/null || cd /; elif [ "${d#\~/}" != "$d" ]; then cd ~/"${d#\~/}" 2>/dev/null || cd "$d" 2>/dev/null || cd /; else cd "$d" 2>/dev/null || cd /; fi; echo "PWD:$(pwd)"; LC_ALL=C ls -la --time-style=+%%Y-%%m-%%d\ %%H:%%M:%%S . 2>/dev/null || LC_ALL=C ls -la .]=], esc_dir)
+    local remote_sh = string.format([=[d=%s; if [ -z "$d" ] || [ "$d" = "~" ]; then cd ~ 2>/dev/null || cd /; elif [ "${d#\~/}" != "$d" ]; then sub="${d#\~/}"; cd ~/"$sub" 2>/dev/null || cd ~/"${sub}s" 2>/dev/null || cd ~/"$sub"* 2>/dev/null || cd "$d" 2>/dev/null || cd /; else cd "$d" 2>/dev/null || cd "${d}s" 2>/dev/null || cd "$d"* 2>/dev/null || cd /; fi; echo "PWD:$(pwd)"; LC_ALL=C ls -la --time-style=+%%Y-%%m-%%d\ %%H:%%M:%%S . 2>/dev/null || LC_ALL=C ls -la .]=], esc_dir)
     local full_cmd = string.format("%s %s", ssh_base, shell_escape(remote_sh))
 
     local pipe = io.popen(full_cmd, "r")
@@ -1653,6 +1693,7 @@ function Crawler.list_directory(host_cfg, remote_dir)
 end
 
 function Crawler.get_file_preview(host_cfg, remote_path, is_image)
+    remote_path = normalize_remote_path(remote_path)
     local cache_key = (host_cfg.hostname or host_cfg.name or "demo") .. ":" .. remote_path
     if Crawler.preview_cache[cache_key] then
         return Crawler.preview_cache[cache_key]
@@ -1668,7 +1709,7 @@ function Crawler.get_file_preview(host_cfg, remote_path, is_image)
     local esc_path = shell_escape(remote_path)
     local cmd
     if is_image then
-        cmd = string.format("%s %s", ssh_base, shell_escape(string.format([=[p=%s; if [ "${p#\~/}" != "$p" ]; then p=~/"${p#\~/}"; fi; cat "$p" 2>/dev/null]=], esc_path)))
+        cmd = string.format("%s %s", ssh_base, shell_escape(string.format([=[p=%s; if [ "${p#\~/}" != "$p" ]; then p=~/"${p#\~/}"; fi; base64 -w 0 "$p" 2>/dev/null || base64 "$p" 2>/dev/null || cat "$p" 2>/dev/null]=], esc_path)))
     else
         cmd = string.format("%s %s", ssh_base, shell_escape(string.format([=[p=%s; if [ "${p#\~/}" != "$p" ]; then p=~/"${p#\~/}"; fi; head -n 250 "$p" 2>/dev/null]=], esc_path)))
     end
@@ -1677,6 +1718,15 @@ function Crawler.get_file_preview(host_cfg, remote_path, is_image)
     if not pipe then return "Failed to retrieve remote preview" end
     local content = pipe:read("*a")
     pipe:close()
+
+    if is_image and content and #content > 0 then
+        if content:sub(1, 4) ~= "\137PNG" and content:sub(1, 3) ~= "\255\216\255" and content:sub(1, 4) ~= "GIF8" and content:sub(1, 2) ~= "BM" and content:sub(1, 4) ~= "RIFF" then
+            local decoded = base64_decode(content)
+            if decoded and #decoded > 0 then
+                content = decoded
+            end
+        end
+    end
 
     Crawler.preview_cache[cache_key] = content
     return content
@@ -2395,6 +2445,7 @@ end
 
 local function main(args)
     local target_arg = nil
+    local target_path = nil
     local explicit_demo = false
     local i = 1
     while i <= #args do
@@ -2475,8 +2526,12 @@ local function main(args)
         elseif a == "-i" or a == "--identity" then
             i = i + 1
             App.host_cfg.key = args[i]
-        elseif not a:find("^%-") and not target_arg then
-            target_arg = a
+        elseif not a:find("^%-") then
+            if not target_arg then
+                target_arg = a
+            elseif not target_path then
+                target_path = a
+            end
         end
         i = i + 1
     end
@@ -2490,10 +2545,10 @@ local function main(args)
         if target_arg:find(":") then
             local h, p = target_arg:match("^([^:]+):(.+)$")
             App.host_cfg.hostname = h
-            App.current_dir = p
+            App.current_dir = normalize_remote_path(p)
         else
             App.host_cfg.hostname = target_arg
-            App.current_dir = "~"
+            App.current_dir = normalize_remote_path(target_path or "~")
         end
         App.host_cfg.is_demo = false
         App.connected = true
