@@ -533,7 +533,14 @@ end
 --------------------------------------------------------------------------------
 -- Preview Formatter (< 1 ms response)
 --------------------------------------------------------------------------------
-local function format_preview(h)
+local function format_preview(h, is_rsync)
+    local tool = "scp"
+    if is_rsync then
+        tool = "rsync"
+    elseif IS_WINDOWS and h.source == "putty" then
+        tool = "pscp"
+    end
+
     local lines = {}
     table.insert(lines, string.format("%s%s=== Target Remote Host: %s ===%s", C.bold, C.cyan, h.name, C.reset))
     table.insert(lines, "")
@@ -547,6 +554,7 @@ local function format_preview(h)
     if h.source_file and h.source_file ~= "" then
         table.insert(lines, string.format("  %sConfig File   :%s %s%s%s", C.dim, C.reset, C.dim, h.source_file, C.reset))
     end
+    table.insert(lines, string.format("  %sTransfer Tool :%s %s%s%s", C.yellow, C.reset, C.bold .. C.green, tool, C.reset))
     table.insert(lines, "")
     table.insert(lines, string.format("%s%sAvailable Actions:%s", C.bold, C.white, C.reset))
     table.insert(lines, string.format("  %s• Push Files  :%s Upload selected local files to %s:~/", C.green, C.reset, h.name))
@@ -558,19 +566,24 @@ end
 --------------------------------------------------------------------------------
 -- Interactive FZF Host Selector
 --------------------------------------------------------------------------------
-local function run_fzf_host_picker(hosts)
+local function run_fzf_host_picker(hosts, is_rsync, pull_mode)
     local script_path = debug.getinfo(1, "S").source:sub(2)
     if not script_path:match("^/") and not script_path:match("^%a:[/\\]") then
         local pwd = io.popen(IS_WINDOWS and "cd" or "pwd 2>/dev/null || pwd"):read("*line") or "."
         script_path = pwd .. "/" .. script_path
     end
 
-    local preview_cmd = string.format("luajit %q --preview-only {1}", script_path)
+    local rsync_flag = is_rsync and " -r" or ""
+    local preview_cmd = string.format("luajit %q --preview-only {1}%s", script_path, rsync_flag)
+
+    local tool_label = is_rsync and "rsync" or (IS_WINDOWS and "scp / pscp" or "scp")
+    local mode_prefix = pull_mode and "fpull" or (is_rsync and "frsync" or "fscp")
+
     local fzf_cmd = string.format(
-        'luajit %q --list-hosts | fzf --prompt="[fscp] Remote Host > " --delimiter="\t" --with-nth=1,2,3,4 ' ..
+        'luajit %q --list-hosts | fzf --prompt="[%s] Remote Host > " --delimiter="\t" --with-nth=1,2,3,4 ' ..
         '--layout=reverse --height=50%% --border --preview=%q --preview-window=right:50%%:wrap ' ..
-        '--header="⚡ LuaJIT FFI | ENTER: Select Host | ESC: Cancel"',
-        script_path, preview_cmd
+        '--header="⚡ LuaJIT FFI | Tool: %s | ENTER: Select Host | ESC: Cancel"',
+        script_path, mode_prefix, preview_cmd, tool_label
     )
 
     local pipe = io.popen(fzf_cmd, "r")
@@ -772,6 +785,7 @@ local function execute_transfer(host, local_files, remote_path, pull_mode, use_r
     local source = host.source or ""
 
     remote_path = (remote_path ~= "") and remote_path or "~/"
+    local tag = pull_mode and "[fpull]" or (use_rsync and "[frsync]" or "[fscp]")
 
     -- PuTTY Windows PSCP mode
     if IS_WINDOWS and (source == "putty" and not use_rsync) then
@@ -802,10 +816,11 @@ local function execute_transfer(host, local_files, remote_path, pull_mode, use_r
         end
 
         if dry_run then
-            print("Dry run: " .. table.concat(p_cmd, " "))
+            print("Dry run (pscp): " .. table.concat(p_cmd, " "))
             return
         end
-        print(string.format("[fscp] Launching PSCP with PuTTY session '%s'...", name))
+        print(string.format("%s%s ⚡ Tool: %spscp (PuTTY)%s", C.cyan, tag, C.bold, C.reset))
+        print(string.format("%s%s ⚡ Executing: %s%s", C.cyan, tag, table.concat(p_cmd, " "), C.reset))
         os.execute(table.concat(p_cmd, " "))
         return
     end
@@ -860,12 +875,15 @@ local function execute_transfer(host, local_files, remote_path, pull_mode, use_r
         end
     end
 
+    local tool_name = use_rsync and "rsync" or "scp"
+
     if dry_run then
-        print("Dry run: " .. table.concat(cmd, " "))
+        print(string.format("Dry run (%s): %s", tool_name, table.concat(cmd, " ")))
         return
     end
 
-    print(string.format("%s[fscp] ⚡ Executing: %s%s", C.cyan, table.concat(cmd, " "), C.reset))
+    print(string.format("%s%s ⚡ Tool: %s%s%s", C.cyan, tag, C.bold, tool_name, C.reset))
+    print(string.format("%s%s ⚡ Executing: %s%s", C.cyan, tag, table.concat(cmd, " "), C.reset))
 
     if not IS_WINDOWS then
         local c_args = ffi.new("const char*[?]", #cmd + 1)
@@ -936,9 +954,16 @@ Examples:
             return
         elseif a == "--preview-only" and i + 1 <= #args then
             local target = args[i + 1]:lower():gsub('^["\']', ''):gsub('["\']$', '')
+            local prev_rsync = is_rsync
+            for j = 1, #args do
+                if args[j] == "-r" or args[j] == "--rsync" then
+                    prev_rsync = true
+                    break
+                end
+            end
             for _, h in ipairs(all_hosts) do
                 if h.name:lower() == target or h.hostname:lower() == target then
-                    print(format_preview(h))
+                    print(format_preview(h, prev_rsync))
                     return
                 end
             end
@@ -990,7 +1015,7 @@ Examples:
             io.stderr:write("[ERROR] No SSH hosts found in ~/.ssh/config, ~/.ssh/known_hosts, or PuTTY sessions.\n")
             os.exit(1)
         end
-        selected_host = run_fzf_host_picker(all_hosts)
+        selected_host = run_fzf_host_picker(all_hosts, is_rsync, pull_mode)
     end
 
     if not selected_host then
