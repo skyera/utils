@@ -354,6 +354,14 @@ function Term.read_key()
             return "esc"
         elseif ch == 3 then
             return "ctrl_c"
+        elseif ch == 4 then
+            return "ctrl_d"
+        elseif ch == 5 then
+            return "ctrl_e"
+        elseif ch == 14 then
+            return "ctrl_n"
+        elseif ch == 19 then
+            return "ctrl_s"
         else
             return string.char(ch)
         end
@@ -389,6 +397,14 @@ function Term.read_key()
             return "space"
         elseif ch == 3 then
             return "ctrl_c"
+        elseif ch == 4 then
+            return "ctrl_d"
+        elseif ch == 5 then
+            return "ctrl_e"
+        elseif ch == 14 then
+            return "ctrl_n"
+        elseif ch == 19 then
+            return "ctrl_s"
         else
             return string.char(ch)
         end
@@ -681,11 +697,9 @@ local function parse_host_string(str)
     }
 end
 
-local function save_host_to_ssh_config(alias, hostname, user, port, key)
-    local home = os.getenv("HOME") or os.getenv("USERPROFILE") or "."
-    local ssh_dir = home .. "/.ssh"
-    local path = ssh_dir .. "/config"
-    local f, err = io.open(path, "a")
+local function save_host_to_ssh_config(alias, hostname, user, port, key, filepath)
+    filepath = filepath or (get_home_dir() .. "/.ssh/config")
+    local f, err = io.open(filepath, "a")
     if not f then return false, err end
     f:write(string.format("\nHost %s\n    HostName %s\n", alias, hostname))
     if user and user ~= "" then f:write(string.format("    User %s\n", user)) end
@@ -693,6 +707,296 @@ local function save_host_to_ssh_config(alias, hostname, user, port, key)
     if key and key ~= "" then f:write(string.format("    IdentityFile %s\n", key)) end
     f:close()
     return true
+end
+
+local function delete_host_from_ssh_config(target_alias, filepath)
+    filepath = filepath or (get_home_dir() .. "/.ssh/config")
+    if not file_exists(filepath) then return false, "Config file does not exist" end
+
+    local f, err = io.open(filepath, "r")
+    if not f then return false, err end
+
+    local lines = {}
+    for line in f:lines() do
+        table.insert(lines, line)
+    end
+    f:close()
+
+    local new_lines = {}
+    local in_target_block = false
+    local found = false
+    local target_lower = target_alias:lower()
+
+    for i = 1, #lines do
+        local line = lines[i]
+        local trimmed = trim(line)
+        local is_comment = trimmed:match("^#")
+
+        if not is_comment and trimmed ~= "" then
+            local k, v = trimmed:match("^([%w_]+)%s*=?%s*(.*)$")
+            if k and k:lower() == "host" then
+                local aliases = {}
+                local has_target = false
+                for a in v:gmatch("%S+") do
+                    if a:lower() == target_lower then
+                        has_target = true
+                    else
+                        table.insert(aliases, a)
+                    end
+                end
+
+                if has_target then
+                    found = true
+                    if #aliases > 0 then
+                        local indent = line:match("^(%s*)") or ""
+                        table.insert(new_lines, indent .. "Host " .. table.concat(aliases, " "))
+                        in_target_block = false
+                    else
+                        in_target_block = true
+                    end
+                else
+                    in_target_block = false
+                    table.insert(new_lines, line)
+                end
+            elseif k and (k:lower() == "match" or k:lower() == "include") then
+                in_target_block = false
+                table.insert(new_lines, line)
+            else
+                if not in_target_block then
+                    table.insert(new_lines, line)
+                end
+            end
+        else
+            if not in_target_block then
+                table.insert(new_lines, line)
+            end
+        end
+    end
+
+    if not found then
+        return false, "Host alias not found in config"
+    end
+
+    local cleaned = {}
+    local prev_blank = false
+    for _, l in ipairs(new_lines) do
+        local is_blank = (trim(l) == "")
+        if not (is_blank and prev_blank) then
+            table.insert(cleaned, l)
+        end
+        prev_blank = is_blank
+    end
+
+    local tmp_path = filepath .. ".fscp_tmp." .. tostring(os.time())
+    local out, werr = io.open(tmp_path, "w")
+    if not out then return false, werr end
+    for _, l in ipairs(cleaned) do
+        out:write(l .. "\n")
+    end
+    out:close()
+
+    local ren_ok, ren_err = os.rename(tmp_path, filepath)
+    if not ren_ok then
+        local rf = io.open(tmp_path, "r")
+        local wf = io.open(filepath, "w")
+        if rf and wf then
+            wf:write(rf:read("*a"))
+            rf:close()
+            wf:close()
+            os.remove(tmp_path)
+            return true
+        end
+        return false, ren_err
+    end
+    return true
+end
+
+local function update_host_in_ssh_config(old_alias, new_alias, hostname, user, port, key, filepath)
+    filepath = filepath or (get_home_dir() .. "/.ssh/config")
+    if not file_exists(filepath) then
+        return save_host_to_ssh_config(new_alias, hostname, user, port, key, filepath)
+    end
+
+    local f, err = io.open(filepath, "r")
+    if not f then return false, err end
+
+    local lines = {}
+    for line in f:lines() do
+        table.insert(lines, line)
+    end
+    f:close()
+
+    local new_lines = {}
+    local in_target_block = false
+    local found = false
+    local target_lower = old_alias:lower()
+
+    local function emit_new_block()
+        table.insert(new_lines, string.format("Host %s", new_alias))
+        table.insert(new_lines, string.format("    HostName %s", hostname))
+        if user and user ~= "" then
+            table.insert(new_lines, string.format("    User %s", user))
+        end
+        if port and port ~= "" and port ~= "22" then
+            table.insert(new_lines, string.format("    Port %s", port))
+        end
+        if key and key ~= "" then
+            table.insert(new_lines, string.format("    IdentityFile %s", key))
+        end
+        table.insert(new_lines, "")
+    end
+
+    for i = 1, #lines do
+        local line = lines[i]
+        local trimmed = trim(line)
+        local is_comment = trimmed:match("^#")
+
+        if not is_comment and trimmed ~= "" then
+            local k, v = trimmed:match("^([%w_]+)%s*=?%s*(.*)$")
+            if k and k:lower() == "host" then
+                local aliases = {}
+                local has_target = false
+                for a in v:gmatch("%S+") do
+                    if a:lower() == target_lower then
+                        has_target = true
+                    else
+                        table.insert(aliases, a)
+                    end
+                end
+
+                if has_target then
+                    found = true
+                    if #aliases > 0 then
+                        local indent = line:match("^(%s*)") or ""
+                        table.insert(new_lines, indent .. "Host " .. table.concat(aliases, " "))
+                        emit_new_block()
+                        in_target_block = false
+                    else
+                        emit_new_block()
+                        in_target_block = true
+                    end
+                else
+                    in_target_block = false
+                    table.insert(new_lines, line)
+                end
+            elseif k and (k:lower() == "match" or k:lower() == "include") then
+                in_target_block = false
+                table.insert(new_lines, line)
+            else
+                if not in_target_block then
+                    table.insert(new_lines, line)
+                end
+            end
+        else
+            if not in_target_block then
+                table.insert(new_lines, line)
+            end
+        end
+    end
+
+    if not found then
+        return save_host_to_ssh_config(new_alias, hostname, user, port, key, filepath)
+    end
+
+    local cleaned = {}
+    local prev_blank = false
+    for _, l in ipairs(new_lines) do
+        local is_blank = (trim(l) == "")
+        if not (is_blank and prev_blank) then
+            table.insert(cleaned, l)
+        end
+        prev_blank = is_blank
+    end
+
+    local tmp_path = filepath .. ".fscp_tmp." .. tostring(os.time())
+    local out, werr = io.open(tmp_path, "w")
+    if not out then return false, werr end
+    for _, l in ipairs(cleaned) do
+        out:write(l .. "\n")
+    end
+    out:close()
+
+    local ren_ok, ren_err = os.rename(tmp_path, filepath)
+    if not ren_ok then
+        local rf = io.open(tmp_path, "r")
+        local wf = io.open(filepath, "w")
+        if rf and wf then
+            wf:write(rf:read("*a"))
+            rf:close()
+            wf:close()
+            os.remove(tmp_path)
+            return true
+        end
+        return false, ren_err
+    end
+    return true
+end
+
+local function remove_from_known_hosts(hostname)
+    if not hostname or hostname == "" then return false, "No hostname provided" end
+    local home = get_home_dir()
+    local path = home .. "/.ssh/known_hosts"
+    if not file_exists(path) then return false, "known_hosts file not found" end
+
+    pcall(function()
+        os.execute(string.format("ssh-keygen -R %s >/dev/null 2>&1", shell_escape(hostname)))
+    end)
+
+    local f = io.open(path, "r")
+    if not f then return true end
+    local lines = {}
+    local removed = false
+    local q = hostname:lower()
+    for line in f:lines() do
+        local host_part = line:match("^(%S+)")
+        local match = false
+        if host_part then
+            for single in host_part:gmatch("[^,]+") do
+                local h = single:match("^%[(.-)%]:%d+$") or single
+                if h:lower() == q then
+                    match = true
+                    removed = true
+                    break
+                end
+            end
+        end
+        if not match then
+            table.insert(lines, line)
+        end
+    end
+    f:close()
+
+    if removed then
+        local out = io.open(path, "w")
+        if out then
+            for _, l in ipairs(lines) do out:write(l .. "\n") end
+            out:close()
+        end
+    end
+    return true
+end
+
+local function delete_host_entry(h)
+    if not h then return false, "No host selected" end
+    if h.is_demo then
+        return false, "Built-in demo server cannot be deleted."
+    end
+    if h.is_form_launcher then
+        return false, "Built-in launcher cannot be deleted."
+    end
+
+    if h.source == "ssh-config" then
+        local path = h.source_file or (get_home_dir() .. "/.ssh/config")
+        return delete_host_from_ssh_config(h.name, path)
+    elseif h.source == "known-hosts" then
+        return remove_from_known_hosts(h.hostname or h.name)
+    elseif h.source == "hosts-file" then
+        return false, "Host is in /etc/hosts (read-only system file). Edit with 'sudo nano /etc/hosts'."
+    else
+        local ok, err = delete_host_from_ssh_config(h.name, get_home_dir() .. "/.ssh/config")
+        if ok then return true end
+        return false, "Cannot delete host of source: " .. tostring(h.source)
+    end
 end
 
 local function get_ssh_config_paths()
@@ -1495,6 +1799,8 @@ function App.draw()
         App.draw_host_picker_modal()
     elseif App.modal == "new_host_form" then
         App.draw_new_host_modal()
+    elseif App.modal == "confirm_delete_host" then
+        App.draw_confirm_delete_host_modal()
     elseif App.modal == "help" then
         App.draw_help_modal()
     end
@@ -1528,6 +1834,40 @@ function App.draw_confirm_modal()
     for i, line in ipairs(lines) do
         table.insert(modal_buf, string.format("\27[%d;%dH%s%s%s%s",
             my + i - 1, mx, C.bold, C.bright_yellow, line, C.reset
+        ))
+    end
+    io.write(table.concat(modal_buf))
+    io.flush()
+end
+
+function App.draw_confirm_delete_host_modal()
+    local w, h = App.term_w, App.term_h
+    local mw = math.min(74, w - 4)
+    local mh = 11
+    local mx = math.floor((w - mw) / 2)
+    local my = math.floor((h - mh) / 2)
+
+    local d = App.modal_data
+    local target = d.target or {}
+    local src_file = target.source_file or ((target.source == "ssh-config") and "~/.ssh/config" or target.source)
+
+    local lines = {
+        BOX.tl .. pad_string(" Confirm Delete Host ", mw - 2) .. BOX.tr,
+        BOX.v .. pad_string(" Are you sure you want to delete this host configuration?", mw - 2) .. BOX.v,
+        BOX.v .. BOX.h:rep(mw - 2) .. BOX.v,
+        BOX.v .. pad_string(string.format("   Alias   : %s", target.name or "-"), mw - 2) .. BOX.v,
+        BOX.v .. pad_string(string.format("   Host/IP : %s", target.hostname or "-"), mw - 2) .. BOX.v,
+        BOX.v .. pad_string(string.format("   Port    : %s", target.port or "22"), mw - 2) .. BOX.v,
+        BOX.v .. pad_string(string.format("   Source  : [%s] %s", target.source or "-", src_file), mw - 2) .. BOX.v,
+        BOX.v .. BOX.h:rep(mw - 2) .. BOX.v,
+        BOX.v .. C.bold .. C.bright_yellow .. pad_string(" [y] Confirm Delete      [n / Esc] Cancel", mw - 2) .. C.reset .. C.bright_cyan .. BOX.v,
+        BOX.bl .. BOX.h:rep(mw - 2) .. BOX.br,
+    }
+
+    local modal_buf = {}
+    for i, line in ipairs(lines) do
+        table.insert(modal_buf, string.format("\27[%d;%dH%s%s%s%s",
+            my + i - 1, mx, C.bold, C.bright_cyan, line, C.reset
         ))
     end
     io.write(table.concat(modal_buf))
@@ -1574,7 +1914,7 @@ end
 
 function App.draw_host_picker_modal()
     local w, h = App.term_w, App.term_h
-    local mw = math.min(86, w - 4)
+    local mw = math.min(88, w - 4)
     local mh = math.min(18, h - 4)
     local mx = math.floor((w - mw) / 2)
     local my = math.floor((h - mh) / 2)
@@ -1586,10 +1926,10 @@ function App.draw_host_picker_modal()
 
     local lines = {
         BOX.tl .. pad_string(" Connect to Remote Server ", mw - 2) .. BOX.tr,
-        BOX.v .. pad_string(" [↑/↓] Navigate   [Enter] Connect   [Type] Quick Connect   [n] New Form   [Esc] Cancel", mw - 2) .. BOX.v,
+        BOX.v .. pad_string(" [↑/↓] Navigate  [Enter] Connect  [e] Edit  [d/Del] Delete  [n] New  [Esc] Cancel", mw - 2) .. BOX.v,
     }
 
-    local filter_prompt = (filter_str ~= "") and (" Filter / IP: " .. filter_str .. "_") or " Filter / IP: _ (Type user@host:port or press 'n' for form)"
+    local filter_prompt = (filter_str ~= "") and (" Filter / IP: " .. filter_str .. "_") or " Filter / IP: _ (Type to filter, or press 'e' to edit, 'd' to delete, 'n' for form)"
     table.insert(lines, BOX.v .. pad_string(filter_prompt, mw - 2) .. BOX.v)
 
     table.insert(lines, BOX.v .. BOX.h:rep(mw - 2) .. BOX.v)
@@ -1623,7 +1963,7 @@ function App.draw_host_picker_modal()
     end
 
     table.insert(lines, BOX.v .. BOX.h:rep(mw - 2) .. BOX.v)
-    table.insert(lines, BOX.v .. pad_string(string.format(" Total: %d option(s) | [Enter] Connect | [n] New Form Dialog", #hosts), mw - 2) .. BOX.v)
+    table.insert(lines, BOX.v .. pad_string(string.format(" Total: %d option(s) | [Enter] Connect | [e] Edit | [d] Delete | [n] New", #hosts), mw - 2) .. BOX.v)
     table.insert(lines, BOX.bl .. BOX.h:rep(mw - 2) .. BOX.br)
 
     local modal_buf = {}
@@ -1662,9 +2002,12 @@ function App.draw_new_host_modal()
         return BOX.v .. col .. pad_string(text, mw - 2) .. C.reset .. C.bright_cyan .. BOX.v
     end
 
+    local title = d.is_edit and string.format(" Edit Remote Host: [ %s ] ", d.original_alias or d.alias or "Host") or " New Remote Connection (Guided Form) "
+    local subtitle = d.is_edit and " Modify connection details, or press [Esc] to return." or " Fill in connection details, or press [Esc] to return."
+
     local lines = {
-        BOX.tl .. pad_string(" New Remote Connection (Guided Form) ", mw - 2) .. BOX.tr,
-        BOX.v .. pad_string(" Fill in connection details, or press [Esc] to return.", mw - 2) .. BOX.v,
+        BOX.tl .. pad_string(title, mw - 2) .. BOX.tr,
+        BOX.v .. pad_string(subtitle, mw - 2) .. BOX.v,
         BOX.v .. BOX.h:rep(mw - 2) .. BOX.v,
         field_line(1, "Host / IP", d.host, f_idx == 1, " (Required, e.g. 192.168.1.50)"),
         field_line(2, "Port", d.port, f_idx == 2, " (Default: 22)"),
@@ -1679,7 +2022,7 @@ function App.draw_new_host_modal()
     if d.error and d.error ~= "" then
         table.insert(lines, BOX.v .. C.bright_red .. pad_string(" Error: " .. d.error, mw - 2) .. C.reset .. C.bright_cyan .. BOX.v)
     else
-        table.insert(lines, BOX.v .. pad_string(" [Tab/Down] Next   [Up] Prev   [Space] Toggle   [Enter] Connect", mw - 2) .. BOX.v)
+        table.insert(lines, BOX.v .. pad_string(" [Tab/Down] Next   [Up] Prev   [Ctrl+S] Save   [Enter] Save & Connect", mw - 2) .. BOX.v)
     end
     table.insert(lines, BOX.bl .. BOX.h:rep(mw - 2) .. BOX.br)
 
@@ -1777,6 +2120,70 @@ function App.handle_input(key)
             App.status_color = C.yellow
         end
         return
+    elseif App.modal == "confirm_delete_host" then
+        local target = App.modal_data and App.modal_data.target
+        if key == "y" or key == "Y" or key == "enter" then
+            local ok, err = delete_host_entry(target)
+            local hosts = aggregate_ssh_hosts()
+            table.insert(hosts, 1, {
+                name = "[+] New Form",
+                hostname = "(press 'n' for form dialog)",
+                user = "-",
+                port = "22",
+                source = "form",
+                is_form_launcher = true,
+            })
+            table.insert(hosts, 2, {
+                name = "[Demo Server]",
+                hostname = "demo-server.local",
+                user = "user",
+                port = "22",
+                source = "demo",
+                is_demo = true,
+            })
+            App.modal = "host_picker"
+            App.modal_data = {
+                hosts = hosts,
+                filtered = hosts,
+                cursor = 1,
+                filter = "",
+            }
+            if ok then
+                App.status_msg = string.format("Successfully deleted host '%s'.", target and (target.name or target.hostname) or "")
+                App.status_color = C.bright_green
+            else
+                App.status_msg = "Delete failed: " .. (err or "unknown error")
+                App.status_color = C.bright_red
+            end
+        elseif key == "n" or key == "N" or key == "esc" then
+            local hosts = aggregate_ssh_hosts()
+            table.insert(hosts, 1, {
+                name = "[+] New Form",
+                hostname = "(press 'n' for form dialog)",
+                user = "-",
+                port = "22",
+                source = "form",
+                is_form_launcher = true,
+            })
+            table.insert(hosts, 2, {
+                name = "[Demo Server]",
+                hostname = "demo-server.local",
+                user = "user",
+                port = "22",
+                source = "demo",
+                is_demo = true,
+            })
+            App.modal = "host_picker"
+            App.modal_data = {
+                hosts = hosts,
+                filtered = hosts,
+                cursor = 1,
+                filter = "",
+            }
+            App.status_msg = "Host deletion cancelled."
+            App.status_color = C.yellow
+        end
+        return
     elseif App.modal == "host_picker" then
         local d = App.modal_data
         local filtered = d.filtered or d.hosts or {}
@@ -1828,7 +2235,7 @@ function App.handle_input(key)
             d.cursor = math.max(1, cur - 10)
         elseif key == "pagedown" then
             d.cursor = math.min(total, cur + 10)
-        elseif key == "n" then
+        elseif (key == "n" and (not d.filter or d.filter == "")) or key == "ctrl_n" then
             App.modal = "new_host_form"
             App.modal_data = {
                 field = 1,
@@ -1839,8 +2246,63 @@ function App.handle_input(key)
                 dir = "~",
                 save = false,
                 alias = "",
+                is_edit = false,
                 error = nil,
             }
+        elseif (key == "e" and (not d.filter or d.filter == "")) or key == "ctrl_e" then
+            local sel = filtered[cur]
+            if sel then
+                if sel.is_form_launcher then
+                    App.modal = "new_host_form"
+                    App.modal_data = {
+                        field = 1,
+                        host = "",
+                        port = "22",
+                        user = "",
+                        key = "",
+                        dir = "~",
+                        save = false,
+                        alias = "",
+                        is_edit = false,
+                        error = nil,
+                    }
+                elseif sel.is_demo then
+                    App.status_msg = "Demo server is built-in and cannot be edited."
+                    App.status_color = C.yellow
+                else
+                    App.modal = "new_host_form"
+                    App.modal_data = {
+                        field = 1,
+                        host = sel.hostname or "",
+                        port = sel.port or "22",
+                        user = sel.user or "",
+                        key = sel.key or "",
+                        dir = "~",
+                        save = true,
+                        alias = sel.name or "",
+                        is_edit = true,
+                        original_alias = sel.name or "",
+                        original_file = sel.source_file or (get_home_dir() .. "/.ssh/config"),
+                        error = nil,
+                    }
+                end
+            end
+        elseif (key == "d" and (not d.filter or d.filter == "")) or key == "delete" or key == "ctrl_d" then
+            local sel = filtered[cur]
+            if sel then
+                if sel.is_form_launcher or sel.is_demo then
+                    App.status_msg = "Built-in action cannot be deleted."
+                    App.status_color = C.yellow
+                elseif sel.source == "hosts-file" then
+                    App.status_msg = "Cannot delete /etc/hosts entry (read-only system file)."
+                    App.status_color = C.yellow
+                else
+                    App.modal = "confirm_delete_host"
+                    App.modal_data = {
+                        target = sel,
+                    }
+                end
+            end
         elseif key == "enter" or key == "l" or key == "right" then
             local sel = filtered[cur]
             if sel then
@@ -1855,6 +2317,7 @@ function App.handle_input(key)
                         dir = "~",
                         save = false,
                         alias = "",
+                        is_edit = false,
                         error = nil,
                     }
                 else
@@ -1880,7 +2343,6 @@ function App.handle_input(key)
                 d.filter = ""
                 update_filter()
             else
-                -- Dismiss modal and fall back to demo mode
                 App.modal = nil
                 App.status_msg = "Switched to Demo Mode. Press [H] to pick SSH host."
                 App.status_color = C.yellow
@@ -1930,7 +2392,7 @@ function App.handle_input(key)
             if d.save and (not d.alias or d.alias == "") then
                 d.alias = d.host or ""
             end
-        elseif key == "enter" then
+        elseif key == "enter" or key == "ctrl_s" then
             local host_val = (d.host or ""):gsub("^%s+", ""):gsub("%s+$", "")
             if host_val == "" then
                 d.error = "Host / IP cannot be empty."
@@ -1946,26 +2408,59 @@ function App.handle_input(key)
                 if alias_val == "" then alias_val = host_val end
 
                 if d.save then
-                    save_host_to_ssh_config(alias_val, host_val, user_val, port_val, key_val)
+                    if d.is_edit and d.original_alias then
+                        update_host_in_ssh_config(d.original_alias, alias_val, host_val, user_val, port_val, key_val, d.original_file)
+                    else
+                        save_host_to_ssh_config(alias_val, host_val, user_val, port_val, key_val)
+                    end
                 end
 
-                App.host_cfg = {
-                    name = alias_val,
-                    hostname = host_val,
-                    user = user_val,
-                    port = port_val,
-                    key = (key_val ~= "") and key_val or nil,
-                    source = d.save and "ssh-config" or "custom",
-                    is_demo = false,
-                }
-                App.modal = nil
-                App.active_pane = "right"
-                App.right.dir = dir_val
-                remote_cache = {}
-                App.status_msg = "Connecting to " .. App.host_cfg.name .. "..."
-                App.status_color = C.bright_cyan
-                App.draw()
-                App.refresh_right(true)
+                if key == "ctrl_s" then
+                    local hosts = aggregate_ssh_hosts()
+                    table.insert(hosts, 1, {
+                        name = "[+] New Form",
+                        hostname = "(press 'n' for form dialog)",
+                        user = "-",
+                        port = "22",
+                        source = "form",
+                        is_form_launcher = true,
+                    })
+                    table.insert(hosts, 2, {
+                        name = "[Demo Server]",
+                        hostname = "demo-server.local",
+                        user = "user",
+                        port = "22",
+                        source = "demo",
+                        is_demo = true,
+                    })
+                    App.modal = "host_picker"
+                    App.modal_data = {
+                        hosts = hosts,
+                        filtered = hosts,
+                        cursor = 1,
+                        filter = "",
+                    }
+                    App.status_msg = string.format("Host '%s' saved to configuration.", alias_val)
+                    App.status_color = C.bright_green
+                else
+                    App.host_cfg = {
+                        name = alias_val,
+                        hostname = host_val,
+                        user = user_val,
+                        port = port_val,
+                        key = (key_val ~= "") and key_val or nil,
+                        source = d.save and "ssh-config" or "custom",
+                        is_demo = false,
+                    }
+                    App.modal = nil
+                    App.active_pane = "right"
+                    App.right.dir = dir_val
+                    remote_cache = {}
+                    App.status_msg = "Connecting to " .. App.host_cfg.name .. "..."
+                    App.status_color = C.bright_cyan
+                    App.draw()
+                    App.refresh_right(true)
+                end
             end
         elseif key == "backspace" then
             d.error = nil
@@ -2342,6 +2837,114 @@ local function main(...)
             assert(App.modal_data.key == "~/.ssh/id_ed25519", "SSH Key should match")
             App.modal = nil
             print("  [PASS] Hybrid new connection form state with SSH key tests")
+
+            -- 14. Test SSH config create, in-place update, and delete
+            local tmp_cfg = "/tmp/test_ssh_config_" .. tostring(os.time())
+            local init_content = "# Base SSH Config\nInclude ~/.ssh/config.base\n\nHost existing-node\n    HostName 10.0.0.1\n    User admin\n"
+            local cf = io.open(tmp_cfg, "w")
+            cf:write(init_content)
+            cf:close()
+
+            -- Test save_host_to_ssh_config
+            local ok_save = save_host_to_ssh_config("test-box", "192.168.1.50", "tester", "2222", "~/.ssh/id_rsa", tmp_cfg)
+            assert(ok_save, "save_host_to_ssh_config should succeed")
+            local hosts_parsed = parse_ssh_config(tmp_cfg)
+            local found_test = false
+            for _, h in ipairs(hosts_parsed) do
+                if h.name == "test-box" then
+                    found_test = true
+                    assert(h.hostname == "192.168.1.50", "Hostname mismatch")
+                    assert(h.user == "tester", "User mismatch")
+                    assert(h.port == "2222", "Port mismatch")
+                end
+            end
+            assert(found_test, "Newly saved host 'test-box' not found in parsed config")
+
+            -- Test update_host_in_ssh_config (in-place edit)
+            local ok_update = update_host_in_ssh_config("test-box", "test-box-renamed", "192.168.1.99", "root", "22", "", tmp_cfg)
+            assert(ok_update, "update_host_in_ssh_config should succeed")
+            hosts_parsed = parse_ssh_config(tmp_cfg)
+            local found_renamed = false
+            local found_old = false
+            for _, h in ipairs(hosts_parsed) do
+                if h.name == "test-box" then found_old = true end
+                if h.name == "test-box-renamed" then
+                    found_renamed = true
+                    assert(h.hostname == "192.168.1.99", "Updated hostname mismatch")
+                    assert(h.user == "root", "Updated user mismatch")
+                end
+            end
+            assert(not found_old, "Old alias 'test-box' should be gone")
+            assert(found_renamed, "Renamed alias 'test-box-renamed' should exist")
+
+            -- Test delete_host_from_ssh_config
+            local ok_del = delete_host_from_ssh_config("test-box-renamed", tmp_cfg)
+            assert(ok_del, "delete_host_from_ssh_config should succeed")
+            hosts_parsed = parse_ssh_config(tmp_cfg)
+            for _, h in ipairs(hosts_parsed) do
+                assert(h.name ~= "test-box-renamed", "Deleted host should not exist")
+            end
+            -- Verify existing-node is still intact
+            local found_existing = false
+            for _, h in ipairs(hosts_parsed) do
+                if h.name == "existing-node" then found_existing = true end
+            end
+            assert(found_existing, "Existing node should be preserved after deletion of another host")
+            os.remove(tmp_cfg)
+            print("  [PASS] SSH config create, in-place edit, and delete lifecycle tests")
+
+            -- 15. Test delete_host_entry guards
+            local demo_entry = { name = "demo", is_demo = true }
+            local form_entry = { name = "[+] New Form", is_form_launcher = true }
+            local etc_entry = { name = "server.local", source = "hosts-file" }
+            local del_demo_ok, del_demo_err = delete_host_entry(demo_entry)
+            assert(not del_demo_ok, "Demo server deletion must be rejected")
+            assert(del_demo_err:find("Demo") or del_demo_err:find("demo"), "Demo rejection error message expected")
+            local del_form_ok, _ = delete_host_entry(form_entry)
+            assert(not del_form_ok, "Form launcher deletion must be rejected")
+            local del_etc_ok, _ = delete_host_entry(etc_entry)
+            assert(not del_etc_ok, "hosts-file deletion must be rejected")
+            -- 16. Test Modal Rendering (host picker, delete confirm, edit form)
+            App.term_w, App.term_h = 90, 24
+            App.modal_data = {
+                hosts = { { name = "box1", hostname = "192.168.1.1", user = "pi", port = "22", source = "ssh-config" } },
+                filtered = { { name = "box1", hostname = "192.168.1.1", user = "pi", port = "22", source = "ssh-config" } },
+                cursor = 1,
+                filter = "",
+            }
+            local prev_write = io.write
+            io.write = function() end
+            App.draw_host_picker_modal()
+
+            App.modal_data = {
+                target = { name = "box1", hostname = "192.168.1.1", port = "22", source = "ssh-config", source_file = "~/.ssh/config" }
+            }
+            App.draw_confirm_delete_host_modal()
+
+            App.modal_data = {
+                field = 1,
+                host = "192.168.1.1",
+                port = "22",
+                user = "pi",
+                key = "",
+                dir = "~",
+                save = true,
+                alias = "box1",
+                is_edit = true,
+                original_alias = "box1",
+            }
+            App.draw_new_host_modal()
+            io.write = prev_write
+            print("  [PASS] Modal rendering execution (host_picker, confirm_delete_host, new_host_modal) tests")
+
+            -- 17. Test App.handle_input for host deletion cancellation
+            App.modal = "confirm_delete_host"
+            App.modal_data = { target = { name = "dummy", source = "ssh-config" } }
+            App.handle_input("n")
+            assert(App.modal == "host_picker", "Cancelling delete should return to host_picker")
+            assert(App.status_msg:find("cancelled"), "Status should indicate cancellation")
+            App.modal = nil
+            print("  [PASS] Delete confirmation cancellation event flow tests")
 
             print(C.bold .. C.bright_green .. "[ALL TESTS PASSED SUCCESSFULLY]" .. C.reset)
             return
