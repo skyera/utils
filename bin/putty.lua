@@ -608,7 +608,7 @@ Usage:
             k:sub(1, 14)
         ))
     end
-    io.write(string.format("\n\27[2mTotal sessions: %d [⚡ Powered by %s %s FFI]\27[0m\n", #sessions, (jit and jit.version or "LuaJIT"), ffi.os))
+    io.write(string.format("\n\27[2mTotal sessions: %d [Powered by %s %s FFI]\27[0m\n", #sessions, (jit and jit.version or "LuaJIT"), ffi.os))
 end
 
 --------------------------------------------------------------------------------
@@ -776,7 +776,7 @@ local function cmd_colors(args)
     local fzf_cmd = string.format(
         '%s | fzf --header-lines=2 --prompt="[LuaJIT] PuTTY Theme > " ' ..
         '--layout=reverse --height=65%% --border --preview=%q --preview-window=right:55%%:wrap ' ..
-        '--header="⚡ LuaJIT FFI (650+ Themes) | ENTER: Apply to Default Settings | ESC: Cancel"',
+        '--header="LuaJIT FFI (650+ Themes) | ENTER: Apply to Default Settings | ESC: Cancel"',
         list_cmd, preview_cmd
     )
 

@@ -557,9 +557,9 @@ local function format_preview(h, is_rsync)
     table.insert(lines, string.format("  %sTransfer Tool :%s %s%s%s", C.yellow, C.reset, C.bold .. C.green, tool, C.reset))
     table.insert(lines, "")
     table.insert(lines, string.format("%s%sAvailable Actions:%s", C.bold, C.white, C.reset))
-    table.insert(lines, string.format("  %s• Push Files  :%s Upload selected local files to %s:~/", C.green, C.reset, h.name))
-    table.insert(lines, string.format("  %s• Pull Files  :%s Run with %s--pull%s to download files from %s", C.green, C.reset, C.yellow, C.reset, h.name))
-    table.insert(lines, string.format("  %s• Rsync Mode  :%s Fast delta transfer with progress bar (-r)", C.green, C.reset))
+    table.insert(lines, string.format("  %s* Push Files  :%s Upload selected local files to %s:~/", C.green, C.reset, h.name))
+    table.insert(lines, string.format("  %s* Pull Files  :%s Run with %s--pull%s to download files from %s", C.green, C.reset, C.yellow, C.reset, h.name))
+    table.insert(lines, string.format("  %s* Rsync Mode  :%s Fast delta transfer with progress bar (-r)", C.green, C.reset))
     return table.concat(lines, "\n")
 end
 
@@ -582,7 +582,7 @@ local function run_fzf_host_picker(hosts, is_rsync, pull_mode)
     local fzf_cmd = string.format(
         'luajit %q --list-hosts | fzf --prompt="[%s] Remote Host > " --delimiter="\t" --with-nth=1,2,3,4 ' ..
         '--layout=reverse --height=50%% --border --preview=%q --preview-window=right:50%%:wrap ' ..
-        '--header="⚡ LuaJIT FFI | Tool: %s | ENTER: Select Host | ESC: Cancel"',
+        '--header="LuaJIT FFI | Tool: %s | ENTER: Select Host | ESC: Cancel"',
         script_path, mode_prefix, preview_cmd, tool_label
     )
 
@@ -706,7 +706,7 @@ local function run_fzf_remote_file_picker(host, override_user, override_port, ov
         end
 
         -- Build candidate list with an option to download current directory
-        local candidates = { string.format("⚡ [PULL CURRENT FOLDER: %s]", dir_display) }
+        local candidates = { string.format("[PULL CURRENT FOLDER: %s]", dir_display) }
         for _, it in ipairs(lines) do
             table.insert(candidates, it)
         end
@@ -743,7 +743,7 @@ local function run_fzf_remote_file_picker(host, override_user, override_port, ov
         end
         selection = trim(selection)
 
-        if selection:find("^⚡ %[PULL CURRENT FOLDER:") then
+        if selection:find("^%[PULL CURRENT FOLDER:") then
             return (current_remote_dir == ".") and "~/" or current_remote_dir
         elseif selection == "../" then
             if current_remote_dir == "." or current_remote_dir == "" then
@@ -819,8 +819,8 @@ local function execute_transfer(host, local_files, remote_path, pull_mode, use_r
             print("Dry run (pscp): " .. table.concat(p_cmd, " "))
             return
         end
-        print(string.format("%s%s ⚡ Tool: %spscp (PuTTY)%s", C.cyan, tag, C.bold, C.reset))
-        print(string.format("%s%s ⚡ Executing: %s%s", C.cyan, tag, table.concat(p_cmd, " "), C.reset))
+        print(string.format("%s%s Tool: %spscp (PuTTY)%s", C.cyan, tag, C.bold, C.reset))
+        print(string.format("%s%s Executing: %s%s", C.cyan, tag, table.concat(p_cmd, " "), C.reset))
         os.execute(table.concat(p_cmd, " "))
         return
     end
@@ -882,8 +882,8 @@ local function execute_transfer(host, local_files, remote_path, pull_mode, use_r
         return
     end
 
-    print(string.format("%s%s ⚡ Tool: %s%s%s", C.cyan, tag, C.bold, tool_name, C.reset))
-    print(string.format("%s%s ⚡ Executing: %s%s", C.cyan, tag, table.concat(cmd, " "), C.reset))
+    print(string.format("%s%s Tool: %s%s%s", C.cyan, tag, C.bold, tool_name, C.reset))
+    print(string.format("%s%s Executing: %s%s", C.cyan, tag, table.concat(cmd, " "), C.reset))
 
     if not IS_WINDOWS then
         local c_args = ffi.new("const char*[?]", #cmd + 1)

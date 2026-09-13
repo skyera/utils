@@ -437,7 +437,7 @@ local function interactive_fzf()
 
     local fzf_cmd = string.format(
         '%s | fzf -m --header-lines=1 --prompt="[LuaJIT] Kill Process > " ' ..
-        '--header="⚡ LuaJIT FFI | [Tab]: Multi-select | [Enter]: Kill | [Esc]: Cancel" ' ..
+        '--header="LuaJIT FFI | [Tab]: Multi-select | [Enter]: Kill | [Esc]: Cancel" ' ..
         '--preview=%q --preview-window=right:50%%:wrap',
         list_cmd, preview_cmd
     )

@@ -335,7 +335,7 @@ local function render_preview(dir_path)
     local border = string.rep("─", 54)
 
     io.write(string.format("%s┌%s┐%s\n", C.b_cyan, border, C.reset))
-    io.write(string.format("%s│ %s%-52s%s │%s\n", C.b_cyan, C.b_yellow, "DIRECTORY PREVIEW [⚡ LuaJIT FFI]", C.b_cyan, C.reset))
+    io.write(string.format("%s│ %s%-52s%s │%s\n", C.b_cyan, C.b_yellow, "DIRECTORY PREVIEW [LuaJIT FFI]", C.b_cyan, C.reset))
     io.write(string.format("%s├%s┤%s\n", C.b_cyan, border, C.reset))
 
     -- Truncate path if too long
@@ -405,7 +405,7 @@ local function interactive_fzf(base_dir, max_depth, include_all, query)
     local fzf_cmd = string.format(
         '%s | fzf %s--prompt="[LuaJIT] Jump Dir > " ' ..
         '--layout=reverse --height=60%% --border --preview=%q --preview-window=right:50%%:wrap ' ..
-        '--header="⚡ LuaJIT FFI | ENTER: Select Directory | ESC: Cancel"',
+        '--header="LuaJIT FFI | ENTER: Select Directory | ESC: Cancel"',
         list_cmd, query_flag, preview_cmd
     )
 
