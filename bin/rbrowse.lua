@@ -773,6 +773,11 @@ function Term.get_size()
 end
 
 function Term.read_key()
+    Term.key_queue = Term.key_queue or {}
+    if #Term.key_queue > 0 then
+        return table.remove(Term.key_queue, 1)
+    end
+
     if IS_WINDOWS then
         if _G.msvcrt._kbhit() == 0 then
             ffi.C.Sleep(20)
@@ -802,42 +807,56 @@ function Term.read_key()
         end
         return nil
     else
-        local buf = ffi.new("char[16]")
-        local n = ffi.C.read(0, buf, 16)
+        local buf = ffi.new("char[64]")
+        local n = ffi.C.read(0, buf, 64)
         if n == 0 then
             -- EOF on stdin (e.g. piped input or closed stream)
             return "q"
         end
         if n < 0 then return nil end
 
-        if n == 1 then
-            local b = buf[0]
-            if b == 10 or b == 13 then return "enter"
-            elseif b == 27 then return "escape"
-            elseif b == 127 or b == 8 then return "backspace"
-            elseif b == 9 then return "tab"
-            elseif b == 3 then return "ctrl_c"
-            elseif b == 4 then return "ctrl_d"
-            elseif b == 21 then return "ctrl_u"
-            elseif b >= 32 and b <= 126 then
-                return string.char(b)
-            end
-        elseif n >= 3 and buf[0] == 27 and buf[1] == 91 then -- Escape sequence \27[...
-            local code = buf[2]
-            if code == 65 then return "up"
-            elseif code == 66 then return "down"
-            elseif code == 67 then return "right"
-            elseif code == 68 then return "left"
-            elseif code == 72 then return "home"
-            elseif code == 70 then return "end"
-            elseif code == 53 and buf[3] == 126 then return "page_up"   -- \27[5~
-            elseif code == 54 and buf[3] == 126 then return "page_down" -- \27[6~
-            elseif code == 49 and buf[3] == 59 and buf[4] == 50 then
-                -- Shift+Up / Shift+Down
-                if buf[5] == 65 then return "page_up"
-                elseif buf[5] == 66 then return "page_down"
+        local i = 0
+        while i < n do
+            if buf[i] == 27 and i + 2 < n and buf[i+1] == 91 then
+                local code = buf[i+2]
+                local k = nil
+                local adv = 3
+                if code == 65 then k = "up"
+                elseif code == 66 then k = "down"
+                elseif code == 67 then k = "right"
+                elseif code == 68 then k = "left"
+                elseif code == 72 then k = "home"
+                elseif code == 70 then k = "end"
+                elseif code == 53 and i + 3 < n and buf[i+3] == 126 then k = "page_up"; adv = 4
+                elseif code == 54 and i + 3 < n and buf[i+3] == 126 then k = "page_down"; adv = 4
                 end
+                if k then
+                    table.insert(Term.key_queue, k)
+                    i = i + adv
+                else
+                    table.insert(Term.key_queue, "escape")
+                    i = i + 1
+                end
+            else
+                local b = buf[i]
+                local k = nil
+                if b == 10 or b == 13 then k = "enter"
+                elseif b == 27 then k = "escape"
+                elseif b == 127 or b == 8 then k = "backspace"
+                elseif b == 9 then k = "tab"
+                elseif b == 3 then k = "ctrl_c"
+                elseif b == 4 then k = "ctrl_d"
+                elseif b == 21 then k = "ctrl_u"
+                elseif b >= 32 and b <= 126 then
+                    k = string.char(b)
+                end
+                if k then table.insert(Term.key_queue, k) end
+                i = i + 1
             end
+        end
+
+        if #Term.key_queue > 0 then
+            return table.remove(Term.key_queue, 1)
         end
         return nil
     end
@@ -1578,7 +1597,8 @@ local App = {
         is_demo = true,
     },
 
-    current_dir = "/home/user/app",
+    current_dir = "/home/user",
+    show_hidden = false, -- Default: hide hidden files/folders (.xxx)
     items = {},
     filtered_items = {},
     cursor = 1,
@@ -1597,18 +1617,17 @@ local App = {
 }
 
 function App.update_filter()
-    if App.filter_text == "" then
-        App.filtered_items = App.items
-    else
-        local q = App.filter_text:lower()
-        local res = {}
-        for _, it in ipairs(App.items) do
-            if it.name:lower():find(q, 1, true) then
+    local res = {}
+    local q = (App.filter_text ~= "") and App.filter_text:lower() or nil
+    for _, it in ipairs(App.items) do
+        local is_hidden = (it.name:sub(1, 1) == "." and it.name ~= "..")
+        if App.show_hidden or not is_hidden then
+            if not q or it.name:lower():find(q, 1, true) then
                 table.insert(res, it)
             end
         end
-        App.filtered_items = res
     end
+    App.filtered_items = res
     App.cursor = math.max(1, math.min(App.cursor, #App.filtered_items))
 end
 
@@ -1817,7 +1836,9 @@ function App.draw()
     table.insert(buf, string.format("\27[%d;1H%s\27[K", content_h + 4, pad_string(stat_text, w)))
 
     -- 5. Footer Keybindings Guide
-    local footer = " [Enter/l] Open [h] Up [j/k] Select [H] Server [J/K] Scroll [I] Icons [i] ImgMode [/] Filter [d] Scp [r] Refresh [?] Help [q] Quit "
+    local footer = string.format(" [Enter/l] Open [h] Up [j/k] Select [H] Server [.] Hidden:%s [J/K] Scroll [I] Icons [/] Filter [?] Help [q] Quit ",
+        App.show_hidden and "ON" or "OFF"
+    )
     table.insert(buf, string.format("\27[%d;1H%s%s%s%s\27[K",
         content_h + 5,
         C.bg_gray, C.bold .. C.bright_white, pad_string(footer, w), C.reset
@@ -1922,6 +1943,8 @@ function App.draw_help_modal()
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "j, Down / k, Up", C.reset, "Navigate files in active directory"),
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "Enter, l, Right", C.reset, "Drill down into folder / inspect item"),
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "h, Backspace", C.reset, "Navigate to parent folder (..)"),
+        string.format("  %s%-18s%s %s", C.bold .. C.yellow, "H, s", C.reset, "Open Server Selector to switch host"),
+        string.format("  %s%-18s%s %s", C.bold .. C.yellow, ".", C.reset, "Toggle hidden files/folders (.xxx)"),
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "J / K, PgDn/PgUp", C.reset, "Scroll preview content smoothly"),
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "I", C.reset, "Cycle icon mode (Nerd -> Emoji -> ASCII -> None)"),
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "i", C.reset, "Toggle image renderer (Half-Blocks / OSC 1337)"),
@@ -2046,6 +2069,11 @@ function App.run()
                     App.focus = (App.focus == "left") and "right" or "left"
                 elseif key == "H" or key == "s" then
                     App.open_host_picker()
+                elseif key == "." then
+                    App.show_hidden = not App.show_hidden
+                    App.update_filter()
+                    App.status_msg = App.show_hidden and "Showing hidden files/folders (ON)." or "Hidden files/folders are now hidden (OFF)."
+                    App.status_color = App.show_hidden and C.bright_yellow or C.gray
                 elseif key == "I" then
                     local new_m = IconEngine.cycle()
                     App.status_msg = "Icon Mode toggled to: " .. new_m:upper()
@@ -2167,7 +2195,28 @@ local function run_tests()
     assert(has_demo, "HostManager must include simulated demo host")
     print(C.bright_green .. string.format("  [PASS] HostManager aggregated %d servers (SSH config, known_hosts, hosts)", #discovered) .. C.reset)
 
-    print(C.bold .. C.bright_green .. "\nALL 9 TESTS PASSED SUCCESSFULLY!" .. C.reset)
+    -- 10. Hidden File Filter & Toggle Test
+    App.host_cfg = { is_demo = true, name = "demo", hostname = "demo" }
+    App.show_hidden = false
+    App.load_dir("/home/user")
+    local found_bashrc_hidden = false
+    for _, it in ipairs(App.filtered_items) do
+        if it.name == ".bashrc" then found_bashrc_hidden = true break end
+    end
+    assert(not found_bashrc_hidden, ".bashrc should be hidden when show_hidden is false")
+    assert(App.filtered_items[1].name == "..", "Parent directory .. must always remain visible")
+
+    App.show_hidden = true
+    App.update_filter()
+    local found_bashrc_visible = false
+    for _, it in ipairs(App.filtered_items) do
+        if it.name == ".bashrc" then found_bashrc_visible = true break end
+    end
+    assert(found_bashrc_visible, ".bashrc must appear when show_hidden is true")
+    App.show_hidden = false -- Reset
+    print(C.bright_green .. "  [PASS] Hidden file filtering & toggle verification (.bashrc hidden/shown, .. preserved)" .. C.reset)
+
+    print(C.bold .. C.bright_green .. "\nALL 10 TESTS PASSED SUCCESSFULLY!" .. C.reset)
     return true
 end
 
@@ -2213,6 +2262,8 @@ local function main(args)
             return
         elseif a == "--demo" then
             App.host_cfg.is_demo = true
+        elseif a == "-a" or a == "--all" or a == "--hidden" then
+            App.show_hidden = true
         elseif a == "--picker" then
             Term.init()
             App.term_w, App.term_h = Term.get_size()
@@ -2296,10 +2347,14 @@ local function main(args)
             App.current_dir = p
         else
             App.host_cfg.hostname = target_arg
+            App.current_dir = "~"
         end
         App.host_cfg.is_demo = false
     elseif not App.host_cfg.is_demo then
+        App.current_dir = "~"
         App.open_host_picker()
+    else
+        App.current_dir = "/home/user"
     end
 
     -- Run Interactive TUI
