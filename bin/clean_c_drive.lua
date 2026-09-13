@@ -418,7 +418,7 @@ Options:
 
     io.write(string.format("%s========================================================%s\n", C.b_cyan, C.reset))
     io.write(string.format("%s  CLEAN C DRIVE - High-Speed Drive Cleaner%s\n", C.b_yellow, C.reset))
-    io.write(string.format("%s  ⚡ Engine: %s (%s FFI)%s\n", C.green, (jit and jit.version or "LuaJIT"), ffi.os, C.reset))
+    io.write(string.format("%s  * Engine: %s (%s FFI)%s\n", C.green, (jit and jit.version or "LuaJIT"), ffi.os, C.reset))
     io.write(string.format("%s========================================================%s\n", C.b_cyan, C.reset))
 
     -- 1. Check Administrator Rights
@@ -466,7 +466,7 @@ Options:
     end
 
     if grand_total_files == 0 and grand_total_bytes == 0 then
-        io.write(string.format("%s✔ Drive already clean! No temporary files found.%s\n", C.b_green, C.reset))
+        io.write(string.format("%s[OK] Drive already clean! No temporary files found.%s\n", C.b_green, C.reset))
         return
     end
 
@@ -507,7 +507,7 @@ Options:
             end
 
             local freed_mb = math.floor((freed / (1024 * 1024)) * 100) / 100
-            io.write(string.format("%s✔ Done%s (%s%.2f MB freed%s)\n", C.green, C.reset, C.b_white, freed_mb, C.reset))
+            io.write(string.format("%s[OK] Done%s (%s%.2f MB freed%s)\n", C.green, C.reset, C.b_white, freed_mb, C.reset))
         end
     end
 
