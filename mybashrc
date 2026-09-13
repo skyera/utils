@@ -1438,6 +1438,7 @@ _apply_overrides() {
     command -v fscp.sh >/dev/null 2>&1 && alias fscp='fscp.sh'
     command -v frsync.sh >/dev/null 2>&1 && alias frsync='frsync.sh'
     command -v fpull.sh >/dev/null 2>&1 && alias fpull='fpull.sh'
+    command -v fssh_tunnel.sh >/dev/null 2>&1 && alias fssh_tunnel='fssh_tunnel.sh' && alias ftunnel='fssh_tunnel.sh'
 
     # Antigravity CLI auto-approve alias (universal)
     if command -v agy.exe >/dev/null 2>&1; then
