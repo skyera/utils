@@ -128,7 +128,18 @@ deploy_file "$REPO_DIR/.config/starship.toml"        "$HOME/.config/starship.tom
 # Alacritty configuration
 deploy_file "$REPO_DIR/.config/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
 deploy_file "$REPO_DIR/.config/alacritty/theme.toml"     "$HOME/.config/alacritty/theme.toml"
-deploy_file "$REPO_DIR/.config/alacritty/shell.toml"     "$HOME/.config/alacritty/shell.toml"
+if [ -f "$REPO_DIR/.config/alacritty/shell.toml" ]; then
+    if grep -qi '\.exe"' "$REPO_DIR/.config/alacritty/shell.toml" 2>/dev/null; then
+        echo "Notice: Repository shell.toml targets Windows. Deploying default shell config for Linux."
+        mkdir -p "$HOME/.config/alacritty"
+        cat << 'EOF' > "$HOME/.config/alacritty/shell.toml"
+# Default shell configuration for Alacritty
+# Automatically uses native $SHELL (/usr/bin/bash, fish, zsh, etc.)
+EOF
+    else
+        deploy_file "$REPO_DIR/.config/alacritty/shell.toml" "$HOME/.config/alacritty/shell.toml"
+    fi
+fi
 if [ -d "$REPO_DIR/.config/alacritty/themes" ]; then
     mkdir -p "$HOME/.config/alacritty/themes"
     cp -r "$REPO_DIR/.config/alacritty/themes/"* "$HOME/.config/alacritty/themes/" 2>/dev/null || true

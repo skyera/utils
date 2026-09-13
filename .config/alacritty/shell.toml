@@ -1,3 +1,19 @@
-[terminal.shell]
-program = "powershell.exe"
-args = ["-NoLogo"]
+# Default shell configuration for Alacritty
+#
+# By default, Alacritty automatically spawns your OS login shell:
+#   - Linux / macOS: $SHELL (/bin/bash, zsh, fish, etc.)
+#   - Windows:       powershell.exe / cmd.exe
+#
+# To switch shells dynamically:
+#   - Linux / macOS: run 'bin/shell.sh [bash|zsh|fish]'
+#   - Windows:       run 'bin/alacritty_shell.bat [cmd|powershell|pwsh|git-bash|wsl]'
+#
+# Manual override examples:
+# Linux/macOS:
+#   [terminal.shell]
+#   program = "/usr/bin/bash"
+#
+# Windows:
+#   [terminal.shell]
+#   program = "powershell.exe"
+#   args = ["-NoLogo"]
