@@ -1061,7 +1061,8 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
             end
             if #lines > 0 then
                 if tmp_file then os.remove(tmp_file) end
-                return lines
+                ImageRenderer.last_engine = "Chafa"
+                return lines, "Chafa"
             end
         end
     end
@@ -1073,9 +1074,13 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
         magick_cmd, shell_escape(src_file), resize_arg, null_dev)
     pipe = io.popen(conv_cmd, "r")
     local raw_rgb = nil
+    local engine_used = nil
     if pipe then
         raw_rgb = pipe:read("*a")
         pipe:close()
+        if raw_rgb and #raw_rgb > 0 then
+            engine_used = "ImageMagick"
+        end
     end
 
     -- If on Unix and magick failed, try convert
@@ -1086,6 +1091,9 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
         if pipe then
             raw_rgb = pipe:read("*a")
             pipe:close()
+            if raw_rgb and #raw_rgb > 0 then
+                engine_used = "ImageMagick"
+            end
         end
     end
 
@@ -1100,6 +1108,9 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
         if pipe then
             raw_rgb = pipe:read("*a")
             pipe:close()
+            if raw_rgb and #raw_rgb > 0 then
+                engine_used = "Python/Pillow"
+            end
         end
         if (not raw_rgb or #raw_rgb == 0) and not IS_WINDOWS then
             py_cmd = string.format('python3 -c "%s" %s', py_script, null_dev)
@@ -1107,6 +1118,9 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
             if pipe then
                 raw_rgb = pipe:read("*a")
                 pipe:close()
+                if raw_rgb and #raw_rgb > 0 then
+                    engine_used = "Python/Pillow"
+                end
             end
         end
     end
@@ -1128,7 +1142,8 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
             table.insert(row_buf, C.reset)
             table.insert(lines, table.concat(row_buf))
         end
-        return lines
+        ImageRenderer.last_engine = engine_used or "ImageMagick"
+        return lines, engine_used or "ImageMagick"
     end
 
     -- Fallback simple placeholder card
@@ -1141,7 +1156,8 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
         table.insert(lines, C.gray .. "│" .. string.rep(" ", w - 2) .. "│" .. C.reset)
     end
     table.insert(lines, C.gray .. "└" .. string.rep("─", w - 2) .. "┘" .. C.reset)
-    return lines
+    ImageRenderer.last_engine = "None"
+    return lines, "None"
 end
 
 -- Generate WezTerm / iTerm2 OSC 1337 inline graphics escape code
@@ -1911,19 +1927,27 @@ function App.draw()
             local res = hdr and string.format("%d × %d px", hdr.width, hdr.height) or "Unknown"
             local col = hdr and hdr.color_desc or "Color"
 
-            table.insert(preview_lines, string.format("%sFormat:%s %s  │  %sSize:%s %s  │  %sRes:%s %s",
-                C.bold, C.reset, fmt, C.bold, C.reset, format_size(sel_it.size), C.bold, C.reset, res))
-            table.insert(preview_lines, C.gray .. string.rep("─", right_w - 2) .. C.reset)
-
             if ImageRenderer.protocol == "blocks" then
                 local img_h = content_h - 4
                 if img_h > 2 then
-                    local rendered_blocks = ImageRenderer.render_half_blocks(data, right_w - 4, img_h)
+                    local rendered_blocks, engine = ImageRenderer.render_half_blocks(data, right_w - 4, img_h)
+                    local eng_label = string.format("%sEngine:%s %s%s%s", C.bold, C.reset, C.bright_cyan, engine or "Auto", C.reset)
+                    if right_w >= 65 then
+                        table.insert(preview_lines, string.format("%sFormat:%s %s  │  %sSize:%s %s  │  %sRes:%s %s  │  %s",
+                            C.bold, C.reset, fmt, C.bold, C.reset, format_size(sel_it.size), C.bold, C.reset, res, eng_label))
+                    else
+                        table.insert(preview_lines, string.format("%sFormat:%s %s  │  %sSize:%s %s  │  %s",
+                            C.bold, C.reset, fmt, C.bold, C.reset, format_size(sel_it.size), eng_label))
+                    end
+                    table.insert(preview_lines, C.gray .. string.rep("─", right_w - 2) .. C.reset)
                     for _, l in ipairs(rendered_blocks) do
                         table.insert(preview_lines, l)
                     end
                 end
             else
+                table.insert(preview_lines, string.format("%sFormat:%s %s  │  %sSize:%s %s  │  %sRes:%s %s  │  %sEngine:%s %sOSC-1337%s",
+                    C.bold, C.reset, fmt, C.bold, C.reset, format_size(sel_it.size), C.bold, C.reset, res, C.bold, C.reset, C.bright_magenta, C.reset))
+                table.insert(preview_lines, C.gray .. string.rep("─", right_w - 2) .. C.reset)
                 table.insert(preview_lines, C.bright_magenta .. "[OSC 1337 Graphics Protocol Output Mode]" .. C.reset)
                 table.insert(preview_lines, ImageRenderer.render_osc1337(data, right_w - 4, content_h - 4))
             end
@@ -2406,9 +2430,10 @@ local function run_tests()
 
     -- 13. ImageRenderer Half-Block Rendering & UTF-8 Cell Width Verification
     assert(utf8_col_width("▀▀▀▀▀") == 5, "Half-block character ▀ must have single-column width (5)")
-    local rendered_blocks = ImageRenderer.render_half_blocks(DEMO_PNG_BYTES, 24, 10)
+    local rendered_blocks, engine = ImageRenderer.render_half_blocks(DEMO_PNG_BYTES, 24, 10)
     assert(rendered_blocks and #rendered_blocks > 0, "ImageRenderer should render preview lines")
-    print(C.bright_green .. string.format("  [PASS] ImageRenderer multi-engine half-blocks: %d lines rendered", #rendered_blocks) .. C.reset)
+    assert(engine ~= nil and engine ~= "None", "ImageRenderer should report an active engine")
+    print(C.bright_green .. string.format("  [PASS] ImageRenderer multi-engine half-blocks: %d lines rendered via %s", #rendered_blocks, engine) .. C.reset)
 
     print(C.bold .. C.bright_green .. "\nALL 13 TESTS PASSED SUCCESSFULLY!" .. C.reset)
     return true
@@ -2488,8 +2513,9 @@ local function main(args)
             if is_img then
                 local hdr = ImageParser.parse_header(content)
                 local res = hdr and string.format("%d×%d px", hdr.width, hdr.height) or "Unknown"
-                print(string.format("%s[Image Preview: %s · %s · %s]%s", C.bold .. C.bright_magenta, path, res, format_size(#content), C.reset))
-                local blocks = ImageRenderer.render_half_blocks(content, pw, ph - 2)
+                local blocks, engine = ImageRenderer.render_half_blocks(content, pw, ph - 2)
+                print(string.format("%s[Image Preview: %s · %s · %s · Engine: %s%s%s]%s",
+                    C.bold .. C.bright_magenta, path, res, format_size(#content), C.bright_cyan, engine or "None", C.bright_magenta, C.reset))
                 for _, l in ipairs(blocks) do print(l) end
             else
                 local l_num = 1
