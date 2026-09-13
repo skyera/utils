@@ -133,3 +133,11 @@ ffi.cdef[[
 * **Goal:** Query terminal size, cursor coordinates, and RGB color capability without shelling out.
 * **Capabilities:**
   * Uses `GetConsoleScreenBufferInfo` / `SetConsoleMode` on Windows and `ioctl(TIOCGWINSZ)` / `termios` on Linux.
+
+### 4.4. `fscp.lua` / `frsync.lua` (Interactive Remote File Transfer)
+* **Goal:** Zero-friction remote file transfer (SCP & Rsync) across Linux and Windows.
+* **Capabilities:**
+  * Aggregates hosts from SSH config, known_hosts, PuTTY sessions (Win32 Registry FFI), and hosts files.
+  * Sub-millisecond FZF preview card generator (< 1 ms).
+  * Interactive multi-select file picker with auto-fallback to native `scp`, `rsync`, or `pscp.exe`.
+
