@@ -766,7 +766,7 @@ local function cmd_colors(args)
     -- Default: Interactive FZF theme selector
     local script_path = debug.getinfo(1, "S").source:sub(2)
     if not script_path:match("^/") and not script_path:match("^%a:[/\\]") then
-        local pwd = io.popen("pwd 2>/dev/null || cd"):read("*line") or "."
+        local pwd = io.popen(IS_WINDOWS and "cd" or "pwd 2>/dev/null || pwd"):read("*line") or "."
         script_path = pwd .. "/" .. script_path
     end
 

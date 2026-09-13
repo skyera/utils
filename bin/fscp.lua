@@ -58,6 +58,23 @@ else
         LONG RegCloseKey(HKEY hKey);
 
         typedef int BOOL;
+        typedef struct {
+            DWORD dwFileAttributes;
+            DWORD ftCreationTime[2];
+            DWORD ftLastAccessTime[2];
+            DWORD ftLastWriteTime[2];
+            DWORD nFileSizeHigh;
+            DWORD nFileSizeLow;
+            DWORD dwReserved0;
+            DWORD dwReserved1;
+            char cFileName[260];
+            char cAlternateFileName[14];
+        } WIN32_FIND_DATAA;
+
+        HANDLE FindFirstFileA(const char* lpFileName, WIN32_FIND_DATAA* lpFindFileData);
+        BOOL FindNextFileA(HANDLE hFindFile, WIN32_FIND_DATAA* lpFindFileData);
+        BOOL FindClose(HANDLE hFindFile);
+
         HANDLE GetStdHandle(DWORD nStdHandle);
         BOOL GetConsoleMode(HANDLE hConsoleHandle, DWORD* lpMode);
         BOOL SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode);
@@ -127,7 +144,100 @@ local function shell_escape(s)
     if not s:find("[^%w_%-%.%/:]") then
         return s
     end
-    return "'" .. s:gsub("'", "'\\''") .. "'"
+    if IS_WINDOWS then
+        return '"' .. s:gsub('"', '\\"') .. '"'
+    else
+        return "'" .. s:gsub("'", "'\\''") .. "'"
+    end
+end
+
+local function expand_glob(pattern)
+    local results = {}
+    if not pattern:find("[*?]") then
+        if file_exists(pattern) then
+            table.insert(results, pattern)
+        end
+        return results
+    end
+
+    if IS_WINDOWS then
+        local dir = pattern:match("^(.*)[/\\]") or "."
+        local find_data = ffi.new("WIN32_FIND_DATAA")
+        local hFind = ffi.C.FindFirstFileA(pattern, find_data)
+        if hFind ~= nil and hFind ~= ffi.cast("HANDLE", -1) then
+            repeat
+                local name = ffi.string(find_data.cFileName)
+                if name ~= "." and name ~= ".." then
+                    table.insert(results, dir .. "/" .. name)
+                end
+            until ffi.C.FindNextFileA(hFind, find_data) == 0
+            ffi.C.FindClose(hFind)
+        end
+    else
+        local pipe = io.popen(string.format("ls -1d %s 2>/dev/null", pattern))
+        if pipe then
+            for f in pipe:lines() do
+                local fname = trim(f)
+                if fname ~= "" and file_exists(fname) then
+                    table.insert(results, fname)
+                end
+            end
+            pipe:close()
+        end
+    end
+    return results
+end
+
+local function ensure_cwrsync_fstab()
+    if not IS_WINDOWS then return end
+    local fstab_path = "C:/ProgramData/chocolatey/lib/rsync/tools/etc/fstab"
+    if not file_exists(fstab_path) then
+        local etc_dir = "C:/ProgramData/chocolatey/lib/rsync/tools/etc"
+        if file_exists(etc_dir .. "/nsswitch.conf") then
+            local f = io.open(fstab_path, "w")
+            if f then
+                f:write("none /cygdrive cygdrive binary,posix=0,user,noacl 0 0\n")
+                f:close()
+            end
+        end
+    end
+end
+
+local function get_rsync_ssh_cmd(port, key)
+    local ssh_opts = {}
+    local ssh_bin = "ssh"
+
+    if IS_WINDOWS then
+        local candidates = {
+            "C:/ProgramData/chocolatey/lib/rsync/tools/bin/ssh.exe",
+            "C:/ProgramData/chocolatey/bin/ssh.exe",
+            "C:/tools/cwrsync/bin/ssh.exe",
+            "C:/cygwin64/bin/ssh.exe",
+        }
+        for _, c in ipairs(candidates) do
+            if file_exists(c) then
+                ssh_bin = c
+                break
+            end
+        end
+
+        if ssh_bin ~= "ssh" then
+            table.insert(ssh_opts, "-o UserKnownHostsFile=~/.ssh/known_hosts")
+            table.insert(ssh_opts, "-o StrictHostKeyChecking=accept-new")
+        end
+    end
+
+    if port ~= "22" and port ~= "" then
+        table.insert(ssh_opts, "-p " .. port)
+    end
+    if key ~= "" then
+        table.insert(ssh_opts, "-i " .. shell_escape(key))
+    end
+
+    if ssh_bin ~= "ssh" or #ssh_opts > 0 then
+        return string.format("%s %s", ssh_bin, table.concat(ssh_opts, " "))
+    end
+    return nil
 end
 
 --------------------------------------------------------------------------------
@@ -205,17 +315,11 @@ local function parse_ssh_config(filepath, visited)
                             local dir = filepath:match("^(.*)[/\\]") or (get_home_dir() .. "/.ssh")
                             expanded = dir .. "/" .. expanded
                         end
-                        local p_pipe = io.popen(string.format("ls -1d %s 2>/dev/null", expanded))
-                        if p_pipe then
-                            for inc_file in p_pipe:lines() do
-                                if file_exists(inc_file) then
-                                    local sub_hosts = parse_ssh_config(inc_file, visited)
-                                    for _, sh in ipairs(sub_hosts) do
-                                        table.insert(hosts, sh)
-                                    end
-                                end
+                        for _, inc_file in ipairs(expand_glob(expanded)) do
+                            local sub_hosts = parse_ssh_config(inc_file, visited)
+                            for _, sh in ipairs(sub_hosts) do
+                                table.insert(hosts, sh)
                             end
-                            p_pipe:close()
                         end
                     end
                 elseif key == "host" then
@@ -368,7 +472,7 @@ local function parse_hosts_file()
     if not f then return hosts end
 
     for line in f:lines() do
-        local line_str = trim(line)
+        local line_str = trim(line):gsub("^\239\187\191", "")
         if line_str ~= "" and not line_str:match("^#") then
             local ip, names = line_str:match("^(%S+)%s+(.+)$")
             if ip and not ip:match("^fe80") and not ip:match("^::1") and ip ~= "127.0.0.1" and ip ~= "localhost" then
@@ -455,13 +559,18 @@ end
 -- Interactive FZF Host Selector
 --------------------------------------------------------------------------------
 local function run_fzf_host_picker(hosts)
-    local script_path = arg[0] or "fscp.lua"
+    local script_path = debug.getinfo(1, "S").source:sub(2)
+    if not script_path:match("^/") and not script_path:match("^%a:[/\\]") then
+        local pwd = io.popen(IS_WINDOWS and "cd" or "pwd 2>/dev/null || pwd"):read("*line") or "."
+        script_path = pwd .. "/" .. script_path
+    end
 
+    local preview_cmd = string.format("luajit %q --preview-only {1}", script_path)
     local fzf_cmd = string.format(
         'luajit %q --list-hosts | fzf --prompt="[fscp] Remote Host > " --delimiter="\t" --with-nth=1,2,3,4 ' ..
-        '--layout=reverse --height=50%% --border --preview="luajit %q --preview-only {1}" --preview-window=right:50%%:wrap ' ..
+        '--layout=reverse --height=50%% --border --preview=%q --preview-window=right:50%%:wrap ' ..
         '--header="⚡ LuaJIT FFI | ENTER: Select Host | ESC: Cancel"',
-        script_path, script_path
+        script_path, preview_cmd
     )
 
     local pipe = io.popen(fzf_cmd, "r")
@@ -557,7 +666,13 @@ local function run_fzf_remote_file_picker(host, override_user, override_port, ov
 
     while true do
         local dir_display = (current_remote_dir == ".") and "~/" or (current_remote_dir .. "/")
-        local remote_cmd = string.format("%s 'ls -1ap %s 2>/dev/null'", ssh_base, shell_escape(current_remote_dir))
+        local remote_cmd
+        if IS_WINDOWS then
+            local escaped_dir = current_remote_dir:gsub('"', '\\"')
+            remote_cmd = string.format('%s "ls -1ap \\"%s\\" 2>/dev/null"', ssh_base, escaped_dir)
+        else
+            remote_cmd = string.format("%s 'ls -1ap %s 2>/dev/null'", ssh_base, shell_escape(current_remote_dir))
+        end
 
         -- Check connection and list
         local pipe = io.popen(remote_cmd, "r")
@@ -705,17 +820,12 @@ local function execute_transfer(host, local_files, remote_path, pull_mode, use_r
     local cmd = {}
 
     if use_rsync then
+        ensure_cwrsync_fstab()
         cmd = { "rsync", "-avzP" }
-        local ssh_opts = {}
-        if port ~= "22" and port ~= "" then
-            table.insert(ssh_opts, "-p " .. port)
-        end
-        if key ~= "" then
-            table.insert(ssh_opts, "-i " .. shell_escape(key))
-        end
-        if #ssh_opts > 0 then
+        local ssh_e = get_rsync_ssh_cmd(port, key)
+        if ssh_e then
             table.insert(cmd, "-e")
-            table.insert(cmd, string.format("ssh %s", table.concat(ssh_opts, " ")))
+            table.insert(cmd, string.format("%q", ssh_e))
         end
 
         if pull_mode then
