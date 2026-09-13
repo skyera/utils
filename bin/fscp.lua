@@ -240,6 +240,48 @@ local function get_rsync_ssh_cmd(port, key)
     return nil
 end
 
+local _rsync_cached_avail = nil
+local function is_rsync_available()
+    if _rsync_cached_avail ~= nil then
+        return _rsync_cached_avail
+    end
+    if IS_WINDOWS then
+        local candidates = {
+            "C:/ProgramData/chocolatey/bin/rsync.exe",
+            "C:/ProgramData/chocolatey/lib/rsync/tools/bin/rsync.exe",
+            "C:/tools/cwrsync/bin/rsync.exe",
+            "C:/cygwin64/bin/rsync.exe",
+        }
+        for _, c in ipairs(candidates) do
+            if file_exists(c) then
+                _rsync_cached_avail = true
+                return true
+            end
+        end
+        local p = io.popen("where rsync 2>nul", "r")
+        if p then
+            local res = p:read("*line")
+            p:close()
+            if res and res ~= "" then
+                _rsync_cached_avail = true
+                return true
+            end
+        end
+    else
+        local p = io.popen("which rsync 2>/dev/null", "r")
+        if p then
+            local res = p:read("*line")
+            p:close()
+            if res and res ~= "" then
+                _rsync_cached_avail = true
+                return true
+            end
+        end
+    end
+    _rsync_cached_avail = false
+    return false
+end
+
 --------------------------------------------------------------------------------
 -- Host Aggregation (SSH Config, known_hosts, PuTTY Registry, /etc/hosts)
 --------------------------------------------------------------------------------
@@ -557,9 +599,8 @@ local function format_preview(h, is_rsync)
     table.insert(lines, string.format("  %sTransfer Tool :%s %s%s%s", C.yellow, C.reset, C.bold .. C.green, tool, C.reset))
     table.insert(lines, "")
     table.insert(lines, string.format("%s%sAvailable Actions:%s", C.bold, C.white, C.reset))
-    table.insert(lines, string.format("  %s* Push Files  :%s Upload selected local files to %s:~/", C.green, C.reset, h.name))
-    table.insert(lines, string.format("  %s* Pull Files  :%s Run with %s--pull%s to download files from %s", C.green, C.reset, C.yellow, C.reset, h.name))
-    table.insert(lines, string.format("  %s* Rsync Mode  :%s Fast delta transfer with progress bar (-r)", C.green, C.reset))
+    table.insert(lines, string.format("  %s* fpush       :%s Upload selected local files to %s:~/", C.green, C.reset, h.name))
+    table.insert(lines, string.format("  %s* fpull       :%s Download files or folders from %s to current dir", C.green, C.reset, h.name))
     return table.concat(lines, "\n")
 end
 
@@ -573,11 +614,11 @@ local function run_fzf_host_picker(hosts, is_rsync, pull_mode)
         script_path = pwd .. "/" .. script_path
     end
 
-    local rsync_flag = is_rsync and " -r" or ""
+    local rsync_flag = is_rsync and " -r" or " --scp"
     local preview_cmd = string.format("luajit %q --preview-only {1}%s", script_path, rsync_flag)
 
     local tool_label = is_rsync and "rsync" or (IS_WINDOWS and "scp / pscp" or "scp")
-    local mode_prefix = pull_mode and "fpull" or (is_rsync and "frsync" or "fscp")
+    local mode_prefix = pull_mode and "fpull" or "fpush"
 
     local fzf_cmd = string.format(
         'luajit %q --list-hosts | fzf --prompt="[%s] Remote Host > " --delimiter="\t" --with-nth=1,2,3,4 ' ..
@@ -785,7 +826,7 @@ local function execute_transfer(host, local_files, remote_path, pull_mode, use_r
     local source = host.source or ""
 
     remote_path = (remote_path ~= "") and remote_path or "~/"
-    local tag = pull_mode and "[fpull]" or (use_rsync and "[frsync]" or "[fscp]")
+    local tag = pull_mode and "[fpull]" or "[fpush]"
 
     -- PuTTY Windows PSCP mode
     if IS_WINDOWS and (source == "putty" and not use_rsync) then
@@ -901,11 +942,10 @@ end
 -- Main Entry Point
 --------------------------------------------------------------------------------
 local function main(args)
-    -- Check if invoked as frsync or fpull
-    local is_rsync = (arg[0] and arg[0]:match("rsync")) and true or false
+    -- Check if invoked as fpull or fpush
     local is_fpull = (arg[0] and arg[0]:match("pull")) and true or false
-
     local pull_mode = is_fpull
+    local is_rsync = is_rsync_available()
     local remote_path = ""
     local target_host_name = nil
     local override_user = ""
@@ -920,14 +960,16 @@ local function main(args)
     while i <= #args do
         local a = args[i]
         if a == "-h" or a == "--help" then
-            print([[fscp.lua - Interactive Fuzzy Remote File Transfer (LuaJIT FFI)
+            print([[fpush / fpull - Interactive Fuzzy Remote File Transfer (LuaJIT FFI)
 Usage:
-  fscp.lua [OPTIONS] [LOCAL_FILES...]
-  fpull    [OPTIONS]
+  fpush [OPTIONS] [LOCAL_FILES...]   # Push (upload) to remote host
+  fpull [OPTIONS]                    # Pull (download) from remote host
 
 Options:
-  -r, --rsync                 Use rsync instead of scp (-avzP)
   -P, --pull                  Pull mode (download remote path to local directory)
+      --push                  Push mode (upload local files to remote destination)
+  -r, --rsync                 Use rsync (default when rsync is installed)
+      --scp, --no-rsync       Force SCP/PSCP instead of rsync
   -t, --to <REMOTE_PATH>      Remote path (destination for push, source for pull)
   -H, --host <HOST>           Specify remote host directly (skip FZF host picker)
   -u, --user <USER>           Override remote SSH username
@@ -939,11 +981,10 @@ Options:
   -h, --help                  Show this help message
 
 Examples:
-  fscp                                # Interactive file picker -> host picker -> push
-  fscp build/app.bin                  # Push file -> interactive host picker
+  fpush                               # Interactive file picker -> host picker -> push
+  fpush build/app.bin                 # Push file -> interactive host picker
   fpull                               # Interactive host picker -> remote file browser -> pull
   fpull -H dev-server -t /tmp/log     # Download /tmp/log directly from dev-server
-  frsync -r src/ --to /opt/app/       # Rsync directory to remote
 ]])
             return
         elseif a == "-l" or a == "--list-hosts" then
@@ -958,7 +999,8 @@ Examples:
             for j = 1, #args do
                 if args[j] == "-r" or args[j] == "--rsync" then
                     prev_rsync = true
-                    break
+                elseif args[j] == "--scp" or args[j] == "--no-rsync" then
+                    prev_rsync = false
                 end
             end
             for _, h in ipairs(all_hosts) do
@@ -969,8 +1011,12 @@ Examples:
             end
             print("Host: " .. target)
             return
+        elseif a == "--push" then
+            pull_mode = false
         elseif a == "-r" or a == "--rsync" then
             is_rsync = true
+        elseif a == "--scp" or a == "--no-rsync" then
+            is_rsync = false
         elseif a == "-P" or a == "--pull" then
             pull_mode = true
         elseif (a == "-t" or a == "--to") and i + 1 <= #args then
