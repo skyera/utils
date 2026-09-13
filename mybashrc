@@ -1437,6 +1437,7 @@ _apply_overrides() {
     command -v rsshfs.sh >/dev/null 2>&1 && alias rsshfs='rsshfs.sh'
     command -v fscp.sh >/dev/null 2>&1 && alias fscp='fscp.sh'
     command -v frsync.sh >/dev/null 2>&1 && alias frsync='frsync.sh'
+    command -v fpull.sh >/dev/null 2>&1 && alias fpull='fpull.sh'
 
     # Antigravity CLI auto-approve alias (universal)
     if command -v agy.exe >/dev/null 2>&1; then

@@ -524,6 +524,127 @@ local function run_fzf_file_picker()
 end
 
 --------------------------------------------------------------------------------
+-- Interactive FZF Remote File Browser (Pull Mode)
+--------------------------------------------------------------------------------
+local function run_fzf_remote_file_picker(host, override_user, override_port, override_key)
+    local name = host.name
+    local hostname = host.hostname
+    local config_user = host.user or ""
+    local user = (override_user ~= "") and override_user or config_user
+    local port = (override_port ~= "") and override_port or (host.port or "22")
+    local key = (override_key ~= "") and override_key or (host.key or "")
+    local source = host.source or ""
+
+    local target_host = (source == "ssh-config") and name or hostname
+    local host_str = (user ~= "" and user ~= config_user) and string.format("%s@%s", user, target_host) or target_host
+    if source ~= "ssh-config" and user ~= "" and not host_str:find("@") then
+        host_str = string.format("%s@%s", user, target_host)
+    end
+
+    local ssh_cmd_parts = { "ssh", "-o", "ConnectTimeout=4", "-o", "BatchMode=yes" }
+    if port ~= "22" and port ~= "" then
+        table.insert(ssh_cmd_parts, "-p")
+        table.insert(ssh_cmd_parts, port)
+    end
+    if key ~= "" then
+        table.insert(ssh_cmd_parts, "-i")
+        table.insert(ssh_cmd_parts, shell_escape(key))
+    end
+    table.insert(ssh_cmd_parts, host_str)
+    local ssh_base = table.concat(ssh_cmd_parts, " ")
+
+    local current_remote_dir = "."
+
+    while true do
+        local dir_display = (current_remote_dir == ".") and "~/" or (current_remote_dir .. "/")
+        local remote_cmd = string.format("%s 'ls -1ap %s 2>/dev/null'", ssh_base, shell_escape(current_remote_dir))
+
+        -- Check connection and list
+        local pipe = io.popen(remote_cmd, "r")
+        local lines = {}
+        if pipe then
+            for l in pipe:lines() do
+                local item = trim(l)
+                if item ~= "" and item ~= "./" then
+                    table.insert(lines, item)
+                end
+            end
+            pipe:close()
+        end
+
+        if #lines == 0 then
+            -- Remote connection failed or empty / inaccessible directory
+            return nil
+        end
+
+        -- Build candidate list with an option to download current directory
+        local candidates = { string.format("⚡ [PULL CURRENT FOLDER: %s]", dir_display) }
+        for _, it in ipairs(lines) do
+            table.insert(candidates, it)
+        end
+
+        local input_data = table.concat(candidates, "\n")
+        local fzf_prompt = string.format("[fpull] %s:%s > ", name, dir_display)
+        local fzf_cmd = string.format(
+            'fzf --prompt=%q --layout=reverse --height=60%% --border ' ..
+            '--header="ENTER: Navigate / Select | ESC: Manual Path"',
+            fzf_prompt
+        )
+
+        local fzf_pipe
+        if IS_WINDOWS then
+            local tmp_path = os.getenv("TEMP") or "."
+            local tmp_file = tmp_path .. "\\fscp_remote_list.tmp"
+            local f = io.open(tmp_file, "w")
+            if f then
+                f:write(input_data)
+                f:close()
+                fzf_pipe = io.popen(string.format('type "%s" | %s', tmp_file, fzf_cmd), "r")
+            end
+        else
+            fzf_pipe = io.popen(string.format('printf %%s %s | %s', shell_escape(input_data), fzf_cmd), "r")
+        end
+
+        if not fzf_pipe then return nil end
+
+        local selection = fzf_pipe:read("*line")
+        fzf_pipe:close()
+
+        if not selection or trim(selection) == "" then
+            return nil
+        end
+        selection = trim(selection)
+
+        if selection:find("^⚡ %[PULL CURRENT FOLDER:") then
+            return (current_remote_dir == ".") and "~/" or current_remote_dir
+        elseif selection == "../" then
+            if current_remote_dir == "." or current_remote_dir == "" then
+                current_remote_dir = ".."
+            elseif current_remote_dir == ".." then
+                current_remote_dir = "../.."
+            else
+                current_remote_dir = current_remote_dir:match("^(.*)/[^/]+$") or "."
+            end
+        elseif selection:sub(-1) == "/" then
+            -- Directory selected: navigate into it
+            local sub_dir = selection:sub(1, -2)
+            if current_remote_dir == "." then
+                current_remote_dir = sub_dir
+            else
+                current_remote_dir = current_remote_dir .. "/" .. sub_dir
+            end
+        else
+            -- File selected: return full path
+            if current_remote_dir == "." then
+                return selection
+            else
+                return current_remote_dir .. "/" .. selection
+            end
+        end
+    end
+end
+
+--------------------------------------------------------------------------------
 -- Transfer Execution Engine
 --------------------------------------------------------------------------------
 local function execute_transfer(host, local_files, remote_path, pull_mode, use_rsync, override_user, override_port, override_key, dry_run)
@@ -652,10 +773,11 @@ end
 -- Main Entry Point
 --------------------------------------------------------------------------------
 local function main(args)
-    -- Check if invoked as frsync
+    -- Check if invoked as frsync or fpull
     local is_rsync = (arg[0] and arg[0]:match("rsync")) and true or false
+    local is_fpull = (arg[0] and arg[0]:match("pull")) and true or false
 
-    local pull_mode = false
+    local pull_mode = is_fpull
     local remote_path = ""
     local target_host_name = nil
     local override_user = ""
@@ -673,11 +795,12 @@ local function main(args)
             print([[fscp.lua - Interactive Fuzzy Remote File Transfer (LuaJIT FFI)
 Usage:
   fscp.lua [OPTIONS] [LOCAL_FILES...]
+  fpull    [OPTIONS]
 
 Options:
   -r, --rsync                 Use rsync instead of scp (-avzP)
   -P, --pull                  Pull mode (download remote path to local directory)
-  -t, --to <REMOTE_PATH>      Destination directory on remote host (default: ~/)
+  -t, --to <REMOTE_PATH>      Remote path (destination for push, source for pull)
   -H, --host <HOST>           Specify remote host directly (skip FZF host picker)
   -u, --user <USER>           Override remote SSH username
   -p, --port <PORT>           Override remote SSH port
@@ -688,10 +811,11 @@ Options:
   -h, --help                  Show this help message
 
 Examples:
-  fscp.lua                            # Interactive file picker -> host picker -> push
-  fscp.lua build/app.bin              # Push file -> interactive host picker
-  fscp.lua -r src/ --to /opt/app/     # Rsync directory to remote
-  fscp.lua --pull -t /var/log/app.log # Pull file from remote host to current dir
+  fscp                                # Interactive file picker -> host picker -> push
+  fscp build/app.bin                  # Push file -> interactive host picker
+  fpull                               # Interactive host picker -> remote file browser -> pull
+  fpull -H dev-server -t /tmp/log     # Download /tmp/log directly from dev-server
+  frsync -r src/ --to /opt/app/       # Rsync directory to remote
 ]])
             return
         elseif a == "-l" or a == "--list-hosts" then
@@ -766,17 +890,26 @@ Examples:
     -- 2. Resolve Files
     if pull_mode then
         if remote_path == "" then
-            if dry_run or (not IS_WINDOWS and ffi.C.isatty(0) == 0) then
-                remote_path = "~/"
-            else
-                io.write(string.format("[fscp] Enter remote file/directory path to pull from %s: ", selected_host.name))
-                io.flush()
-                local line = io.read("*line")
-                if not line or trim(line) == "" then
-                    print("No remote path specified. Aborted.")
-                    return
+            if not dry_run and (IS_WINDOWS or ffi.C.isatty(0) ~= 0) then
+                local picked = run_fzf_remote_file_picker(selected_host, override_user, override_port, override_key)
+                if picked and picked ~= "" then
+                    remote_path = picked
                 end
-                remote_path = trim(line)
+            end
+
+            if remote_path == "" then
+                if dry_run or (not IS_WINDOWS and ffi.C.isatty(0) == 0) then
+                    remote_path = "~/"
+                else
+                    io.write(string.format("[fpull] Enter remote file/directory path to pull from %s: ", selected_host.name))
+                    io.flush()
+                    local line = io.read("*line")
+                    if not line or trim(line) == "" then
+                        print("No remote path specified. Aborted.")
+                        return
+                    end
+                    remote_path = trim(line)
+                end
             end
         end
     else
