@@ -241,16 +241,16 @@ function Term.enable_raw()
         end
     end
 
-    -- Switch to alternate screen buffer, hide cursor, clear screen
-    io.write("\27[?1049h\27[?25l\27[2J\27[H")
+    -- Switch to alternate screen buffer, hide cursor, disable auto-wrap, clear screen
+    io.write("\27[?1049h\27[?25l\27[?7l\27[2J\27[H")
     io.flush()
     Term.is_raw = true
 end
 
 function Term.restore()
     if not Term.is_raw then return end
-    -- Show cursor, switch back from alternate screen buffer
-    io.write("\27[?1049l\27[?25h\27[0m")
+    -- Show cursor, re-enable auto-wrap, switch back from alternate screen buffer
+    io.write("\27[?7h\27[?1049l\27[?25h\27[0m")
     io.flush()
 
     if IS_WINDOWS then
@@ -325,17 +325,29 @@ function Term.read_key()
         elseif ch == 32 then
             return "space"
         elseif ch == 27 then
-            -- Check if another char follows (escape sequence)
+            -- Check if another char follows (escape sequence) with short wait buffer
+            local timeout = 0
+            while m._kbhit() == 0 and timeout < 8 do
+                ffi.C.Sleep(2)
+                timeout = timeout + 1
+            end
             if m._kbhit() ~= 0 then
                 local next_ch = m._getch()
                 if next_ch == 91 then -- '['
-                    local code = m._getch()
-                    if code == 65 then return "up"
-                    elseif code == 66 then return "down"
-                    elseif code == 67 then return "right"
-                    elseif code == 68 then return "left"
-                    elseif code == 72 then return "home"
-                    elseif code == 70 then return "end"
+                    timeout = 0
+                    while m._kbhit() == 0 and timeout < 8 do
+                        ffi.C.Sleep(2)
+                        timeout = timeout + 1
+                    end
+                    if m._kbhit() ~= 0 then
+                        local code = m._getch()
+                        if code == 65 then return "up"
+                        elseif code == 66 then return "down"
+                        elseif code == 67 then return "right"
+                        elseif code == 68 then return "left"
+                        elseif code == 72 then return "home"
+                        elseif code == 70 then return "end"
+                        end
                     end
                 end
             end
@@ -634,7 +646,30 @@ local function aggregate_ssh_hosts()
                         return string.char(tonumber(h, 16))
                     end))
                     if decoded ~= "Default Settings" then
-                        add_host(decoded, decoded, "", "22", "putty")
+                        local phkSub = ffi.new("HKEY[1]")
+                        if ffi.C.RegOpenKeyExA(hKey, raw_name, 0, 0x20019, phkSub) == 0 then
+                            local hSub = phkSub[0]
+                            local data_buf = ffi.new("char[256]")
+                            local data_len = ffi.new("DWORD[1]", 256)
+                            local dword_val = ffi.new("DWORD[1]")
+                            local dword_len = ffi.new("DWORD[1]", 4)
+
+                            local r_host, r_user, r_port = "", "", "22"
+                            if ffi.C.RegQueryValueExA(hSub, "HostName", nil, nil, ffi.cast("BYTE*", data_buf), data_len) == 0 then
+                                r_host = trim(ffi.string(data_buf))
+                            end
+                            data_len[0] = 256
+                            if ffi.C.RegQueryValueExA(hSub, "UserName", nil, nil, ffi.cast("BYTE*", data_buf), data_len) == 0 then
+                                r_user = trim(ffi.string(data_buf))
+                            end
+                            if ffi.C.RegQueryValueExA(hSub, "PortNumber", nil, nil, ffi.cast("BYTE*", dword_val), dword_len) == 0 then
+                                r_port = tostring(dword_val[0])
+                            end
+                            ffi.C.RegCloseKey(hSub)
+                            if r_host ~= "" then
+                                add_host(decoded, r_host, r_user, r_port, "putty")
+                            end
+                        end
                     end
                     dwIndex = dwIndex + 1
                 end
@@ -713,6 +748,8 @@ local DemoFS = {
         { name = "test.sql", is_dir = false, size = 45000, mtime = "2026-09-13 03:30" },
     },
 }
+DemoFS["~"] = DemoFS["/home/user"]
+DemoFS["~/app"] = DemoFS["/home/user/app"]
 
 local remote_cache = {}
 
@@ -730,7 +767,7 @@ local function list_remote_directory(host_cfg, remote_dir)
 
     -- Demo Mode Handler
     if host_cfg.is_demo or host_cfg.name == "demo" then
-        local demo_list = DemoFS[remote_dir] or {}
+        local demo_list = DemoFS[remote_dir] or DemoFS["/home/user"] or {}
         for _, it in ipairs(demo_list) do
             table.insert(items, {
                 name = it.name,
@@ -753,15 +790,19 @@ local function list_remote_directory(host_cfg, remote_dir)
             target = host_cfg.user .. "@" .. target
         end
 
-        local remote_sh = string.format(
-            "LC_ALL=C ls -la --time-style=+%%Y-%%m-%%d\\ %%H:%%M:%%S %s 2>/dev/null || LC_ALL=C ls -la %s 2>/dev/null",
-            shell_escape(remote_dir),
-            shell_escape(remote_dir)
-        )
-        local cmd = string.format("ssh -q -o ConnectTimeout=5 %s %s %s",
+        local remote_path_arg
+        if remote_dir == "~" or remote_dir == "" then
+            remote_path_arg = "~"
+        elseif remote_dir:sub(1, 2) == "~/" then
+            remote_path_arg = "~/'" .. remote_dir:sub(3):gsub("'", "'\\''") .. "'"
+        else
+            remote_path_arg = "'" .. remote_dir:gsub("'", "'\\''") .. "'"
+        end
+        local remote_sh = "LC_ALL=C ls -la --time-style=+%Y-%m-%d\\ %H:%M:%S " .. remote_path_arg
+        local cmd = string.format("ssh -q -o ConnectTimeout=4 -o BatchMode=yes -o StrictHostKeyChecking=accept-new %s \"%s\" \"%s\"",
             table.concat(ssh_args, " "),
-            shell_escape(target),
-            shell_escape(remote_sh)
+            target,
+            remote_sh
         )
 
         local pipe = io.popen(cmd, "r")
@@ -778,7 +819,8 @@ local function list_remote_directory(host_cfg, remote_dir)
                 -- Handle symlink display: 'link -> target'
                 local link_target = name:match("^(.-)%s+%->%s+(.*)$")
                 local clean_name = link_target or name
-                local is_dir = (perms:sub(1, 1) == "d")
+                local is_symlink = (perms:sub(1, 1) == "l")
+                local is_dir = (perms:sub(1, 1) == "d") or is_symlink
                 table.insert(items, {
                     name = clean_name,
                     is_dir = is_dir,
@@ -856,7 +898,7 @@ local App = {
 
     right = {
         title = "REMOTE",
-        dir = "/home/user",
+        dir = "~",
         items = {},
         cursor = 1,
         scroll_top = 1,
@@ -873,6 +915,23 @@ end
 function App.refresh_right(force_network)
     if force_network then
         remote_cache = {}
+        if not App.host_cfg.is_demo and (App.right.dir == "~" or App.right.dir == "") then
+            local target = App.host_cfg.hostname or App.host_cfg.name
+            if App.host_cfg.user and App.host_cfg.user ~= "" then target = App.host_cfg.user .. "@" .. target end
+            local ssh_args = {}
+            if App.host_cfg.port and App.host_cfg.port ~= "22" and App.host_cfg.port ~= "" then table.insert(ssh_args, "-p " .. App.host_cfg.port) end
+            if App.host_cfg.key and App.host_cfg.key ~= "" then table.insert(ssh_args, "-i " .. shell_escape(App.host_cfg.key)) end
+            local pwd_cmd = string.format("ssh -q -o ConnectTimeout=4 -o BatchMode=yes -o StrictHostKeyChecking=accept-new %s \"%s\" \"pwd\"",
+                table.concat(ssh_args, " "), target)
+            local p = io.popen(pwd_cmd, "r")
+            if p then
+                local real_home = p:read("*l")
+                p:close()
+                if real_home and real_home:match("^/[^%s]+") then
+                    App.right.dir = trim(real_home)
+                end
+            end
+        end
     end
     local items, err = list_remote_directory(App.host_cfg, App.right.dir)
     if err then
@@ -939,11 +998,11 @@ function App.draw()
     )
     local styled_title = string.format(" %s%sFSCP-TUI v1.0%s | %s ", C.bold, C.bright_cyan, C.reset, host_display)
     local rem_len = math.max(0, w - #raw_title)
-    table.insert(buf, styled_title .. C.cyan .. BOX.h:rep(rem_len) .. C.reset .. "\r\n")
+    table.insert(buf, string.format("\27[1;1H%s%s%s%s\27[K", styled_title, C.cyan, BOX.h:rep(rem_len), C.reset))
 
     -- 2. Pane Geometry
-    local content_h = h - 6
-    if content_h < 5 then content_h = 5 end
+    local content_h = h - 5
+    if content_h < 4 then content_h = 4 end
 
     local half_w = math.floor((w - 3) / 2)
     local right_w = w - 3 - half_w
@@ -964,7 +1023,10 @@ function App.draw()
     if right_sel_n > 0 then right_title_text = right_title_text .. string.format("(%d sel, %s) ", right_sel_n, format_size(right_sel_b)) end
     right_title_text = pad_string(right_title_text, right_w)
 
-    table.insert(buf, left_accent .. BOX.tl .. left_title_text:sub(1, half_w) .. BOX.tt .. right_accent .. right_title_text:sub(1, right_w) .. BOX.tr .. C.reset .. "\r\n")
+    table.insert(buf, string.format("\27[2;1H%s%s%s%s%s%s%s\27[K",
+        left_accent, BOX.tl, left_title_text:sub(1, half_w), BOX.tt,
+        right_accent, right_title_text:sub(1, right_w), BOX.tr .. C.reset
+    ))
 
     -- 3. Pane Rows
     local left_items = App.get_filtered_items(App.left)
@@ -983,6 +1045,7 @@ function App.draw()
     end
 
     for row = 1, content_h do
+        local cur_y = 2 + row
         -- Left Pane Column
         local l_idx = App.left.scroll_top + row - 1
         local l_item = left_items[l_idx]
@@ -993,18 +1056,21 @@ function App.draw()
             local prefix = is_sel and (C.bright_yellow .. "[*]" .. C.reset) or "   "
             local cur_arrow = is_cur and ">" or " "
             local type_icon = l_item.is_dir and (C.bright_blue .. "[DIR]" .. C.reset) or "     "
-            local size_str = l_item.is_dir and "     -" or format_size(l_item.size)
-            size_str = pad_string(size_str, 9, true)
-
-            local date_str = pad_string(l_item.mtime or "-", 16)
-            local avail_name_w = half_w - 3 - 5 - 10 - 18
-            if avail_name_w < 8 then avail_name_w = 8 end
+            local size_str = pad_string(l_item.is_dir and "-" or format_size(l_item.size), 7, true)
+            local date_str = ""
+            local meta_w = 19
+            if half_w >= 48 then
+                date_str = " " .. pad_string(l_item.mtime or "-", 16)
+                meta_w = 36
+            elseif half_w >= 36 then
+                local short_date = (l_item.mtime and l_item.mtime:match("(%d%d%-%d%d)")) or (l_item.mtime and l_item.mtime:sub(1, 5)) or "-"
+                date_str = " " .. pad_string(short_date, 5)
+                meta_w = 25
+            end
+            local avail_name_w = math.max(6, half_w - meta_w)
             local name_disp = pad_string(l_item.name, avail_name_w)
-
             local line_color = is_cur and (C.reverse .. C.bold) or (l_item.is_dir and C.bright_white or C.white)
-            l_str = string.format("%s%s %s %s %s %s %s%s",
-                cur_arrow, prefix, type_icon, line_color, name_disp, size_str, date_str, C.reset
-            )
+            l_str = string.format("%s%s %s %s%s %s%s", cur_arrow, prefix, type_icon, line_color, name_disp .. C.reset, size_str, date_str)
         else
             l_str = string.rep(" ", half_w)
         end
@@ -1019,35 +1085,57 @@ function App.draw()
             local prefix = is_sel and (C.bright_yellow .. "[*]" .. C.reset) or "   "
             local cur_arrow = is_cur and ">" or " "
             local type_icon = r_item.is_dir and (C.bright_blue .. "[DIR]" .. C.reset) or "     "
-            local size_str = r_item.is_dir and "     -" or format_size(r_item.size)
-            size_str = pad_string(size_str, 9, true)
-
-            local date_str = pad_string(r_item.mtime or "-", 16)
-            local avail_name_w = right_w - 3 - 5 - 10 - 18
-            if avail_name_w < 8 then avail_name_w = 8 end
+            local size_str = pad_string(r_item.is_dir and "-" or format_size(r_item.size), 7, true)
+            local date_str = ""
+            local meta_w = 19
+            if right_w >= 48 then
+                date_str = " " .. pad_string(r_item.mtime or "-", 16)
+                meta_w = 36
+            elseif right_w >= 36 then
+                local short_date = (r_item.mtime and r_item.mtime:match("(%d%d%-%d%d)")) or (r_item.mtime and r_item.mtime:sub(1, 5)) or "-"
+                date_str = " " .. pad_string(short_date, 5)
+                meta_w = 25
+            end
+            local avail_name_w = math.max(6, right_w - meta_w)
             local name_disp = pad_string(r_item.name, avail_name_w)
-
             local line_color = is_cur and (C.reverse .. C.bold) or (r_item.is_dir and C.bright_white or C.white)
-            r_str = string.format("%s%s %s %s %s %s %s%s",
-                cur_arrow, prefix, type_icon, line_color, name_disp, size_str, date_str, C.reset
-            )
+            r_str = string.format("%s%s %s %s%s %s%s", cur_arrow, prefix, type_icon, line_color, name_disp .. C.reset, size_str, date_str)
         else
             r_str = string.rep(" ", right_w)
         end
 
-        table.insert(buf, left_accent .. BOX.v .. C.reset .. l_str .. left_accent .. BOX.v .. right_accent .. r_str .. BOX.v .. C.reset .. "\r\n")
+        table.insert(buf, string.format("\27[%d;1H%s%s%s%s%s\27[K",
+            cur_y,
+            left_accent .. BOX.v .. C.reset,
+            l_str,
+            left_accent .. BOX.v .. right_accent,
+            r_str,
+            BOX.v .. C.reset
+        ))
     end
 
     -- 4. Pane Bottom Borders
-    table.insert(buf, left_accent .. BOX.bl .. BOX.h:rep(half_w) .. BOX.tb .. right_accent .. BOX.h:rep(right_w) .. BOX.br .. C.reset .. "\r\n")
+    local btm_y = content_h + 3
+    table.insert(buf, string.format("\27[%d;1H%s%s%s%s%s%s\27[K",
+        btm_y,
+        left_accent, BOX.bl, BOX.h:rep(half_w), BOX.tb,
+        right_accent, BOX.h:rep(right_w) .. BOX.br .. C.reset
+    ))
 
     -- 5. Status / Message Line
-    local stat = pad_string(" " .. App.status_msg, w - 2)
-    table.insert(buf, App.status_color .. stat .. C.reset .. "\r\n")
+    local stat_y = content_h + 4
+    table.insert(buf, string.format("\27[%d;1H%s%s%s\27[K",
+        stat_y,
+        App.status_color, pad_string(" " .. App.status_msg, w), C.reset
+    ))
 
     -- 6. Keyboard Guide Footer Bar
+    local foot_y = content_h + 5
     local keyguide = " [Tab] Switch  [Space] Select  [a] All  [u] Upload ->  [d] <- Download  [r] Refresh  [?] Help  [q] Quit "
-    table.insert(buf, C.bg_gray .. C.bold .. C.bright_white .. pad_string(keyguide, w) .. C.reset)
+    table.insert(buf, string.format("\27[%d;1H%s%s%s%s\27[K",
+        foot_y,
+        C.bg_gray, C.bold .. C.bright_white, pad_string(keyguide, w), C.reset
+    ))
 
     -- Render in one atomic write
     io.write(table.concat(buf))
@@ -1136,23 +1224,33 @@ end
 
 function App.draw_host_picker_modal()
     local w, h = App.term_w, App.term_h
-    local mw = math.min(68, w - 6)
-    local mh = 16
+    local mw = math.min(86, w - 4)
+    local mh = math.min(18, h - 4)
     local mx = math.floor((w - mw) / 2)
     local my = math.floor((h - mh) / 2)
 
     local d = App.modal_data
-    local hosts = d.hosts or {}
+    local hosts = d.filtered or d.hosts or {}
     local cur = d.cursor or 1
+    local filter_str = d.filter or ""
 
     local lines = {
-        BOX.tl .. pad_string(" Select Remote SSH Host / Session ", mw - 2) .. BOX.tr,
-        BOX.v .. pad_string(" [Up/Down] Navigate  [Enter] Connect  [Esc] Cancel", mw - 2) .. BOX.v,
-        BOX.v .. BOX.h:rep(mw - 2) .. BOX.v,
+        BOX.tl .. pad_string(" Connect to Remote Server ", mw - 2) .. BOX.tr,
+        BOX.v .. pad_string(" [↑/↓ or j/k] Navigate   [Enter or l] Connect   [Type] Filter   [Esc] Demo Mode", mw - 2) .. BOX.v,
     }
 
-    local view_h = mh - 5
+    if filter_str ~= "" then
+        table.insert(lines, BOX.v .. pad_string(" Filter: " .. filter_str .. "_", mw - 2) .. BOX.v)
+    end
+
+    table.insert(lines, BOX.v .. BOX.h:rep(mw - 2) .. BOX.v)
+    table.insert(lines, BOX.v .. pad_string(string.format("   %-18s %-26s %-10s %-6s %s", "NAME", "HOST / IP", "USER", "PORT", "SOURCE"), mw - 2) .. BOX.v)
+    table.insert(lines, BOX.v .. BOX.h:rep(mw - 2) .. BOX.v)
+
+    local view_h = mh - (filter_str ~= "" and 7 or 6)
+    if view_h < 4 then view_h = 4 end
     local scroll = math.max(1, cur - view_h + 1)
+
     for i = 1, view_h do
         local idx = scroll + i - 1
         local h_entry = hosts[idx]
@@ -1160,7 +1258,14 @@ function App.draw_host_picker_modal()
             local is_cur = (idx == cur)
             local prefix = is_cur and "> " or "  "
             local src_tag = string.format("[%s]", h_entry.source or "ssh")
-            local desc = string.format("%s%-24s %-20s %s", prefix, h_entry.name, (h_entry.hostname or ""), src_tag)
+            local desc = string.format("%s%-18s %-26s %-10s %-6s %s",
+                prefix,
+                h_entry.name:sub(1, 18),
+                (h_entry.hostname or ""):sub(1, 26),
+                (h_entry.user ~= "" and h_entry.user or "-"):sub(1, 10),
+                (h_entry.port or "22"):sub(1, 6),
+                src_tag
+            )
             local line_col = is_cur and (C.reverse .. C.bold) or C.bright_white
             table.insert(lines, BOX.v .. line_col .. pad_string(desc, mw - 2) .. C.reset .. C.bright_cyan .. BOX.v)
         else
@@ -1168,6 +1273,8 @@ function App.draw_host_picker_modal()
         end
     end
 
+    table.insert(lines, BOX.v .. BOX.h:rep(mw - 2) .. BOX.v)
+    table.insert(lines, BOX.v .. pad_string(string.format(" Total: %d server(s) | Press [Enter] to connect", #hosts), mw - 2) .. BOX.v)
     table.insert(lines, BOX.bl .. BOX.h:rep(mw - 2) .. BOX.br)
 
     local modal_buf = {}
@@ -1270,24 +1377,64 @@ function App.handle_input(key)
         return
     elseif App.modal == "host_picker" then
         local d = App.modal_data
+        local filtered = d.filtered or d.hosts or {}
         local cur = d.cursor or 1
-        local total = #(d.hosts or {})
+        local total = #filtered
+
+        local function update_filter()
+            local q = (d.filter or ""):lower()
+            if q == "" then
+                d.filtered = d.hosts
+            else
+                local res = {}
+                for _, h in ipairs(d.hosts) do
+                    if (h.name:lower():find(q, 1, true) or (h.hostname and h.hostname:lower():find(q, 1, true)) or (h.user and h.user:lower():find(q, 1, true))) then
+                        table.insert(res, h)
+                    end
+                end
+                d.filtered = res
+            end
+            d.cursor = 1
+        end
+
         if key == "up" or key == "k" then
             d.cursor = math.max(1, cur - 1)
         elseif key == "down" or key == "j" then
             d.cursor = math.min(total, cur + 1)
-        elseif key == "enter" then
-            local sel = d.hosts[cur]
+        elseif key == "pageup" then
+            d.cursor = math.max(1, cur - 10)
+        elseif key == "pagedown" then
+            d.cursor = math.min(total, cur + 10)
+        elseif key == "enter" or key == "l" or key == "right" then
+            local sel = filtered[cur]
             if sel then
                 App.host_cfg = sel
                 App.modal = nil
+                App.active_pane = "right"
+                App.right.dir = sel.is_demo and "/home/user" or "~"
                 remote_cache = {}
                 App.status_msg = "Connecting to " .. sel.name .. "..."
-                App.status_color = C.cyan
+                App.status_color = C.bright_cyan
                 App.refresh_right(true)
             end
-        elseif key == "esc" or key == "q" then
-            App.modal = nil
+        elseif key == "backspace" then
+            if d.filter and #d.filter > 0 then
+                d.filter = d.filter:sub(1, -2)
+                update_filter()
+            end
+        elseif key == "esc" then
+            if d.filter and #d.filter > 0 then
+                d.filter = ""
+                update_filter()
+            else
+                -- Dismiss modal and fall back to demo mode
+                App.modal = nil
+                App.status_msg = "Switched to Demo Mode. Press [H] to pick SSH host."
+                App.status_color = C.yellow
+            end
+        elseif key:len() == 1 and key:match("[%w_%-%.]") then
+            d.filter = (d.filter or "") .. key
+            update_filter()
         end
         return
     end
@@ -1333,6 +1480,9 @@ function App.handle_input(key)
             else
                 App.refresh_right(false)
             end
+        elseif it and not it.is_dir then
+            App.status_msg = string.format("File: %s (%s, %s)", it.name, format_size(it.size), it.mtime or "-")
+            App.status_color = C.bright_cyan
         end
     elseif key == "backspace" or key == "h" or key == "left" then
         cur_pane.dir = get_parent_dir(cur_pane.dir)
@@ -1485,6 +1635,11 @@ local function main(...)
             assert(#remote_items > 0, "Remote items count should be > 0")
             assert(not err, "Remote listing should not error")
             print(string.format("  [PASS] list_remote_directory(demo, '/home/user/app'): found %d items", #remote_items))
+            local home_items = list_remote_directory(demo_cfg, "~")
+            assert(#home_items > 0, "Remote home listing should find items")
+            local app_items = list_remote_directory(demo_cfg, "~/app")
+            assert(#app_items > 0, "Remote subpath ~/app should find items")
+            print("  [PASS] list_remote_directory tilde resolution tests")
 
             -- 3. Test host aggregation
             local hosts = aggregate_ssh_hosts()
@@ -1600,33 +1755,32 @@ Keybindings:
             is_demo = false,
         }
     else
-        -- If no host specified, check available hosts or default to demo mode
+        -- No host provided: aggregate all saved sessions and show server picker at start
         local available_hosts = aggregate_ssh_hosts()
-        if #available_hosts > 0 then
-            table.insert(available_hosts, 1, {
-                name = "demo",
-                hostname = "demo-server",
-                user = "user",
-                port = "22",
-                source = "demo",
-                is_demo = true,
-            })
-            App.host_cfg = available_hosts[1]
-            App.modal = "host_picker"
-            App.modal_data = { hosts = available_hosts, cursor = 1 }
-        else
-            App.host_cfg = {
-                name = "demo",
-                hostname = "demo-server",
-                user = "user",
-                port = "22",
-                is_demo = true,
-            }
-        end
+        table.insert(available_hosts, 1, {
+            name = "[Demo Server]",
+            hostname = "demo-server.local",
+            user = "user",
+            port = "22",
+            source = "demo",
+            is_demo = true,
+        })
+        App.host_cfg = available_hosts[1]
+        App.modal = "host_picker"
+        App.modal_data = {
+            hosts = available_hosts,
+            filtered = available_hosts,
+            cursor = 1,
+            filter = "",
+        }
+        App.status_msg = "Select a remote server to connect, or press [Esc] for Demo Mode."
+        App.status_color = C.bright_yellow
     end
 
     if cli_remote_path and cli_remote_path ~= "" then
         App.right.dir = cli_remote_path
+    elseif App.host_cfg.is_demo then
+        App.right.dir = "/home/user"
     end
     if cli_local_path and cli_local_path ~= "" then
         App.left.dir = cli_local_path
