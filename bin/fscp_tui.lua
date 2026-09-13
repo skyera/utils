@@ -1860,7 +1860,7 @@ function App.draw_confirm_delete_host_modal()
         BOX.v .. pad_string(string.format("   Port    : %s", target.port or "22"), mw - 2) .. BOX.v,
         BOX.v .. pad_string(string.format("   Source  : [%s] %s", target.source or "-", src_file), mw - 2) .. BOX.v,
         BOX.v .. BOX.h:rep(mw - 2) .. BOX.v,
-        BOX.v .. C.bold .. C.bright_yellow .. pad_string(" [y] Confirm Delete      [n / Esc] Cancel", mw - 2) .. C.reset .. C.bright_cyan .. BOX.v,
+        BOX.v .. C.bold .. C.bright_yellow .. pad_string(" [y] Confirm Delete      [n / q / Esc] Cancel", mw - 2) .. C.reset .. C.bright_cyan .. BOX.v,
         BOX.bl .. BOX.h:rep(mw - 2) .. BOX.br,
     }
 
@@ -1929,7 +1929,7 @@ function App.draw_host_picker_modal()
         BOX.v .. pad_string(" [↑/↓] Navigate  [Enter] Connect  [e] Edit  [d/Del] Delete  [n] New  [Esc] Cancel", mw - 2) .. BOX.v,
     }
 
-    local filter_prompt = (filter_str ~= "") and (" Filter / IP: " .. filter_str .. "_") or " Filter / IP: _ (Type to filter, or press 'e' to edit, 'd' to delete, 'n' for form)"
+    local filter_prompt = (filter_str ~= "") and (" Filter / IP: " .. filter_str .. "_  [Del / Ctrl+D to delete]") or " Filter / IP: _ (Type to filter, or press 'e' to edit, 'd/Del' to delete, 'n' for form)"
     table.insert(lines, BOX.v .. pad_string(filter_prompt, mw - 2) .. BOX.v)
 
     table.insert(lines, BOX.v .. BOX.h:rep(mw - 2) .. BOX.v)
@@ -2122,6 +2122,7 @@ function App.handle_input(key)
         return
     elseif App.modal == "confirm_delete_host" then
         local target = App.modal_data and App.modal_data.target
+        local prev_cur = App.modal_data and App.modal_data.prev_cursor or 1
         if key == "y" or key == "Y" or key == "enter" then
             local ok, err = delete_host_entry(target)
             local hosts = aggregate_ssh_hosts()
@@ -2141,11 +2142,12 @@ function App.handle_input(key)
                 source = "demo",
                 is_demo = true,
             })
+            local next_cur = math.min(math.max(1, prev_cur), #hosts)
             App.modal = "host_picker"
             App.modal_data = {
                 hosts = hosts,
                 filtered = hosts,
-                cursor = 1,
+                cursor = next_cur,
                 filter = "",
             }
             if ok then
@@ -2155,7 +2157,7 @@ function App.handle_input(key)
                 App.status_msg = "Delete failed: " .. (err or "unknown error")
                 App.status_color = C.bright_red
             end
-        elseif key == "n" or key == "N" or key == "esc" then
+        elseif key == "n" or key == "N" or key == "esc" or key == "q" or key == "Q" then
             local hosts = aggregate_ssh_hosts()
             table.insert(hosts, 1, {
                 name = "[+] New Form",
@@ -2173,11 +2175,12 @@ function App.handle_input(key)
                 source = "demo",
                 is_demo = true,
             })
+            local next_cur = math.min(math.max(1, prev_cur), #hosts)
             App.modal = "host_picker"
             App.modal_data = {
                 hosts = hosts,
                 filtered = hosts,
-                cursor = 1,
+                cursor = next_cur,
                 filter = "",
             }
             App.status_msg = "Host deletion cancelled."
@@ -2300,6 +2303,7 @@ function App.handle_input(key)
                     App.modal = "confirm_delete_host"
                     App.modal_data = {
                         target = sel,
+                        prev_cursor = cur,
                     }
                 end
             end
@@ -2937,14 +2941,46 @@ local function main(...)
             io.write = prev_write
             print("  [PASS] Modal rendering execution (host_picker, confirm_delete_host, new_host_modal) tests")
 
-            -- 17. Test App.handle_input for host deletion cancellation
+            -- 17. Test App.handle_input for host deletion cancellation and execution
             App.modal = "confirm_delete_host"
-            App.modal_data = { target = { name = "dummy", source = "ssh-config" } }
+            App.modal_data = { target = { name = "dummy", source = "ssh-config" }, prev_cursor = 3 }
             App.handle_input("n")
             assert(App.modal == "host_picker", "Cancelling delete should return to host_picker")
+            assert(App.modal_data.cursor == 3, "Cancelling delete should preserve cursor position")
             assert(App.status_msg:find("cancelled"), "Status should indicate cancellation")
+
+            App.modal = "confirm_delete_host"
+            App.modal_data = { target = { name = "dummy", source = "ssh-config" }, prev_cursor = 2 }
+            App.handle_input("q")
+            assert(App.modal == "host_picker", "'q' should cancel delete and return to host_picker")
+            assert(App.status_msg:find("cancelled"), "Status should indicate cancellation on 'q'")
+
+            -- 18. Test App.handle_input for successful host deletion execution
+            local tmp_cfg_e2e = "/tmp/test_fscp_delete_e2e_" .. tostring(os.time())
+            local fe2e = io.open(tmp_cfg_e2e, "w")
+            fe2e:write("Host target-delete-node\n    HostName 10.99.1.1\n    User tester\n\nHost keep-node\n    HostName 10.99.1.2\n")
+            fe2e:close()
+
+            App.modal = "confirm_delete_host"
+            App.modal_data = {
+                target = {
+                    name = "target-delete-node",
+                    hostname = "10.99.1.1",
+                    source = "ssh-config",
+                    source_file = tmp_cfg_e2e,
+                },
+                prev_cursor = 3,
+            }
+            App.handle_input("y")
+            assert(App.modal == "host_picker", "Confirming delete should return to host_picker")
+            assert(App.status_msg:find("Successfully deleted"), "Status message should indicate successful deletion")
+            local hosts_rem = parse_ssh_config(tmp_cfg_e2e)
+            for _, h in ipairs(hosts_rem) do
+                assert(h.name ~= "target-delete-node", "Deleted node must not remain in SSH config")
+            end
+            os.remove(tmp_cfg_e2e)
             App.modal = nil
-            print("  [PASS] Delete confirmation cancellation event flow tests")
+            print("  [PASS] Delete confirmation cancellation and execution event flow tests")
 
             print(C.bold .. C.bright_green .. "[ALL TESTS PASSED SUCCESSFULLY]" .. C.reset)
             return
