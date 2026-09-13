@@ -1157,6 +1157,267 @@ DemoContent["/home/user/app/assets/logo.png"] = DEMO_PNG_BYTES
 --------------------------------------------------------------------------------
 -- Remote Connection & Directory Crawler
 --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Remote Host Discovery & Aggregator Engine (SSH Config, Known Hosts, PuTTY, Hosts)
+--------------------------------------------------------------------------------
+local HostManager = {}
+
+local function url_decode(str)
+    return str:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end)
+end
+
+function HostManager.get_ssh_config_paths()
+    local home = get_home_dir()
+    local paths = {
+        home .. "/.ssh/config",
+        "/etc/ssh/ssh_config",
+    }
+    if IS_WINDOWS then
+        local up = os.getenv("USERPROFILE")
+        if up and up ~= home then table.insert(paths, up .. "/.ssh/config") end
+    end
+    return paths
+end
+
+function HostManager.parse_ssh_config(filepath)
+    local hosts = {}
+    if not file_exists(filepath) then return hosts end
+    local f = io.open(filepath, "r")
+    if not f then return hosts end
+
+    local current_aliases = {}
+    local current_params = {}
+
+    local function flush_block()
+        for _, alias in ipairs(current_aliases) do
+            local entry = {
+                name = alias,
+                hostname = current_params.hostname or alias,
+                user = current_params.user or "",
+                port = current_params.port or "22",
+                key = current_params.key or "",
+                source = "ssh-config",
+            }
+            table.insert(hosts, entry)
+        end
+        current_aliases = {}
+        current_params = {}
+    end
+
+    for line in f:lines() do
+        local line_str = trim(line)
+        if line_str ~= "" and not line_str:match("^#") then
+            local k, v = line_str:match("^([%w_]+)%s*=?%s*(.*)$")
+            if k and v then
+                local key = k:lower()
+                local val = trim(v):gsub('^["\']', ''):gsub('["\']$', '')
+                if key == "host" then
+                    flush_block()
+                    local valid_aliases = {}
+                    for alias in val:gmatch("%S+") do
+                        if not alias:find("[*?]") then
+                            table.insert(valid_aliases, alias)
+                        end
+                    end
+                    current_aliases = valid_aliases
+                elseif #current_aliases > 0 then
+                    if key == "hostname" then
+                        current_params.hostname = val
+                    elseif key == "user" then
+                        current_params.user = val
+                    elseif key == "port" then
+                        current_params.port = val
+                    elseif key == "identityfile" then
+                        current_params.key = val:gsub("^~", get_home_dir())
+                    end
+                end
+            end
+        end
+    end
+    flush_block()
+    f:close()
+    return hosts
+end
+
+function HostManager.parse_known_hosts(filepath)
+    local hosts = {}
+    if not file_exists(filepath) then return hosts end
+    local f = io.open(filepath, "r")
+    if not f then return hosts end
+
+    for line in f:lines() do
+        local line_str = trim(line)
+        if line_str ~= "" and not line_str:match("^#") and not line_str:match("^|1|") then
+            local host_part = line_str:match("^(%S+)")
+            if host_part then
+                for single_host in host_part:gmatch("[^,]+") do
+                    local host, port = single_host:match("^%[(.-)%]:(%d+)$")
+                    if not host then
+                        host = single_host
+                        port = "22"
+                    end
+                    if host ~= "" and not host:find("[*?]") then
+                        table.insert(hosts, {
+                            name = host,
+                            hostname = host,
+                            user = "",
+                            port = port,
+                            key = "",
+                            source = "known_hosts",
+                        })
+                    end
+                end
+            end
+        end
+    end
+    f:close()
+    return hosts
+end
+
+function HostManager.parse_putty_sessions_win32()
+    local hosts = {}
+    if not IS_WINDOWS then return hosts end
+
+    pcall(function()
+        local HKEY_CURRENT_USER = ffi.cast("void*", 0x80000001)
+        local phkResult = ffi.new("HKEY[1]")
+        local subkey = "Software\\SimonTatham\\PuTTY\\Sessions"
+        if ffi.C.RegOpenKeyExA(HKEY_CURRENT_USER, subkey, 0, 0x20019, phkResult) == 0 then
+            local hKey = phkResult[0]
+            local dwIndex = 0
+            local name_buf = ffi.new("char[256]")
+            local name_len = ffi.new("DWORD[1]")
+            while true do
+                name_len[0] = 256
+                if ffi.C.RegEnumKeyExA(hKey, dwIndex, name_buf, name_len, nil, nil, nil, nil) ~= 0 then
+                    break
+                end
+                local raw_name = ffi.string(name_buf, name_len[0])
+                local decoded = url_decode(raw_name)
+                if decoded ~= "Default Settings" then
+                    local phkSub = ffi.new("HKEY[1]")
+                    if ffi.C.RegOpenKeyExA(hKey, raw_name, 0, 0x20019, phkSub) == 0 then
+                        local hSub = phkSub[0]
+                        local data_buf = ffi.new("char[256]")
+                        local data_len = ffi.new("DWORD[1]", 256)
+                        local dword_val = ffi.new("DWORD[1]")
+                        local dword_len = ffi.new("DWORD[1]", 4)
+
+                        local r_host, r_user, r_port, r_key = "", "", "22", ""
+                        if ffi.C.RegQueryValueExA(hSub, "HostName", nil, nil, ffi.cast("BYTE*", data_buf), data_len) == 0 then
+                            r_host = trim(ffi.string(data_buf))
+                        end
+                        data_len[0] = 256
+                        if ffi.C.RegQueryValueExA(hSub, "UserName", nil, nil, ffi.cast("BYTE*", data_buf), data_len) == 0 then
+                            r_user = trim(ffi.string(data_buf))
+                        end
+                        if ffi.C.RegQueryValueExA(hSub, "PortNumber", nil, nil, ffi.cast("BYTE*", dword_val), dword_len) == 0 then
+                            r_port = tostring(dword_val[0])
+                        end
+                        ffi.C.RegCloseKey(hSub)
+                        if r_host ~= "" then
+                            table.insert(hosts, {
+                                name = decoded,
+                                hostname = r_host,
+                                user = r_user,
+                                port = r_port,
+                                key = "",
+                                source = "putty",
+                            })
+                        end
+                    end
+                end
+                dwIndex = dwIndex + 1
+            end
+            ffi.C.RegCloseKey(hKey)
+        end
+    end)
+    return hosts
+end
+
+function HostManager.parse_hosts_file()
+    local hosts = {}
+    local path = IS_WINDOWS and "C:\\Windows\\System32\\drivers\\etc\\hosts" or "/etc/hosts"
+    if not file_exists(path) then return hosts end
+    local f = io.open(path, "r")
+    if not f then return hosts end
+
+    for line in f:lines() do
+        local line_str = trim(line):gsub("^\239\187\191", "")
+        if line_str ~= "" and not line_str:match("^#") then
+            local ip, names = line_str:match("^(%S+)%s+(.+)$")
+            if ip and not ip:match("^fe80") and not ip:match("^fe00") and not ip:match("^ff%x%x") and not ip:match("^::1") and ip ~= "127.0.0.1" and ip ~= "localhost" then
+                for n in names:gmatch("%S+") do
+                    if not n:match("^#") and n ~= "localhost" and not n:match("^ip6%-") then
+                        table.insert(hosts, {
+                            name = n,
+                            hostname = ip,
+                            user = "",
+                            port = "22",
+                            key = "",
+                            source = "hosts",
+                        })
+                    end
+                end
+            end
+        end
+    end
+    f:close()
+    return hosts
+end
+
+function HostManager.aggregate()
+    local all_hosts = {}
+    local seen = {}
+
+    local function add_host(h)
+        if not h.name or h.name == "" or h.name:find("[*?]") then return end
+        local key = (h.name .. "|" .. (h.hostname or "") .. "|" .. (h.port or "22")):lower()
+        if not seen[key] and not seen[h.name:lower()] then
+            seen[key] = true
+            seen[h.name:lower()] = true
+            table.insert(all_hosts, h)
+        end
+    end
+
+    -- 1. SSH config
+    for _, path in ipairs(HostManager.get_ssh_config_paths()) do
+        for _, h in ipairs(HostManager.parse_ssh_config(path)) do
+            add_host(h)
+        end
+    end
+
+    -- 2. Windows PuTTY sessions
+    if IS_WINDOWS then
+        for _, h in ipairs(HostManager.parse_putty_sessions_win32()) do
+            add_host(h)
+        end
+    end
+
+    -- 3. Known hosts
+    local home = get_home_dir()
+    for _, h in ipairs(HostManager.parse_known_hosts(home .. "/.ssh/known_hosts")) do
+        add_host(h)
+    end
+
+    -- 4. /etc/hosts
+    for _, h in ipairs(HostManager.parse_hosts_file()) do
+        add_host(h)
+    end
+
+    -- Always include simulated demo host
+    table.insert(all_hosts, {
+        name = "[SIMULATED DEMO]",
+        hostname = "prod-srv01.internal",
+        user = "dev",
+        port = "22",
+        is_demo = true,
+        source = "demo",
+    })
+
+    return all_hosts
+end
+
 local Crawler = {
     dir_cache = {},
     preview_cache = {},
@@ -1556,7 +1817,7 @@ function App.draw()
     table.insert(buf, string.format("\27[%d;1H%s\27[K", content_h + 4, pad_string(stat_text, w)))
 
     -- 5. Footer Keybindings Guide
-    local footer = " [Enter/l] Open [h] Up [j/k] Select [J/K] Scroll [I] Icons [i] ImgMode [/] Filter [d] Scp [r] Refresh [?] Help [q] Quit "
+    local footer = " [Enter/l] Open [h] Up [j/k] Select [H] Server [J/K] Scroll [I] Icons [i] ImgMode [/] Filter [d] Scp [r] Refresh [?] Help [q] Quit "
     table.insert(buf, string.format("\27[%d;1H%s%s%s%s\27[K",
         content_h + 5,
         C.bg_gray, C.bold .. C.bright_white, pad_string(footer, w), C.reset
@@ -1567,7 +1828,85 @@ function App.draw()
 
     if App.modal == "help" then
         App.draw_help_modal()
+    elseif App.modal == "host_picker" then
+        App.draw_host_picker_modal()
     end
+end
+
+function App.open_host_picker()
+    local hosts = HostManager.aggregate()
+    App.modal_data = {
+        hosts = hosts,
+        filtered = hosts,
+        cursor = 1,
+        filter = "",
+    }
+    App.modal = "host_picker"
+end
+
+function App.draw_host_picker_modal()
+    local w, h = App.term_w, App.term_h
+    local mw = math.min(84, w - 4)
+    local mh = math.min(18, h - 4)
+    if mh < 8 then mh = 8 end
+    local mx = math.floor((w - mw) / 2)
+    local my = math.floor((h - mh) / 2)
+
+    local d = App.modal_data or {}
+    local hosts = d.filtered or d.hosts or {}
+    local cur = d.cursor or 1
+    local filter_str = d.filter or ""
+
+    local lines = {}
+    table.insert(lines, BOX.tl .. pad_string(" Connect to Remote Server ", mw - 2) .. BOX.tr)
+    table.insert(lines, BOX.v .. pad_string(" [↑/↓ / j/k] Navigate   [Enter] Connect   [/] Filter   [Esc] Cancel", mw - 2) .. BOX.v)
+
+    local filter_prompt = (filter_str ~= "") and (" Filter: " .. filter_str .. "█") or " Filter: _ (Type to filter, or press Enter to connect)"
+    table.insert(lines, BOX.v .. C.bright_yellow .. pad_string(filter_prompt, mw - 2) .. C.reset .. C.bright_cyan .. BOX.v)
+
+    table.insert(lines, BOX.vl .. BOX.h:rep(mw - 2) .. BOX.vr)
+    local header_row = string.format("   %-18s %-22s %-8s %-5s %s", "NAME", "HOST / IP", "USER", "PORT", "SOURCE")
+    table.insert(lines, BOX.v .. C.bold .. pad_string(header_row, mw - 2) .. C.reset .. C.bright_cyan .. BOX.v)
+    table.insert(lines, BOX.vl .. BOX.h:rep(mw - 2) .. BOX.vr)
+
+    local view_h = mh - 7
+    if view_h < 3 then view_h = 3 end
+    local scroll = math.max(1, cur - view_h + 1)
+
+    for i = 1, view_h do
+        local idx = scroll + i - 1
+        local h_entry = hosts[idx]
+        if h_entry then
+            local is_cur = (idx == cur)
+            local prefix = is_cur and (BOX.arrow_r .. " ") or "  "
+            local src_tag = string.format("[%s]", h_entry.source or "ssh")
+            local desc = string.format("%s%-18s %-22s %-8s %-5s %s",
+                prefix,
+                h_entry.name:sub(1, 18),
+                (h_entry.hostname or ""):sub(1, 22),
+                (h_entry.user ~= "" and h_entry.user or "-"):sub(1, 8),
+                (h_entry.port or "22"):sub(1, 5),
+                src_tag
+            )
+            local line_col = is_cur and (C.bold .. C.bg_sel .. C.bright_yellow) or (h_entry.is_demo and C.bright_magenta or C.white)
+            table.insert(lines, BOX.v .. line_col .. pad_string(desc, mw - 2) .. C.reset .. C.bright_cyan .. BOX.v)
+        else
+            table.insert(lines, BOX.v .. string.rep(" ", mw - 2) .. BOX.v)
+        end
+    end
+
+    table.insert(lines, BOX.vl .. BOX.h:rep(mw - 2) .. BOX.vr)
+    table.insert(lines, BOX.v .. pad_string(string.format(" Total: %d server(s) | Press [Enter] to connect and browse", #hosts), mw - 2) .. BOX.v)
+    table.insert(lines, BOX.bl .. BOX.h:rep(mw - 2) .. BOX.br)
+
+    local modal_buf = {}
+    for i, line in ipairs(lines) do
+        table.insert(modal_buf, string.format("\27[%d;%dH%s%s%s",
+            my + i - 1, mx, C.bold .. C.bright_cyan, line, C.reset
+        ))
+    end
+    io.write(table.concat(modal_buf))
+    io.flush()
 end
 
 function App.draw_help_modal()
@@ -1619,6 +1958,54 @@ function App.run()
                 if key == "escape" or key == "?" or key == "q" or key == "enter" then
                     App.modal = nil
                 end
+            elseif App.modal == "host_picker" then
+                local d = App.modal_data
+                if key == "escape" or key == "ctrl_c" then
+                    App.modal = nil
+                elseif key == "up" or key == "k" then
+                    if d.cursor > 1 then d.cursor = d.cursor - 1 end
+                elseif key == "down" or key == "j" then
+                    if d.cursor < #d.filtered then d.cursor = d.cursor + 1 end
+                elseif key == "enter" then
+                    local chosen = d.filtered[d.cursor]
+                    if chosen then
+                        App.host_cfg = chosen
+                        App.modal = nil
+                        Crawler.dir_cache = {}
+                        Crawler.preview_cache = {}
+                        if chosen.is_demo then
+                            App.load_dir("/home/user/app")
+                        else
+                            App.load_dir("~")
+                        end
+                        App.status_msg = string.format("Connected to %s (%s)", chosen.name, chosen.hostname)
+                        App.status_color = C.bright_green
+                    end
+                elseif key == "backspace" then
+                    if #d.filter > 0 then
+                        d.filter = d.filter:sub(1, -2)
+                        local res = {}
+                        local q = d.filter:lower()
+                        for _, h in ipairs(d.hosts) do
+                            if h.name:lower():find(q, 1, true) or (h.hostname and h.hostname:lower():find(q, 1, true)) then
+                                table.insert(res, h)
+                            end
+                        end
+                        d.filtered = res
+                        d.cursor = math.max(1, math.min(d.cursor, #res))
+                    end
+                elseif #key == 1 and key:byte(1) >= 32 and key:byte(1) <= 126 then
+                    d.filter = d.filter .. key
+                    local res = {}
+                    local q = d.filter:lower()
+                    for _, h in ipairs(d.hosts) do
+                        if h.name:lower():find(q, 1, true) or (h.hostname and h.hostname:lower():find(q, 1, true)) then
+                            table.insert(res, h)
+                        end
+                    end
+                    d.filtered = res
+                    d.cursor = 1
+                end
             elseif App.filter_mode then
                 if key == "enter" or key == "escape" then
                     App.filter_mode = false
@@ -1657,6 +2044,8 @@ function App.run()
                     App.go_parent()
                 elseif key == "tab" then
                     App.focus = (App.focus == "left") and "right" or "left"
+                elseif key == "H" or key == "s" then
+                    App.open_host_picker()
                 elseif key == "I" then
                     local new_m = IconEngine.cycle()
                     App.status_msg = "Icon Mode toggled to: " .. new_m:upper()
@@ -1768,7 +2157,17 @@ local function run_tests()
     assert(tw > 0 and th > 0, "Terminal dimensions must be > 0")
     print(C.bright_green .. string.format("  [PASS] Terminal low-level FFI dimension probe: %dx%d", tw, th) .. C.reset)
 
-    print(C.bold .. C.bright_green .. "\nALL 8 TESTS PASSED SUCCESSFULLY!" .. C.reset)
+    -- 9. Host Discovery & Aggregation Test
+    local discovered = HostManager.aggregate()
+    assert(#discovered > 0, "HostManager should discover at least 1 host")
+    local has_demo = false
+    for _, h in ipairs(discovered) do
+        if h.is_demo then has_demo = true; break end
+    end
+    assert(has_demo, "HostManager must include simulated demo host")
+    print(C.bright_green .. string.format("  [PASS] HostManager aggregated %d servers (SSH config, known_hosts, hosts)", #discovered) .. C.reset)
+
+    print(C.bold .. C.bright_green .. "\nALL 9 TESTS PASSED SUCCESSFULLY!" .. C.reset)
     return true
 end
 
@@ -1814,6 +2213,13 @@ local function main(args)
             return
         elseif a == "--demo" then
             App.host_cfg.is_demo = true
+        elseif a == "--picker" then
+            Term.init()
+            App.term_w, App.term_h = Term.get_size()
+            App.open_host_picker()
+            App.draw_host_picker_modal()
+            io.write("\n\n")
+            return
         elseif a == "--icons" and i < #args then
             i = i + 1
             IconEngine.mode = args[i]:lower()
@@ -1892,6 +2298,8 @@ local function main(args)
             App.host_cfg.hostname = target_arg
         end
         App.host_cfg.is_demo = false
+    elseif not App.host_cfg.is_demo then
+        App.open_host_picker()
     end
 
     -- Run Interactive TUI
