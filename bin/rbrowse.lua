@@ -1095,6 +1095,16 @@ DemoFS["/var/log"] = {
 }
 
 local DemoContent = {
+    ["/home/user/.bashrc"] = [[
+# ~/.bashrc: executed by bash(1) for non-login shells.
+export PATH="$HOME/bin:$PATH"
+export EDITOR="vim"
+alias ll='ls -la'
+alias rbrowse='rbrowse.sh'
+]],
+
+    ["/home/user/avatar.png"] = DEMO_PNG_BYTES,
+
     ["/home/user/app/server.lua"] = [[
 local ffi = require("ffi")
 local http = require("http_server")
@@ -1470,14 +1480,19 @@ function Crawler.get_ssh_cmd(host_cfg)
 end
 
 function Crawler.list_directory(host_cfg, remote_dir)
-    if not remote_dir or remote_dir == "" then remote_dir = "/" end
+    if not remote_dir or remote_dir == "" then remote_dir = "~" end
     local cache_key = (host_cfg.hostname or host_cfg.name or "demo") .. ":" .. remote_dir
     if Crawler.dir_cache[cache_key] then
-        return Crawler.dir_cache[cache_key], nil
+        local entry = Crawler.dir_cache[cache_key]
+        return entry.items, entry.resolved_dir, nil
     end
 
     if host_cfg.is_demo then
-        local list = DemoFS[remote_dir] or DemoFS["/"]
+        local demo_path = remote_dir
+        if demo_path == "~" or demo_path == "" then
+            demo_path = "/home/user"
+        end
+        local list = DemoFS[demo_path] or DemoFS["/home/user"] or DemoFS["/"]
         local items = {}
         for _, it in ipairs(list) do
             local ext = (it.name:match("%.([%w_%-]+)$") or ""):lower()
@@ -1493,48 +1508,59 @@ function Crawler.list_directory(host_cfg, remote_dir)
                 perms = it.perms,
             })
         end
-        Crawler.dir_cache[cache_key] = items
-        return items, nil
+        local res_entry = { items = items, resolved_dir = demo_path }
+        Crawler.dir_cache[cache_key] = res_entry
+        if demo_path ~= remote_dir then
+            Crawler.dir_cache[(host_cfg.hostname or host_cfg.name or "demo") .. ":" .. demo_path] = res_entry
+        end
+        return items, demo_path, nil
     end
 
     local ssh_base = Crawler.get_ssh_cmd(host_cfg)
     local esc_dir = shell_escape(remote_dir)
-    local remote_sh = string.format("LC_ALL=C ls -la --time-style=+%%Y-%%m-%%d\\ %%H:%%M:%%S %s 2>/dev/null || LC_ALL=C ls -la %s", esc_dir, esc_dir)
+    local remote_sh = string.format([=[d=%s; if [ -z "$d" ] || [ "$d" = "~" ]; then cd ~ 2>/dev/null || cd /; elif [ "${d#\~/}" != "$d" ]; then cd ~/"${d#\~/}" 2>/dev/null || cd "$d" 2>/dev/null || cd /; else cd "$d" 2>/dev/null || cd /; fi; echo "PWD:$(pwd)"; LC_ALL=C ls -la --time-style=+%%Y-%%m-%%d\ %%H:%%M:%%S . 2>/dev/null || LC_ALL=C ls -la .]=], esc_dir)
     local full_cmd = string.format("%s %s", ssh_base, shell_escape(remote_sh))
 
     local pipe = io.popen(full_cmd, "r")
-    if not pipe then return nil, "Failed to execute SSH command" end
+    if not pipe then return nil, nil, "Failed to execute SSH command" end
 
+    local resolved_dir = nil
     local items = {}
     for line in pipe:lines() do
-        local perms, links, owner, group, size, d1, d2, name = line:match("^(%S+)%s+(%d+)%s+(%S+)%s+(%S+)%s+(%d+)%s+(%d%d%d%d%-%d%d%-%d%d)%s+(%d%d:%d%d:%d%d)%s+(.+)$")
-        if not perms then
-            -- Fallback standard ls format
-            perms, links, owner, group, size, d1, d2, name = line:match("^(%S+)%s+(%d+)%s+(%S+)%s+(%S+)%s+(%d+)%s+(%a+%s+%d+)%s+(%d%d?:?%d%d?)%s+(.+)$")
-        end
-
-        if perms and name and name ~= "." then
-            local is_dir = (perms:sub(1, 1) == "d")
-            local is_symlink = (perms:sub(1, 1) == "l")
-            local is_exec = (perms:find("x") ~= nil)
-            local clean_name = name
-            if is_symlink then
-                clean_name = name:match("^(.-)%s+%->") or name
+        local pwd_match = line:match("^PWD:(.-)[\r\n]*$")
+        if pwd_match and pwd_match ~= "" then
+            resolved_dir = pwd_match
+        else
+            local perms, links, owner, group, size, d1, d2, name = line:match("^(%S+)%s+(%d+)%s+(%S+)%s+(%S+)%s+(%d+)%s+(%d%d%d%d%-%d%d%-%d%d)%s+(%d%d:%d%d:%d%d)%s+(.+)$")
+            if not perms then
+                -- Fallback standard ls format
+                perms, links, owner, group, size, d1, d2, name = line:match("^(%S+)%s+(%d+)%s+(%S+)%s+(%S+)%s+(%d+)%s+(%a+%s+%d+)%s+(%d%d?:?%d%d?)%s+(.+)$")
             end
-            local ext = (clean_name:match("%.([%w_%-]+)$") or ""):lower()
-            local is_img = (ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "gif" or ext == "bmp" or ext == "webp")
 
-            table.insert(items, {
-                name = clean_name,
-                raw_name = name,
-                is_dir = is_dir,
-                is_symlink = is_symlink,
-                is_exec = is_exec,
-                is_image = is_img,
-                size = tonumber(size) or 0,
-                mtime = (d1 and d2) and (d1 .. " " .. d2) or "-",
-                perms = perms,
-            })
+            if perms and name and name ~= "." then
+                name = name:gsub("[\r\n]+$", "")
+                local is_dir = (perms:sub(1, 1) == "d")
+                local is_symlink = (perms:sub(1, 1) == "l")
+                local is_exec = (perms:find("x") ~= nil)
+                local clean_name = name
+                if is_symlink then
+                    clean_name = name:match("^(.-)%s+%->") or name
+                end
+                local ext = (clean_name:match("%.([%w_%-]+)$") or ""):lower()
+                local is_img = (ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "gif" or ext == "bmp" or ext == "webp")
+
+                table.insert(items, {
+                    name = clean_name,
+                    raw_name = name,
+                    is_dir = is_dir,
+                    is_symlink = is_symlink,
+                    is_exec = is_exec,
+                    is_image = is_img,
+                    size = tonumber(size) or 0,
+                    mtime = (d1 and d2) and (d1 .. " " .. d2) or "-",
+                    perms = perms,
+                })
+            end
         end
     end
     pipe:close()
@@ -1548,8 +1574,13 @@ function Crawler.list_directory(host_cfg, remote_dir)
         return a.name:lower() < b.name:lower()
     end)
 
-    Crawler.dir_cache[cache_key] = items
-    return items, nil
+    local final_dir = resolved_dir or remote_dir
+    local res_entry = { items = items, resolved_dir = final_dir }
+    Crawler.dir_cache[cache_key] = res_entry
+    if final_dir ~= remote_dir then
+        Crawler.dir_cache[(host_cfg.hostname or host_cfg.name or "demo") .. ":" .. final_dir] = res_entry
+    end
+    return items, final_dir, nil
 end
 
 function Crawler.get_file_preview(host_cfg, remote_path, is_image)
@@ -1568,9 +1599,9 @@ function Crawler.get_file_preview(host_cfg, remote_path, is_image)
     local esc_path = shell_escape(remote_path)
     local cmd
     if is_image then
-        cmd = string.format("%s %s", ssh_base, shell_escape("cat " .. esc_path .. " 2>/dev/null"))
+        cmd = string.format("%s %s", ssh_base, shell_escape(string.format([=[p=%s; if [ "${p#\~/}" != "$p" ]; then p=~/"${p#\~/}"; fi; cat "$p" 2>/dev/null]=], esc_path)))
     else
-        cmd = string.format("%s %s", ssh_base, shell_escape("head -n 250 " .. esc_path .. " 2>/dev/null"))
+        cmd = string.format("%s %s", ssh_base, shell_escape(string.format([=[p=%s; if [ "${p#\~/}" != "$p" ]; then p=~/"${p#\~/}"; fi; head -n 250 "$p" 2>/dev/null]=], esc_path)))
     end
 
     local pipe = io.popen(cmd, "r")
@@ -1632,15 +1663,19 @@ function App.update_filter()
 end
 
 function App.load_dir(dir_path)
-    App.current_dir = dir_path
-    local items, err = Crawler.list_directory(App.host_cfg, dir_path)
+    local items, resolved_dir, err = Crawler.list_directory(App.host_cfg, dir_path)
+    if resolved_dir and resolved_dir ~= "" then
+        App.current_dir = resolved_dir
+    else
+        App.current_dir = dir_path
+    end
     if not items or #items == 0 then
         App.items = { { name = "..", is_dir = true, size = 4096, mtime = "-", perms = "drwxr-xr-x" } }
-        App.status_msg = err or ("Directory empty or inaccessible: " .. dir_path)
+        App.status_msg = err or ("Directory empty or inaccessible: " .. App.current_dir)
         App.status_color = C.bright_yellow
     else
         App.items = items
-        App.status_msg = string.format("Browsing: %s (%d items)", dir_path, #items)
+        App.status_msg = string.format("Browsing: %s (%d items)", App.current_dir, #items)
         App.status_color = C.bright_cyan
     end
     App.cursor = 1
@@ -1836,7 +1871,7 @@ function App.draw()
     table.insert(buf, string.format("\27[%d;1H%s\27[K", content_h + 4, pad_string(stat_text, w)))
 
     -- 5. Footer Keybindings Guide
-    local footer = string.format(" [Enter/l] Open [h] Up [j/k] Select [H] Server [.] Hidden:%s [J/K] Scroll [I] Icons [/] Filter [?] Help [q] Quit ",
+    local footer = string.format(" [Enter/l] Open [h] Up [~] Home [j/k] Select [H] Server [.] Hidden:%s [I] Icons [/] Filter [?] Help [q] Quit ",
         App.show_hidden and "ON" or "OFF"
     )
     table.insert(buf, string.format("\27[%d;1H%s%s%s%s\27[K",
@@ -1997,7 +2032,7 @@ function App.run()
                         Crawler.dir_cache = {}
                         Crawler.preview_cache = {}
                         if chosen.is_demo then
-                            App.load_dir("/home/user/app")
+                            App.load_dir("/home/user")
                         else
                             App.load_dir("~")
                         end
@@ -2216,7 +2251,15 @@ local function run_tests()
     App.show_hidden = false -- Reset
     print(C.bright_green .. "  [PASS] Hidden file filtering & toggle verification (.bashrc hidden/shown, .. preserved)" .. C.reset)
 
-    print(C.bold .. C.bright_green .. "\nALL 10 TESTS PASSED SUCCESSFULLY!" .. C.reset)
+    -- 11. Remote Home Resolution & Dynamic Working Directory Test
+    local home_items, resolved_home, h_err = Crawler.list_directory(demo_host, "~")
+    assert(resolved_home == "/home/user", "Directory '~' must resolve to '/home/user', got: " .. tostring(resolved_home))
+    assert(#home_items > 0, "Resolved home directory must contain items")
+    App.load_dir("~")
+    assert(App.current_dir == "/home/user", "App.current_dir must update to '/home/user', got: " .. tostring(App.current_dir))
+    print(C.bright_green .. "  [PASS] Remote Home directory resolution: '~' -> " .. resolved_home .. C.reset)
+
+    print(C.bold .. C.bright_green .. "\nALL 11 TESTS PASSED SUCCESSFULLY!" .. C.reset)
     return true
 end
 
