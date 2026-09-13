@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Dynamic theme switcher for Linux / macOS / WSL
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Alacritty dynamic theme switcher for Linux / macOS / WSL
 
+WINDOW_ONLY=0
 QUERY=""
 
 show_help() {
