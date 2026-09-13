@@ -1627,6 +1627,7 @@ local App = {
         user = "dev",
         is_demo = true,
     },
+    connected = false,
 
     current_dir = "/home/user",
     show_hidden = false, -- Default: hide hidden files/folders (.xxx)
@@ -1727,8 +1728,14 @@ function App.draw()
     local buf = {}
     table.insert(buf, "\27[H")
 
-    -- 1. Top Header Bar
-    local host_str = App.host_cfg.is_demo and "[DEMO: simulated-server]" or string.format("[%s@%s]", App.host_cfg.user or "root", App.host_cfg.hostname)
+    local host_str
+    if not App.connected then
+        host_str = "[No Server Connected]"
+    elseif App.host_cfg.is_demo then
+        host_str = "[DEMO: simulated-server]"
+    else
+        host_str = string.format("[%s@%s]", App.host_cfg.user or "root", App.host_cfg.hostname)
+    end
     local header_text = string.format(" %s%srbrowse v1.0%s │ %s%s%s │ Dir: %s%s%s │ Icons: %s%s%s ",
         C.bold, C.bright_cyan, C.reset,
         C.bright_green, host_str, C.reset,
@@ -1914,8 +1921,9 @@ function App.draw_host_picker_modal()
     local filter_str = d.filter or ""
 
     local lines = {}
-    table.insert(lines, BOX.tl .. pad_string(" Connect to Remote Server ", mw - 2) .. BOX.tr)
-    table.insert(lines, BOX.v .. pad_string(" [↑/↓ / j/k] Navigate   [Enter] Connect   [/] Filter   [Esc] Cancel", mw - 2) .. BOX.v)
+    local nav_hint = App.connected and " [↑/↓ / j/k] Navigate   [Enter] Connect   [/] Filter   [Esc] Cancel"
+        or " [↑/↓ / j/k] Navigate   [Enter] Connect   [Type] Filter   [Esc/q] Quit"
+    table.insert(lines, BOX.v .. pad_string(nav_hint, mw - 2) .. BOX.v)
 
     local filter_prompt = (filter_str ~= "") and (" Filter: " .. filter_str .. "█") or " Filter: _ (Type to filter, or press Enter to connect)"
     table.insert(lines, BOX.v .. C.bright_yellow .. pad_string(filter_prompt, mw - 2) .. C.reset .. C.bright_cyan .. BOX.v)
@@ -1951,8 +1959,10 @@ function App.draw_host_picker_modal()
         end
     end
 
-    table.insert(lines, BOX.vl .. BOX.h:rep(mw - 2) .. BOX.vr)
-    table.insert(lines, BOX.v .. pad_string(string.format(" Total: %d server(s) | Press [Enter] to connect and browse", #hosts), mw - 2) .. BOX.v)
+    local esc_hint = App.connected
+        and string.format(" Total: %d server(s) | [Enter] Connect | [Esc] Cancel", #hosts)
+        or string.format(" Total: %d server(s) | [Enter] Connect | [Esc/q] Quit", #hosts)
+    table.insert(lines, BOX.v .. pad_string(esc_hint, mw - 2) .. BOX.v)
     table.insert(lines, BOX.bl .. BOX.h:rep(mw - 2) .. BOX.br)
 
     local modal_buf = {}
@@ -2005,7 +2015,9 @@ end
 function App.run()
     Term.init()
     Term.enable_raw()
-    App.load_dir(App.current_dir)
+    if App.connected then
+        App.load_dir(App.current_dir)
+    end
 
     while App.running do
         App.draw()
@@ -2018,8 +2030,12 @@ function App.run()
                 end
             elseif App.modal == "host_picker" then
                 local d = App.modal_data
-                if key == "escape" or key == "ctrl_c" then
-                    App.modal = nil
+                if key == "escape" or key == "ctrl_c" or (not App.connected and key == "q") then
+                    if not App.connected then
+                        App.running = false
+                    else
+                        App.modal = nil
+                    end
                 elseif key == "up" or key == "k" then
                     if d.cursor > 1 then d.cursor = d.cursor - 1 end
                 elseif key == "down" or key == "j" then
@@ -2028,6 +2044,7 @@ function App.run()
                     local chosen = d.filtered[d.cursor]
                     if chosen then
                         App.host_cfg = chosen
+                        App.connected = true
                         App.modal = nil
                         Crawler.dir_cache = {}
                         Crawler.preview_cache = {}
@@ -2259,7 +2276,16 @@ local function run_tests()
     assert(App.current_dir == "/home/user", "App.current_dir must update to '/home/user', got: " .. tostring(App.current_dir))
     print(C.bright_green .. "  [PASS] Remote Home directory resolution: '~' -> " .. resolved_home .. C.reset)
 
-    print(C.bold .. C.bright_green .. "\nALL 11 TESTS PASSED SUCCESSFULLY!" .. C.reset)
+    -- 12. Startup Server Selector & Modal State Test
+    App.modal = nil
+    App.connected = false
+    App.open_host_picker()
+    assert(App.modal == "host_picker", "open_host_picker must activate host_picker modal")
+    assert(App.modal_data and #App.modal_data.hosts > 0, "Host picker modal must contain discovered servers")
+    App.modal = nil -- Reset
+    print(C.bright_green .. string.format("  [PASS] Startup Server Selector modal activation (%d servers ready)", #App.modal_data.hosts) .. C.reset)
+
+    print(C.bold .. C.bright_green .. "\nALL 12 TESTS PASSED SUCCESSFULLY!" .. C.reset)
     return true
 end
 
@@ -2294,6 +2320,7 @@ end
 
 local function main(args)
     local target_arg = nil
+    local explicit_demo = false
     local i = 1
     while i <= #args do
         local a = args[i]
@@ -2304,6 +2331,7 @@ local function main(args)
             run_tests()
             return
         elseif a == "--demo" then
+            explicit_demo = true
             App.host_cfg.is_demo = true
         elseif a == "-a" or a == "--all" or a == "--hidden" then
             App.show_hidden = true
@@ -2393,11 +2421,18 @@ local function main(args)
             App.current_dir = "~"
         end
         App.host_cfg.is_demo = false
-    elseif not App.host_cfg.is_demo then
-        App.current_dir = "~"
-        App.open_host_picker()
-    else
+        App.connected = true
+    elseif explicit_demo then
         App.current_dir = "/home/user"
+        App.host_cfg.is_demo = true
+        App.connected = true
+    else
+        -- Default startup: show server selector dialog immediately
+        App.current_dir = "~"
+        App.connected = false
+        App.open_host_picker()
+        App.status_msg = "Please select a server to connect..."
+        App.status_color = C.bright_yellow
     end
 
     -- Run Interactive TUI
