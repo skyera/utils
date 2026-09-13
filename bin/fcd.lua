@@ -88,7 +88,26 @@ if IS_WINDOWS then
 
         int MultiByteToWideChar(unsigned int CodePage, DWORD dwFlags, const char* lpMultiByteStr, int cbMultiByte, wchar_t* lpWideCharStr, int cchWideChar);
         int WideCharToMultiByte(unsigned int CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar, char* lpMultiByteStr, int cbMultiByte, const char* lpDefaultChar, BOOL* lpUsedDefaultChar);
+
+        HANDLE GetStdHandle(DWORD nStdHandle);
+        BOOL GetConsoleMode(HANDLE hConsoleHandle, DWORD* lpMode);
+        BOOL SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode);
+        BOOL SetConsoleOutputCP(unsigned int wCodePageID);
+        BOOL SetConsoleCP(unsigned int wCodePageID);
     ]]
+
+    pcall(function()
+        local bit = require("bit")
+        ffi.C.SetConsoleOutputCP(65001)
+        ffi.C.SetConsoleCP(65001)
+        local hOut = ffi.C.GetStdHandle(ffi.cast("DWORD", -11)) -- STD_OUTPUT_HANDLE = -11
+        if hOut ~= nil and hOut ~= ffi.cast("HANDLE", -1) then
+            local mode = ffi.new("DWORD[1]")
+            if ffi.C.GetConsoleMode(hOut, mode) ~= 0 then
+                ffi.C.SetConsoleMode(hOut, bit.bor(mode[0], 0x0004)) -- ENABLE_VIRTUAL_TERMINAL_PROCESSING
+            end
+        end
+    end)
 else
     ffi.cdef[[
         typedef struct DIR DIR;
@@ -331,9 +350,11 @@ local function render_preview(dir_path)
     local count = 0
 
     -- 1. List Subdirectories first
+    local dir_icon = IS_WINDOWS and "[DIR]  " or "📁 "
+    local file_icon = IS_WINDOWS and "       " or "📄 "
     for _, dname in ipairs(dirs) do
         if count >= max_items then break end
-        io.write(string.format("%s│%s   📁 %s%-46s%s %s│%s\n", C.b_cyan, C.reset, C.b_cyan, dname:sub(1, 46) .. "/", C.reset, C.b_cyan, C.reset))
+        io.write(string.format("%s│%s   %s%s%-46s%s %s│%s\n", C.b_cyan, C.reset, dir_icon, C.b_cyan, dname:sub(1, 46) .. "/", C.reset, C.b_cyan, C.reset))
         count = count + 1
     end
 
@@ -344,8 +365,9 @@ local function render_preview(dir_path)
         local max_name_len = 44 - #sz_str
         local name_disp = f.name:sub(1, max_name_len)
         local pad = string.rep(" ", math.max(0, max_name_len - #name_disp))
-        io.write(string.format("%s│%s   📄 %s%s%s %s%s%s %s│%s\n",
+        io.write(string.format("%s│%s   %s%s%s%s %s%s%s %s│%s\n",
             C.b_cyan, C.reset,
+            file_icon,
             C.white, name_disp, pad,
             C.gray, sz_str, C.reset,
             C.b_cyan, C.reset))

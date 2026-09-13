@@ -45,7 +45,28 @@ if IS_WINDOWS then
         LONG RegQueryValueExA(HKEY hKey, const char* lpValueName, DWORD* lpReserved, DWORD* lpType, BYTE* lpData, DWORD* lpcbData);
         LONG RegSetValueExA(HKEY hKey, const char* lpValueName, DWORD Reserved, DWORD dwType, const BYTE* lpData, DWORD cbData);
         LONG RegCloseKey(HKEY hKey);
+
+        typedef void* HANDLE;
+        typedef int BOOL;
+        HANDLE GetStdHandle(DWORD nStdHandle);
+        BOOL GetConsoleMode(HANDLE hConsoleHandle, DWORD* lpMode);
+        BOOL SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode);
+        BOOL SetConsoleOutputCP(unsigned int wCodePageID);
+        BOOL SetConsoleCP(unsigned int wCodePageID);
     ]]
+
+    pcall(function()
+        local bit = require("bit")
+        ffi.C.SetConsoleOutputCP(65001)
+        ffi.C.SetConsoleCP(65001)
+        local hOut = ffi.C.GetStdHandle(ffi.cast("DWORD", -11))
+        if hOut ~= nil and hOut ~= ffi.cast("HANDLE", -1) then
+            local mode = ffi.new("DWORD[1]")
+            if ffi.C.GetConsoleMode(hOut, mode) ~= 0 then
+                ffi.C.SetConsoleMode(hOut, bit.bor(mode[0], 0x0004))
+            end
+        end
+    end)
 end
 
 local HKEY_CURRENT_USER = ffi.cast("void*", 0x80000001)
