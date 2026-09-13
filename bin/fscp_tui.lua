@@ -602,8 +602,29 @@ local function list_local_directory(dir_path)
 end
 
 --------------------------------------------------------------------------------
--- Host Aggregation (SSH Config, PuTTY Registry, known_hosts)
+-- Host Aggregation & Ad-hoc Connection Parsing
 --------------------------------------------------------------------------------
+local function parse_host_string(str)
+    if not str or str == "" then return nil end
+    local s = str:gsub("^%s+", ""):gsub("%s+$", "")
+    if s == "" or s:find("^@") or s:find(":$") or s:find("@$") then return nil end
+    local user, host, port = s:match("^([^@]+)@([^:]+):?(%d*)$")
+    if not host then
+        host, port = s:match("^([^:]+):?(%d*)$")
+        user = ""
+    end
+    if not host or host == "" or host:find("@") then return nil end
+    return {
+        name = "[Direct Connect]",
+        raw_input = s,
+        hostname = host,
+        user = user or "",
+        port = (port and port ~= "") and port or "22",
+        source = "custom",
+        is_demo = false,
+    }
+end
+
 local function aggregate_ssh_hosts()
     local hosts = {}
     local seen = {}
@@ -1273,7 +1294,7 @@ function App.draw_host_picker_modal()
 
     local lines = {
         BOX.tl .. pad_string(" Connect to Remote Server ", mw - 2) .. BOX.tr,
-        BOX.v .. pad_string(" [↑/↓ or j/k] Navigate   [Enter or l] Connect   [Type] Filter   [Esc] Demo Mode", mw - 2) .. BOX.v,
+        BOX.v .. pad_string(" [↑/↓ or j/k] Navigate   [Enter] Connect   [Type] Filter / Custom Host   [Esc] Cancel", mw - 2) .. BOX.v,
     }
 
     if filter_str ~= "" then
@@ -1419,18 +1440,39 @@ function App.handle_input(key)
         local total = #filtered
 
         local function update_filter()
-            local q = (d.filter or ""):lower()
+            local q = (d.filter or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            local res = {}
             if q == "" then
-                d.filtered = d.hosts
+                res = d.hosts
             else
-                local res = {}
+                local q_lower = q:lower()
                 for _, h in ipairs(d.hosts) do
-                    if (h.name:lower():find(q, 1, true) or (h.hostname and h.hostname:lower():find(q, 1, true)) or (h.user and h.user:lower():find(q, 1, true))) then
+                    if (h.name:lower():find(q_lower, 1, true) or (h.hostname and h.hostname:lower():find(q_lower, 1, true)) or (h.user and h.user:lower():find(q_lower, 1, true))) then
                         table.insert(res, h)
                     end
                 end
-                d.filtered = res
+
+                local custom = parse_host_string(q)
+                if custom then
+                    local is_dup = false
+                    for _, existing in ipairs(res) do
+                        if existing.hostname and existing.hostname:lower() == custom.hostname:lower() and
+                           (existing.user or ""):lower() == (custom.user or ""):lower() and
+                           tostring(existing.port or "22") == tostring(custom.port or "22") then
+                            is_dup = true
+                            break
+                        end
+                    end
+                    if not is_dup then
+                        if #res == 0 then
+                            table.insert(res, 1, custom)
+                        else
+                            table.insert(res, custom)
+                        end
+                    end
+                end
             end
+            d.filtered = res
             d.cursor = 1
         end
 
@@ -1450,7 +1492,8 @@ function App.handle_input(key)
                 App.active_pane = "right"
                 App.right.dir = sel.is_demo and "/home/user" or "~"
                 remote_cache = {}
-                App.status_msg = "Connecting to " .. sel.name .. "..."
+                local target_name = (sel.hostname and sel.hostname ~= "") and sel.hostname or sel.name
+                App.status_msg = "Connecting to " .. target_name .. "..."
                 App.status_color = C.bright_cyan
                 App.refresh_right(true)
             end
@@ -1469,7 +1512,7 @@ function App.handle_input(key)
                 App.status_msg = "Switched to Demo Mode. Press [H] to pick SSH host."
                 App.status_color = C.yellow
             end
-        elseif key:len() == 1 and key:match("[%w_%-%.]") then
+        elseif key:len() == 1 and (key:match("[%w_%-%.%@%:]") or key == "@" or key == ":") then
             d.filter = (d.filter or "") .. key
             update_filter()
         end
@@ -1632,15 +1675,20 @@ function App.handle_input(key)
     elseif key == "H" then
         local hosts = aggregate_ssh_hosts()
         table.insert(hosts, 1, {
-            name = "demo",
-            hostname = "demo-server",
+            name = "[Demo Server]",
+            hostname = "demo-server.local",
             user = "user",
             port = "22",
             source = "demo",
             is_demo = true,
         })
         App.modal = "host_picker"
-        App.modal_data = { hosts = hosts, cursor = 1 }
+        App.modal_data = {
+            hosts = hosts,
+            filtered = hosts,
+            cursor = 1,
+            filter = "",
+        }
     elseif key == "?" then
         App.modal = "help"
     elseif key == "q" or key == "ctrl_c" then
@@ -1752,6 +1800,23 @@ local function main(...)
             BOX = prev_box
             print("  [PASS] File and folder icons classification tests")
 
+            -- 10. Test parse_host_string for ad-hoc IP/host connections
+            local h1 = parse_host_string("192.168.1.100")
+            assert(h1 and h1.hostname == "192.168.1.100" and h1.user == "" and h1.port == "22", "Plain IP parsing failed")
+            local h2 = parse_host_string("root@10.0.0.5")
+            assert(h2 and h2.hostname == "10.0.0.5" and h2.user == "root" and h2.port == "22", "User@IP parsing failed")
+            local h3 = parse_host_string("admin@aws.corp.net:2222")
+            assert(h3 and h3.hostname == "aws.corp.net" and h3.user == "admin" and h3.port == "2222", "User@host:port parsing failed")
+            local h4 = parse_host_string("host.internal:8022")
+            assert(h4 and h4.hostname == "host.internal" and h4.user == "" and h4.port == "8022", "Host:port parsing failed")
+            assert(parse_host_string("") == nil, "Empty string should return nil")
+            assert(parse_host_string("   ") == nil, "Whitespace string should return nil")
+            assert(parse_host_string("@") == nil, "@ should return nil")
+            assert(parse_host_string("user@") == nil, "Trailing @ should return nil")
+            assert(parse_host_string(":22") == nil, "Missing host should return nil")
+            assert(parse_host_string("user@host:") == nil, "Trailing colon should return nil")
+            print("  [PASS] Ad-hoc host and IP parsing unit tests")
+
             print(C.bold .. C.bright_green .. "[ALL TESTS PASSED SUCCESSFULLY]" .. C.reset)
             return
         elseif arg == "--snapshot" then
@@ -1831,18 +1896,19 @@ Keybindings:
             is_demo = true,
         }
     elseif cli_host then
-        local user, host, port = cli_host:match("^(.-)@([^:]+):?(%d*)$")
-        if not host then
-            host, port = cli_host:match("^([^:]+):?(%d*)$")
-            user = ""
+        local parsed = parse_host_string(cli_host)
+        if parsed then
+            parsed.name = cli_host
+            App.host_cfg = parsed
+        else
+            App.host_cfg = {
+                name = cli_host,
+                hostname = cli_host,
+                user = "",
+                port = "22",
+                is_demo = false,
+            }
         end
-        App.host_cfg = {
-            name = cli_host,
-            hostname = host or cli_host,
-            user = user or "",
-            port = (port and port ~= "") and port or "22",
-            is_demo = false,
-        }
     else
         -- No host provided: aggregate all saved sessions and show server picker at start
         local available_hosts = aggregate_ssh_hosts()
