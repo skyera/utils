@@ -604,6 +604,62 @@ end
 --------------------------------------------------------------------------------
 -- Host Aggregation & Ad-hoc Connection Parsing
 --------------------------------------------------------------------------------
+local function get_ssh_target(host_cfg)
+    if not host_cfg then return "" end
+    if host_cfg.source == "ssh-config" then
+        return host_cfg.name
+    end
+    local target = host_cfg.hostname or host_cfg.name or ""
+    if host_cfg.user and host_cfg.user ~= "" and not target:find("@") then
+        target = host_cfg.user .. "@" .. target
+    end
+    return target
+end
+
+local function url_decode(str)
+    if not str then return "" end
+    return (str:gsub("%%(%x%x)", function(h)
+        return string.char(tonumber(h, 16))
+    end))
+end
+
+local function expand_glob(pattern)
+    local results = {}
+    if not pattern:find("[*?]") then
+        if file_exists(pattern) then
+            table.insert(results, pattern)
+        end
+        return results
+    end
+
+    if IS_WINDOWS then
+        local dir = pattern:match("^(.*)[/\\]") or "."
+        local find_data = ffi.new("WIN32_FIND_DATAA")
+        local hFind = ffi.C.FindFirstFileA(pattern, find_data)
+        if hFind ~= nil and hFind ~= ffi.cast("HANDLE", -1) then
+            repeat
+                local name = ffi.string(find_data.cFileName)
+                if name ~= "." and name ~= ".." then
+                    table.insert(results, dir .. "/" .. name)
+                end
+            until ffi.C.FindNextFileA(hFind, find_data) == 0
+            ffi.C.FindClose(hFind)
+        end
+    else
+        local pipe = io.popen(string.format("ls -1d %s 2>/dev/null", pattern))
+        if pipe then
+            for f in pipe:lines() do
+                local fname = trim(f)
+                if fname ~= "" and file_exists(fname) then
+                    table.insert(results, fname)
+                end
+            end
+            pipe:close()
+        end
+    end
+    return results
+end
+
 local function parse_host_string(str)
     if not str or str == "" then return nil end
     local s = str:gsub("^%s+", ""):gsub("%s+$", "")
@@ -625,8 +681,8 @@ local function parse_host_string(str)
     }
 end
 
-local function save_host_to_ssh_config(alias, hostname, user, port)
-    local home = os.getenv("USERPROFILE") or os.getenv("HOME") or "."
+local function save_host_to_ssh_config(alias, hostname, user, port, key)
+    local home = os.getenv("HOME") or os.getenv("USERPROFILE") or "."
     local ssh_dir = home .. "/.ssh"
     local path = ssh_dir .. "/config"
     local f, err = io.open(path, "a")
@@ -634,140 +690,292 @@ local function save_host_to_ssh_config(alias, hostname, user, port)
     f:write(string.format("\nHost %s\n    HostName %s\n", alias, hostname))
     if user and user ~= "" then f:write(string.format("    User %s\n", user)) end
     if port and port ~= "" and port ~= "22" then f:write(string.format("    Port %s\n", port)) end
+    if key and key ~= "" then f:write(string.format("    IdentityFile %s\n", key)) end
     f:close()
     return true
 end
 
-local function aggregate_ssh_hosts()
+local function get_ssh_config_paths()
+    local paths = {}
+    local seen = {}
+    local home = get_home_dir()
+
+    local p1 = home .. "/.ssh/config"
+    if file_exists(p1) and not seen[p1] then
+        table.insert(paths, p1)
+        seen[p1] = true
+    end
+
+    local userprofile = os.getenv("USERPROFILE")
+    if userprofile then
+        local p2 = userprofile:gsub("\\", "/") .. "/.ssh/config"
+        if file_exists(p2) and not seen[p2] then
+            table.insert(paths, p2)
+            seen[p2] = true
+        end
+    end
+    return paths
+end
+
+local function parse_ssh_config(filepath, visited)
+    visited = visited or {}
     local hosts = {}
+    if visited[filepath] or not file_exists(filepath) then
+        return hosts
+    end
+    visited[filepath] = true
+
+    local f = io.open(filepath, "r")
+    if not f then return hosts end
+
+    local current_aliases = {}
+    local current_params = {}
+
+    local function flush_block()
+        if #current_aliases == 0 then return end
+        local explicit_host = current_params.hostname or ""
+        for _, alias in ipairs(current_aliases) do
+            local entry = {
+                name = alias,
+                hostname = (explicit_host ~= "") and explicit_host or alias,
+                user = current_params.user or "",
+                port = current_params.port or "22",
+                key = current_params.key or "",
+                proxy = current_params.proxy or "",
+                source = "ssh-config",
+                source_file = filepath,
+            }
+            table.insert(hosts, entry)
+        end
+        current_aliases = {}
+        current_params = {}
+    end
+
+    for line in f:lines() do
+        local line_str = trim(line)
+        if line_str ~= "" and not line_str:match("^#") then
+            local k, v = line_str:match("^([%w_]+)%s*=?%s*(.*)$")
+            if k and v then
+                local key = k:lower()
+                local val = trim(v):gsub('^["\']', ''):gsub('["\']$', '')
+
+                if key == "include" then
+                    flush_block()
+                    for pattern in val:gmatch("%S+") do
+                        local expanded = pattern:gsub("^~", get_home_dir())
+                        if not expanded:match("^/") and not expanded:match("^%a:") then
+                            local dir = filepath:match("^(.*)[/\\]") or (get_home_dir() .. "/.ssh")
+                            expanded = dir .. "/" .. expanded
+                        end
+                        for _, inc_file in ipairs(expand_glob(expanded)) do
+                            local sub_hosts = parse_ssh_config(inc_file, visited)
+                            for _, sh in ipairs(sub_hosts) do
+                                table.insert(hosts, sh)
+                            end
+                        end
+                    end
+                elseif key == "host" then
+                    flush_block()
+                    local valid_aliases = {}
+                    for alias in val:gmatch("%S+") do
+                        if not alias:find("[*?]") then
+                            table.insert(valid_aliases, alias)
+                        end
+                    end
+                    current_aliases = valid_aliases
+                elseif #current_aliases > 0 then
+                    if key == "hostname" then
+                        current_params.hostname = val
+                    elseif key == "user" then
+                        current_params.user = val
+                    elseif key == "port" then
+                        current_params.port = val
+                    elseif key == "identityfile" then
+                        current_params.key = val:gsub("^~", get_home_dir())
+                    elseif key == "proxyjump" then
+                        current_params.proxy = val
+                    end
+                end
+            end
+        end
+    end
+    flush_block()
+    f:close()
+    return hosts
+end
+
+local function parse_known_hosts(filepath)
+    local hosts = {}
+    if not file_exists(filepath) then return hosts end
+    local f = io.open(filepath, "r")
+    if not f then return hosts end
+
+    for line in f:lines() do
+        local line_str = trim(line)
+        if line_str ~= "" and not line_str:match("^#") and not line_str:match("^|1|") then
+            local host_part = line_str:match("^(%S+)")
+            if host_part then
+                for single_host in host_part:gmatch("[^,]+") do
+                    local host, port = single_host:match("^%[(.-)%]:(%d+)$")
+                    if not host then
+                        host = single_host
+                        port = "22"
+                    end
+                    if host ~= "" and not host:find("[*?]") then
+                        table.insert(hosts, {
+                            name = host,
+                            hostname = host,
+                            user = "",
+                            port = port,
+                            key = "",
+                            source = "known-hosts",
+                            source_file = filepath,
+                        })
+                    end
+                end
+            end
+        end
+    end
+    f:close()
+    return hosts
+end
+
+local function parse_putty_sessions_win32()
+    local hosts = {}
+    if not IS_WINDOWS then return hosts end
+
+    pcall(function()
+        local HKEY_CURRENT_USER = ffi.cast("void*", 0x80000001)
+        local phkResult = ffi.new("HKEY[1]")
+        local subkey = "Software\\SimonTatham\\PuTTY\\Sessions"
+        if ffi.C.RegOpenKeyExA(HKEY_CURRENT_USER, subkey, 0, 0x20019, phkResult) == 0 then
+            local hKey = phkResult[0]
+            local dwIndex = 0
+            local name_buf = ffi.new("char[256]")
+            local name_len = ffi.new("DWORD[1]")
+            while true do
+                name_len[0] = 256
+                if ffi.C.RegEnumKeyExA(hKey, dwIndex, name_buf, name_len, nil, nil, nil, nil) ~= 0 then
+                    break
+                end
+                local raw_name = ffi.string(name_buf, name_len[0])
+                local decoded = url_decode(raw_name)
+                if decoded ~= "Default Settings" then
+                    local phkSub = ffi.new("HKEY[1]")
+                    if ffi.C.RegOpenKeyExA(hKey, raw_name, 0, 0x20019, phkSub) == 0 then
+                        local hSub = phkSub[0]
+                        local data_buf = ffi.new("char[256]")
+                        local data_len = ffi.new("DWORD[1]", 256)
+                        local dword_val = ffi.new("DWORD[1]")
+                        local dword_len = ffi.new("DWORD[1]", 4)
+
+                        local r_host, r_user, r_port, r_key = "", "", "22", ""
+                        if ffi.C.RegQueryValueExA(hSub, "HostName", nil, nil, ffi.cast("BYTE*", data_buf), data_len) == 0 then
+                            r_host = trim(ffi.string(data_buf))
+                        end
+                        data_len[0] = 256
+                        if ffi.C.RegQueryValueExA(hSub, "UserName", nil, nil, ffi.cast("BYTE*", data_buf), data_len) == 0 then
+                            r_user = trim(ffi.string(data_buf))
+                        end
+                        if ffi.C.RegQueryValueExA(hSub, "PortNumber", nil, nil, ffi.cast("BYTE*", dword_val), dword_len) == 0 then
+                            r_port = tostring(dword_val[0])
+                        end
+                        data_len[0] = 256
+                        if ffi.C.RegQueryValueExA(hSub, "PublicKeyFile", nil, nil, ffi.cast("BYTE*", data_buf), data_len) == 0 then
+                            r_key = trim(ffi.string(data_buf))
+                        end
+                        ffi.C.RegCloseKey(hSub)
+                        if r_host ~= "" then
+                            table.insert(hosts, {
+                                name = decoded,
+                                hostname = r_host,
+                                user = r_user,
+                                port = r_port,
+                                key = r_key,
+                                source = "putty",
+                            })
+                        end
+                    end
+                end
+                dwIndex = dwIndex + 1
+            end
+            ffi.C.RegCloseKey(hKey)
+        end
+    end)
+    return hosts
+end
+
+local function parse_hosts_file()
+    local hosts = {}
+    local path = IS_WINDOWS and "C:\\Windows\\System32\\drivers\\etc\\hosts" or "/etc/hosts"
+    if not file_exists(path) then return hosts end
+    local f = io.open(path, "r")
+    if not f then return hosts end
+
+    for line in f:lines() do
+        local line_str = trim(line):gsub("^\239\187\191", "")
+        if line_str ~= "" and not line_str:match("^#") then
+            local ip, names = line_str:match("^(%S+)%s+(.+)$")
+            if ip and not ip:match("^fe80") and not ip:match("^fe00") and not ip:match("^ff%x%x") and not ip:match("^::1") and ip ~= "127.0.0.1" and ip ~= "localhost" then
+                for n in names:gmatch("%S+") do
+                    if not n:match("^#") and n ~= "localhost" and not n:match("^ip6%-") then
+                        table.insert(hosts, {
+                            name = n,
+                            hostname = ip,
+                            user = "",
+                            port = "22",
+                            key = "",
+                            source = "hosts-file",
+                        })
+                    end
+                end
+            end
+        end
+    end
+    f:close()
+    return hosts
+end
+
+local function aggregate_ssh_hosts()
+    local all_hosts = {}
     local seen = {}
 
-    local function add_host(name, hostname, user, port, source)
-        if not name or name == "" or name:find("[*?]") or seen[name] then return end
-        seen[name] = true
-        table.insert(hosts, {
-            name = name,
-            hostname = hostname or name,
-            user = user or "",
-            port = port or "22",
-            source = source or "ssh",
-        })
-    end
-
-    -- 1. ~/.ssh/config & %USERPROFILE%/.ssh/config
-    local home = get_home_dir()
-    local cfg_paths = { home .. "/.ssh/config" }
-    local userprof = os.getenv("USERPROFILE")
-    if userprof then table.insert(cfg_paths, userprof:gsub("\\", "/") .. "/.ssh/config") end
-
-    for _, cfg in ipairs(cfg_paths) do
-        if file_exists(cfg) then
-            local f = io.open(cfg, "r")
-            if f then
-                local cur_name, cur_host, cur_user, cur_port = nil, nil, nil, "22"
-                for line in f:lines() do
-                    local l = trim(line)
-                    if l ~= "" and not l:match("^#") then
-                        local k, v = l:match("^([%w_]+)%s*=?%s*(.*)$")
-                        if k and v then
-                            k = k:lower()
-                            v = trim(v):gsub('^["\']', ''):gsub('["\']$', '')
-                            if k == "host" then
-                                if cur_name then
-                                    add_host(cur_name, cur_host, cur_user, cur_port, "ssh-config")
-                                end
-                                cur_name = v
-                                cur_host = nil
-                                cur_user = nil
-                                cur_port = "22"
-                            elseif k == "hostname" then
-                                cur_host = v
-                            elseif k == "user" then
-                                cur_user = v
-                            elseif k == "port" then
-                                cur_port = v
-                            end
-                        end
-                    end
-                end
-                if cur_name then
-                    add_host(cur_name, cur_host, cur_user, cur_port, "ssh-config")
-                end
-                f:close()
-            end
+    local function add_host(h)
+        if not h.name or h.name == "" or h.name:find("[*?]") then return end
+        local key = (h.name .. "|" .. (h.hostname or "") .. "|" .. (h.port or "22")):lower()
+        if not seen[key] and not seen[h.name:lower()] then
+            seen[key] = true
+            seen[h.name:lower()] = true
+            table.insert(all_hosts, h)
         end
     end
 
-    -- 2. PuTTY Registry Sessions (Windows)
+    -- 1. SSH Config (supports Include, multiple hosts, keys)
+    for _, path in ipairs(get_ssh_config_paths()) do
+        for _, h in ipairs(parse_ssh_config(path)) do
+            add_host(h)
+        end
+    end
+
+    -- 2. Windows PuTTY sessions
     if IS_WINDOWS then
-        pcall(function()
-            local HKEY_CURRENT_USER = ffi.cast("void*", 0x80000001)
-            local phkResult = ffi.new("HKEY[1]")
-            local subkey = "Software\\SimonTatham\\PuTTY\\Sessions"
-            if ffi.C.RegOpenKeyExA(HKEY_CURRENT_USER, subkey, 0, 0x20019, phkResult) == 0 then
-                local hKey = phkResult[0]
-                local dwIndex = 0
-                local name_buf = ffi.new("char[256]")
-                local name_len = ffi.new("DWORD[1]")
-                while true do
-                    name_len[0] = 256
-                    if ffi.C.RegEnumKeyExA(hKey, dwIndex, name_buf, name_len, nil, nil, nil, nil) ~= 0 then
-                        break
-                    end
-                    local raw_name = ffi.string(name_buf, name_len[0])
-                    local decoded = (raw_name:gsub("%%(%x%x)", function(h)
-                        return string.char(tonumber(h, 16))
-                    end))
-                    if decoded ~= "Default Settings" then
-                        local phkSub = ffi.new("HKEY[1]")
-                        if ffi.C.RegOpenKeyExA(hKey, raw_name, 0, 0x20019, phkSub) == 0 then
-                            local hSub = phkSub[0]
-                            local data_buf = ffi.new("char[256]")
-                            local data_len = ffi.new("DWORD[1]", 256)
-                            local dword_val = ffi.new("DWORD[1]")
-                            local dword_len = ffi.new("DWORD[1]", 4)
-
-                            local r_host, r_user, r_port = "", "", "22"
-                            if ffi.C.RegQueryValueExA(hSub, "HostName", nil, nil, ffi.cast("BYTE*", data_buf), data_len) == 0 then
-                                r_host = trim(ffi.string(data_buf))
-                            end
-                            data_len[0] = 256
-                            if ffi.C.RegQueryValueExA(hSub, "UserName", nil, nil, ffi.cast("BYTE*", data_buf), data_len) == 0 then
-                                r_user = trim(ffi.string(data_buf))
-                            end
-                            if ffi.C.RegQueryValueExA(hSub, "PortNumber", nil, nil, ffi.cast("BYTE*", dword_val), dword_len) == 0 then
-                                r_port = tostring(dword_val[0])
-                            end
-                            ffi.C.RegCloseKey(hSub)
-                            if r_host ~= "" then
-                                add_host(decoded, r_host, r_user, r_port, "putty")
-                            end
-                        end
-                    end
-                    dwIndex = dwIndex + 1
-                end
-                ffi.C.RegCloseKey(hKey)
-            end
-        end)
-    end
-
-    -- 3. known_hosts
-    local kh_path = home .. "/.ssh/known_hosts"
-    if file_exists(kh_path) then
-        local f = io.open(kh_path, "r")
-        if f then
-            for line in f:lines() do
-                local host_part = line:match("^([^%s,]+)")
-                if host_part and not host_part:match("^|") and not host_part:match("^#") then
-                    host_part = host_part:gsub("^%[", ""):gsub("%]:%d+$", "")
-                    add_host(host_part, host_part, "", "22", "known-hosts")
-                end
-            end
-            f:close()
+        for _, h in ipairs(parse_putty_sessions_win32()) do
+            add_host(h)
         end
     end
 
-    return hosts
+    -- 3. Known hosts
+    local home = get_home_dir()
+    for _, h in ipairs(parse_known_hosts(home .. "/.ssh/known_hosts")) do
+        add_host(h)
+    end
+
+    -- 4. /etc/hosts or Windows hosts file
+    for _, h in ipairs(parse_hosts_file()) do
+        add_host(h)
+    end
+
+    return all_hosts
 end
 
 --------------------------------------------------------------------------------
@@ -852,16 +1060,13 @@ local function list_remote_directory(host_cfg, remote_dir)
     else
         -- Live SSH Remote Directory Listing
         local ssh_args = {}
-        if host_cfg.port and host_cfg.port ~= "22" and host_cfg.port ~= "" then
+        if host_cfg.source ~= "ssh-config" and host_cfg.port and host_cfg.port ~= "22" and host_cfg.port ~= "" then
             table.insert(ssh_args, "-p " .. host_cfg.port)
         end
         if host_cfg.key and host_cfg.key ~= "" then
             table.insert(ssh_args, "-i " .. shell_escape(host_cfg.key))
         end
-        local target = host_cfg.hostname or host_cfg.name
-        if host_cfg.user and host_cfg.user ~= "" then
-            target = host_cfg.user .. "@" .. target
-        end
+        local target = get_ssh_target(host_cfg)
 
         local remote_path_arg
         if remote_dir == "~" or remote_dir == "" then
@@ -872,7 +1077,7 @@ local function list_remote_directory(host_cfg, remote_dir)
             remote_path_arg = "'" .. remote_dir:gsub("'", "'\\''") .. "'"
         end
         local remote_sh = "LC_ALL=C ls -la --time-style=+%Y-%m-%d\\ %H:%M:%S " .. remote_path_arg
-        local cmd = string.format("ssh -q -o ConnectTimeout=4 -o BatchMode=yes -o StrictHostKeyChecking=accept-new %s \"%s\" \"%s\"",
+        local cmd = string.format("ssh -n -o ConnectTimeout=4 -o BatchMode=yes -o StrictHostKeyChecking=accept-new %s \"%s\" \"%s\" 2>&1; echo \"\n__FSCP_EXIT__:$?\"",
             table.concat(ssh_args, " "),
             target,
             remote_sh
@@ -883,10 +1088,50 @@ local function list_remote_directory(host_cfg, remote_dir)
             return {}, "Failed to execute SSH command"
         end
 
-        for line in pipe:lines() do
-            local perms, size, date, time, name = line:match("^([%-%a][%-%a%w]+)%s+%d+%s+[^%s]+%s+[^%s]+%s+(%d+)%s+(%d%d%d%d%-%d%d%-%d%d)%s+([%d:]+)%s+(.*)$")
+        local output = pipe:read("*a")
+        pipe:close()
+
+        local exit_code = output:match("__FSCP_EXIT__:(%d+)")
+        local clean_output = output:gsub("\n?__FSCP_EXIT__:%d+\n?", "")
+
+        -- Fallback for non-GNU ls (BSD / macOS / Busybox) where --time-style is not supported
+        if exit_code and exit_code ~= "0" then
+            if clean_output:find("time%-style") or clean_output:find("unrecognized option") or clean_output:find("illegal option") then
+                local fallback_sh = "LC_ALL=C ls -la " .. remote_path_arg
+                local fallback_cmd = string.format("ssh -n -o ConnectTimeout=4 -o BatchMode=yes -o StrictHostKeyChecking=accept-new %s \"%s\" \"%s\" 2>&1; echo \"\n__FSCP_EXIT__:$?\"",
+                    table.concat(ssh_args, " "),
+                    target,
+                    fallback_sh
+                )
+                local fb_pipe = io.popen(fallback_cmd, "r")
+                if fb_pipe then
+                    local fb_out = fb_pipe:read("*a")
+                    fb_pipe:close()
+                    local fb_code = fb_out:match("__FSCP_EXIT__:(%d+)")
+                    if fb_code == "0" then
+                        exit_code = "0"
+                        clean_output = fb_out:gsub("\n?__FSCP_EXIT__:%d+\n?", "")
+                    end
+                end
+            end
+        end
+
+        if exit_code and exit_code ~= "0" then
+            local err_line = nil
+            for l in clean_output:gmatch("[^\r\n]+") do
+                local trimmed = trim(l)
+                if trimmed ~= "" and not trimmed:match("^Warning:") and not trimmed:match("^debug") then
+                    err_line = trimmed
+                    break
+                end
+            end
+            return {}, err_line or ("SSH connection failed (exit code " .. exit_code .. ")")
+        end
+
+        for line in clean_output:gmatch("[^\r\n]+") do
+            local perms, size, date, time, name = line:match("^([%-%a][%-%a%w%+%.]+)%s+%d+%s+[^%s]+%s+[^%s]+%s+(%d+)%s+(%d%d%d%d%-%d%d%-%d%d)%s+([%d:]+)%s+(.*)$")
             if not perms then
-                perms, size, date, time, name = line:match("^([%-%a][%-%a%w]+)%s+%d+%s+[^%s]+%s+[^%s]+%s+(%d+)%s+([A-Za-z]+%s+%d+)%s+([%d:]+)%s+(.*)$")
+                perms, size, date, time, name = line:match("^([%-%a][%-%a%w%+%.]+)%s+%d+%s+[^%s]+%s+[^%s]+%s+(%d+)%s+([A-Za-z]+%s+%d+)%s+([%d:]+)%s+(.*)$")
             end
             if perms and name and name ~= "." then
                 -- Handle symlink display: 'link -> target'
@@ -902,7 +1147,6 @@ local function list_remote_directory(host_cfg, remote_dir)
                 })
             end
         end
-        pipe:close()
     end
 
     -- Add '..' if not at root
@@ -946,6 +1190,8 @@ local App = {
     status_msg = "Ready. Press [?] for help, [Tab] to switch panes.",
     status_color = C.gray,
     show_hidden = false, -- Default: hide hidden files/folders (.xxx)
+    connected = true,
+    conn_error = nil,
 
     -- Host config
     host_cfg = {
@@ -990,12 +1236,15 @@ function App.refresh_right(force_network)
     if force_network then
         remote_cache = {}
         if not App.host_cfg.is_demo and (App.right.dir == "~" or App.right.dir == "") then
-            local target = App.host_cfg.hostname or App.host_cfg.name
-            if App.host_cfg.user and App.host_cfg.user ~= "" then target = App.host_cfg.user .. "@" .. target end
+            local target = get_ssh_target(App.host_cfg)
             local ssh_args = {}
-            if App.host_cfg.port and App.host_cfg.port ~= "22" and App.host_cfg.port ~= "" then table.insert(ssh_args, "-p " .. App.host_cfg.port) end
-            if App.host_cfg.key and App.host_cfg.key ~= "" then table.insert(ssh_args, "-i " .. shell_escape(App.host_cfg.key)) end
-            local pwd_cmd = string.format("ssh -q -o ConnectTimeout=4 -o BatchMode=yes -o StrictHostKeyChecking=accept-new %s \"%s\" \"pwd\"",
+            if App.host_cfg.source ~= "ssh-config" and App.host_cfg.port and App.host_cfg.port ~= "22" and App.host_cfg.port ~= "" then
+                table.insert(ssh_args, "-p " .. App.host_cfg.port)
+            end
+            if App.host_cfg.key and App.host_cfg.key ~= "" then
+                table.insert(ssh_args, "-i " .. shell_escape(App.host_cfg.key))
+            end
+            local pwd_cmd = string.format("ssh -n -q -o ConnectTimeout=4 -o BatchMode=yes -o StrictHostKeyChecking=accept-new %s \"%s\" \"pwd\"",
                 table.concat(ssh_args, " "), target)
             local p = io.popen(pwd_cmd, "r")
             if p then
@@ -1009,9 +1258,15 @@ function App.refresh_right(force_network)
     end
     local items, err = list_remote_directory(App.host_cfg, App.right.dir)
     if err then
+        App.connected = false
+        App.conn_error = err
+        App.right.items = {}
+        App.right.cursor = 1
         App.status_msg = "Remote error: " .. err
         App.status_color = C.red
     else
+        App.connected = true
+        App.conn_error = nil
         App.right.items = items
         if App.right.cursor > #App.right.items then App.right.cursor = math.max(1, #App.right.items) end
     end
@@ -1055,12 +1310,18 @@ function App.draw()
     table.insert(buf, "\27[H") -- move to top-left
 
     -- 1. Top Header Bar
-    local host_display = App.host_cfg.is_demo and (C.bright_yellow .. "[DEMO MODE: Simulated Server]" .. C.reset) or
-        (C.bright_green .. string.format("[Connected: %s%s:%s]",
-            (App.host_cfg.user ~= "" and (App.host_cfg.user .. "@") or ""),
-            (App.host_cfg.hostname or App.host_cfg.name),
-            App.host_cfg.port
-        ) .. C.reset)
+    local target_display = get_ssh_target(App.host_cfg)
+    if App.host_cfg.source ~= "ssh-config" and App.host_cfg.port and App.host_cfg.port ~= "22" then
+        target_display = target_display .. ":" .. App.host_cfg.port
+    end
+    local host_display
+    if App.host_cfg.is_demo then
+        host_display = C.bright_yellow .. "[DEMO MODE: Simulated Server]" .. C.reset
+    elseif App.connected then
+        host_display = C.bright_green .. string.format("[Connected: %s]", target_display) .. C.reset
+    else
+        host_display = C.bright_red .. string.format("[Disconnected: %s]", target_display) .. C.reset
+    end
 
     local styled_title = string.format(" %s%sFSCP-TUI v1.0%s | %s ", C.bold, C.bright_cyan, C.reset, host_display)
     local rem_len = math.max(0, w - utf8_col_width(styled_title))
@@ -1143,33 +1404,49 @@ function App.draw()
         end
 
         -- Right Pane Column
-        local r_idx = App.right.scroll_top + row - 1
-        local r_item = right_items[r_idx]
         local r_str = ""
-        if r_item then
-            local is_cur = ((not left_is_active) and r_idx == App.right.cursor)
-            local is_sel = App.right.selected[r_item.name]
-            local prefix = is_sel and (C.bright_yellow .. "[*]" .. C.reset) or "   "
-            local cur_arrow = is_cur and ">" or " "
-            local type_icon = get_file_icon(r_item.name, r_item.is_dir)
-            local size_str = pad_string(r_item.is_dir and "-" or format_size(r_item.size), 7, true)
-            local date_str = ""
-            local icon_w = (BOX == BOX_ASCII) and 6 or 3
-            local meta_w = 13 + icon_w
-            if right_w >= 48 then
-                date_str = " " .. pad_string(r_item.mtime or "-", 16)
-                meta_w = meta_w + 17
-            elseif right_w >= 36 then
-                local short_date = (r_item.mtime and r_item.mtime:match("(%d%d%-%d%d)")) or (r_item.mtime and r_item.mtime:sub(1, 5)) or "-"
-                date_str = " " .. pad_string(short_date, 5)
-                meta_w = meta_w + 6
+        if not App.host_cfg.is_demo and not App.connected then
+            if row == 2 then
+                local fail_title = "   [!] Unable to connect to " .. target_display
+                r_str = pad_string(C.bright_red .. fail_title .. C.reset, right_w)
+            elseif row == 3 then
+                local err_short = (App.conn_error or "Connection failed"):sub(1, math.max(10, right_w - 15))
+                r_str = pad_string("   " .. C.red .. "Error: " .. err_short .. C.reset, right_w)
+            elseif row == 5 then
+                r_str = pad_string("   " .. C.gray .. "Press 'r' to retry connection" .. C.reset, right_w)
+            elseif row == 6 then
+                r_str = pad_string("   " .. C.gray .. "Press 'H' to select another server" .. C.reset, right_w)
+            else
+                r_str = string.rep(" ", right_w)
             end
-            local avail_name_w = math.max(6, right_w - meta_w)
-            local name_disp = pad_string(r_item.name, avail_name_w)
-            local line_color = is_cur and (C.reverse .. C.bold) or (r_item.is_dir and C.bright_white or C.white)
-            r_str = string.format("%s%s %s%s%s %s%s", cur_arrow, prefix, type_icon, line_color, name_disp .. C.reset, size_str, date_str)
         else
-            r_str = string.rep(" ", right_w)
+            local r_idx = App.right.scroll_top + row - 1
+            local r_item = right_items[r_idx]
+            if r_item then
+                local is_cur = ((not left_is_active) and r_idx == App.right.cursor)
+                local is_sel = App.right.selected[r_item.name]
+                local prefix = is_sel and (C.bright_yellow .. "[*]" .. C.reset) or "   "
+                local cur_arrow = is_cur and ">" or " "
+                local type_icon = get_file_icon(r_item.name, r_item.is_dir)
+                local size_str = pad_string(r_item.is_dir and "-" or format_size(r_item.size), 7, true)
+                local date_str = ""
+                local icon_w = (BOX == BOX_ASCII) and 6 or 3
+                local meta_w = 13 + icon_w
+                if right_w >= 48 then
+                    date_str = " " .. pad_string(r_item.mtime or "-", 16)
+                    meta_w = meta_w + 17
+                elseif right_w >= 36 then
+                    local short_date = (r_item.mtime and r_item.mtime:match("(%d%d%-%d%d)")) or (r_item.mtime and r_item.mtime:sub(1, 5)) or "-"
+                    date_str = " " .. pad_string(short_date, 5)
+                    meta_w = meta_w + 6
+                end
+                local avail_name_w = math.max(6, right_w - meta_w)
+                local name_disp = pad_string(r_item.name, avail_name_w)
+                local line_color = is_cur and (C.reverse .. C.bold) or (r_item.is_dir and C.bright_white or C.white)
+                r_str = string.format("%s%s %s%s%s %s%s", cur_arrow, prefix, type_icon, line_color, name_disp .. C.reset, size_str, date_str)
+            else
+                r_str = string.rep(" ", right_w)
+            end
         end
 
         table.insert(buf, string.format("\27[%d;1H%s%s%s%s%s\27[K",
@@ -1361,8 +1638,8 @@ end
 
 function App.draw_new_host_modal()
     local w, h = App.term_w, App.term_h
-    local mw = math.min(74, w - 4)
-    local mh = 15
+    local mw = math.min(78, w - 4)
+    local mh = 17
     local mx = math.floor((w - mw) / 2)
     local my = math.floor((h - mh) / 2)
 
@@ -1392,9 +1669,10 @@ function App.draw_new_host_modal()
         field_line(1, "Host / IP", d.host, f_idx == 1, " (Required, e.g. 192.168.1.50)"),
         field_line(2, "Port", d.port, f_idx == 2, " (Default: 22)"),
         field_line(3, "User", d.user, f_idx == 3, " (Optional)"),
-        field_line(4, "Remote Dir", d.dir, f_idx == 4, " (Default: ~)"),
-        check_line(5, "Save to ~/.ssh/config", d.save, f_idx == 5, " (Space to toggle)"),
-        field_line(6, "Host Alias", d.alias, f_idx == 6, d.save and " (Alias in ssh config)" or " (Enable #5 to save)"),
+        field_line(4, "SSH Key", d.key, f_idx == 4, " (Optional, e.g. ~/.ssh/id_ed25519)"),
+        field_line(5, "Remote Dir", d.dir, f_idx == 5, " (Default: ~)"),
+        check_line(6, "Save to ~/.ssh/config", d.save, f_idx == 6, " (Space to toggle)"),
+        field_line(7, "Host Alias", d.alias, f_idx == 7, d.save and " (Alias in ssh config)" or " (Enable #6 to save)"),
         BOX.v .. BOX.h:rep(mw - 2) .. BOX.v,
     }
 
@@ -1438,12 +1716,8 @@ function App.execute_transfer(direction, items)
         end
         print("\n" .. C.bright_green .. "Demo transfer simulated successfully!" .. C.reset)
     else
-        local host = App.host_cfg.hostname or App.host_cfg.name
-        if App.host_cfg.user and App.host_cfg.user ~= "" then
-            host = App.host_cfg.user .. "@" .. host
-        end
-
-        local port_opt = (App.host_cfg.port and App.host_cfg.port ~= "22") and ("-P " .. App.host_cfg.port) or ""
+        local host = get_ssh_target(App.host_cfg)
+        local port_opt = (App.host_cfg.source ~= "ssh-config" and App.host_cfg.port and App.host_cfg.port ~= "22") and ("-P " .. App.host_cfg.port) or ""
         local key_opt = (App.host_cfg.key and App.host_cfg.key ~= "") and ("-i " .. shell_escape(App.host_cfg.key)) or ""
 
         -- Execute SCP or Rsync
@@ -1561,6 +1835,7 @@ function App.handle_input(key)
                 host = (d.filter or ""):gsub("^%s+", ""):gsub("%s+$", ""),
                 port = "22",
                 user = "",
+                key = "",
                 dir = "~",
                 save = false,
                 alias = "",
@@ -1576,6 +1851,7 @@ function App.handle_input(key)
                         host = (d.filter or ""):gsub("^%s+", ""):gsub("%s+$", ""),
                         port = "22",
                         user = "",
+                        key = "",
                         dir = "~",
                         save = false,
                         alias = "",
@@ -1587,9 +1863,10 @@ function App.handle_input(key)
                     App.active_pane = "right"
                     App.right.dir = sel.is_demo and "/home/user" or "~"
                     remote_cache = {}
-                    local target_name = (sel.hostname and sel.hostname ~= "") and sel.hostname or sel.name
+                    local target_name = (sel.name and sel.name ~= "") and sel.name or sel.hostname
                     App.status_msg = "Connecting to " .. target_name .. "..."
                     App.status_color = C.bright_cyan
+                    App.draw()
                     App.refresh_right(true)
                 end
             end
@@ -1615,7 +1892,7 @@ function App.handle_input(key)
         return
     elseif App.modal == "new_host_form" then
         local d = App.modal_data
-        local max_fields = d.save and 6 or 5
+        local max_fields = d.save and 7 or 6
         if key == "esc" then
             local hosts = aggregate_ssh_hosts()
             table.insert(hosts, 1, {
@@ -1648,7 +1925,7 @@ function App.handle_input(key)
             d.field = d.field - 1
             if d.field < 1 then d.field = max_fields end
             d.error = nil
-        elseif key == "space" and d.field == 5 then
+        elseif key == "space" and d.field == 6 then
             d.save = not d.save
             if d.save and (not d.alias or d.alias == "") then
                 d.alias = d.host or ""
@@ -1662,13 +1939,14 @@ function App.handle_input(key)
                 local port_val = (d.port or ""):gsub("^%s+", ""):gsub("%s+$", "")
                 if port_val == "" then port_val = "22" end
                 local user_val = (d.user or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                local key_val = (d.key or ""):gsub("^%s+", ""):gsub("%s+$", "")
                 local dir_val = (d.dir or ""):gsub("^%s+", ""):gsub("%s+$", "")
                 if dir_val == "" then dir_val = "~" end
                 local alias_val = (d.alias or ""):gsub("^%s+", ""):gsub("%s+$", "")
                 if alias_val == "" then alias_val = host_val end
 
                 if d.save then
-                    save_host_to_ssh_config(alias_val, host_val, user_val, port_val)
+                    save_host_to_ssh_config(alias_val, host_val, user_val, port_val, key_val)
                 end
 
                 App.host_cfg = {
@@ -1676,6 +1954,7 @@ function App.handle_input(key)
                     hostname = host_val,
                     user = user_val,
                     port = port_val,
+                    key = (key_val ~= "") and key_val or nil,
                     source = d.save and "ssh-config" or "custom",
                     is_demo = false,
                 }
@@ -1683,8 +1962,9 @@ function App.handle_input(key)
                 App.active_pane = "right"
                 App.right.dir = dir_val
                 remote_cache = {}
-                App.status_msg = "Connecting to " .. App.host_cfg.hostname .. "..."
+                App.status_msg = "Connecting to " .. App.host_cfg.name .. "..."
                 App.status_color = C.bright_cyan
+                App.draw()
                 App.refresh_right(true)
             end
         elseif key == "backspace" then
@@ -1692,8 +1972,9 @@ function App.handle_input(key)
             if d.field == 1 then d.host = (d.host or ""):sub(1, -2)
             elseif d.field == 2 then d.port = (d.port or ""):sub(1, -2)
             elseif d.field == 3 then d.user = (d.user or ""):sub(1, -2)
-            elseif d.field == 4 then d.dir = (d.dir or ""):sub(1, -2)
-            elseif d.field == 6 then d.alias = (d.alias or ""):sub(1, -2)
+            elseif d.field == 4 then d.key = (d.key or ""):sub(1, -2)
+            elseif d.field == 5 then d.dir = (d.dir or ""):sub(1, -2)
+            elseif d.field == 7 then d.alias = (d.alias or ""):sub(1, -2)
             end
         elseif key:len() == 1 then
             d.error = nil
@@ -1704,8 +1985,10 @@ function App.handle_input(key)
             elseif d.field == 3 and key:match("[%w_%-%.]") then
                 d.user = (d.user or "") .. key
             elseif d.field == 4 and (key:match("[%w_%-%./~]") or key == "/" or key == "~") then
+                d.key = (d.key or "") .. key
+            elseif d.field == 5 and (key:match("[%w_%-%./~]") or key == "/" or key == "~") then
                 d.dir = (d.dir or "") .. key
-            elseif d.field == 6 and key:match("[%w_%-%.]") then
+            elseif d.field == 7 and key:match("[%w_%-%.]") then
                 d.alias = (d.alias or "") .. key
             end
         end
@@ -1848,10 +2131,21 @@ function App.handle_input(key)
             App.status_color = C.yellow
         end
     elseif key == "r" then
-        App.refresh_left()
-        App.refresh_right(true)
-        App.status_msg = "Both panes refreshed."
-        App.status_color = C.green
+        if App.active_pane == "left" then
+            App.refresh_left()
+            App.status_msg = "Local directory refreshed."
+            App.status_color = C.green
+        else
+            local target_name = get_ssh_target(App.host_cfg)
+            App.status_msg = "Reconnecting and refreshing " .. target_name .. "..."
+            App.status_color = C.bright_cyan
+            App.draw()
+            App.refresh_right(true)
+            if App.connected then
+                App.status_msg = "Remote directory refreshed."
+                App.status_color = C.green
+            end
+        end
     elseif key == "~" then
         cur_pane.dir = get_home_dir()
         cur_pane.cursor = 1
@@ -2018,13 +2312,26 @@ local function main(...)
             assert(parse_host_string("user@host:") == nil, "Trailing colon should return nil")
             print("  [PASS] Ad-hoc host and IP parsing unit tests")
 
-            -- 11. Test new_host_form modal state initialization and validation
+            -- 11. Test get_ssh_target alias preservation
+            local ssh_cfg_host = { name = "my-box", hostname = "192.168.1.10", user = "admin", port = "22", source = "ssh-config" }
+            assert(get_ssh_target(ssh_cfg_host) == "my-box", "SSH config host must preserve alias name as target")
+            local custom_host = { name = "[Direct Connect]", hostname = "10.0.0.1", user = "root", port = "22", source = "custom" }
+            assert(get_ssh_target(custom_host) == "root@10.0.0.1", "Custom host must include user@hostname")
+            print("  [PASS] get_ssh_target alias and host resolution unit tests")
+
+            -- 12. Test expand_glob
+            local glob_res = expand_glob("bin/fscp*")
+            assert(#glob_res >= 3, "expand_glob('bin/fscp*') should find at least 3 matching files")
+            print("  [PASS] expand_glob pattern matching tests")
+
+            -- 13. Test new_host_form modal state initialization and validation
             App.modal = "new_host_form"
             App.modal_data = {
                 field = 1,
                 host = "192.168.1.99",
                 port = "2222",
                 user = "admin",
+                key = "~/.ssh/id_ed25519",
                 dir = "/srv",
                 save = false,
                 alias = "my-box",
@@ -2032,8 +2339,9 @@ local function main(...)
             assert(App.modal_data.field == 1, "Field index should be 1")
             assert(App.modal_data.host == "192.168.1.99", "Host should match")
             assert(App.modal_data.port == "2222", "Port should match")
+            assert(App.modal_data.key == "~/.ssh/id_ed25519", "SSH Key should match")
             App.modal = nil
-            print("  [PASS] Hybrid new connection form state tests")
+            print("  [PASS] Hybrid new connection form state with SSH key tests")
 
             print(C.bold .. C.bright_green .. "[ALL TESTS PASSED SUCCESSFULLY]" .. C.reset)
             return
@@ -2114,18 +2422,31 @@ Keybindings:
             is_demo = true,
         }
     elseif cli_host then
-        local parsed = parse_host_string(cli_host)
-        if parsed then
-            parsed.name = cli_host
-            App.host_cfg = parsed
+        local found_cfg = nil
+        local all_known = aggregate_ssh_hosts()
+        for _, h in ipairs(all_known) do
+            if h.name == cli_host or h.hostname == cli_host then
+                found_cfg = h
+                break
+            end
+        end
+        if found_cfg then
+            App.host_cfg = found_cfg
         else
-            App.host_cfg = {
-                name = cli_host,
-                hostname = cli_host,
-                user = "",
-                port = "22",
-                is_demo = false,
-            }
+            local parsed = parse_host_string(cli_host)
+            if parsed then
+                parsed.name = cli_host
+                App.host_cfg = parsed
+            else
+                App.host_cfg = {
+                    name = cli_host,
+                    hostname = cli_host,
+                    user = "",
+                    port = "22",
+                    source = "custom",
+                    is_demo = false,
+                }
+            end
         end
     else
         -- No host provided: aggregate all saved sessions and show server picker at start
@@ -2168,7 +2489,13 @@ Keybindings:
     end
 
     App.refresh_left()
-    App.refresh_right(false)
+    if not App.modal and not App.host_cfg.is_demo then
+        App.status_msg = "Connecting to " .. get_ssh_target(App.host_cfg) .. "..."
+        App.status_color = C.bright_cyan
+        App.refresh_right(true)
+    else
+        App.refresh_right(false)
+    end
 
     Term.enable_raw()
 
