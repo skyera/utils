@@ -28,6 +28,7 @@
     -u, --user <USER>       Remote SSH username
     -p, --port <PORT>       Remote SSH port
     -i, --identity <KEY>    Path to SSH private key
+    -e, --engine <ENGINE>   Image engine: auto (default), ffi, chafa, magick, python
     --icons <MODE>          Icon mode: nerd (default), emoji, ascii, or none
     --protocol <MODE>       Image protocol: blocks (default) or graphics (OSC 1337)
     --demo                  Start in simulated demo mode
@@ -43,6 +44,7 @@
     J / K, PageDown/Up      Scroll preview pane up/down
     Tab                     Toggle focus between file tree and preview pane
     I                       Cycle icon mode: Nerd -> Emoji -> ASCII -> None
+    e                       Cycle image engine (Auto -> FFI -> Chafa -> Magick -> Python)
     i                       Toggle image rendering mode (Half-Blocks <-> Graphics Protocol)
     /                       Inline fuzzy filter current directory
     d                       Download selected file locally via SCP
@@ -999,12 +1001,238 @@ function Syntax.highlight_line(line, ext)
 end
 
 --------------------------------------------------------------------------------
+-- Windows Native In-Process Image Rendering via LuaJIT FFI (GDI+ & Shlwapi)
+--------------------------------------------------------------------------------
+local GdiPlusRenderer = {
+    initialized = false,
+    available = false,
+    token = nil,
+    gdiplus = nil,
+    shlwapi = nil,
+}
+
+if IS_WINDOWS then
+    local ok = pcall(function()
+        ffi.cdef[[
+            typedef struct {
+                unsigned int GdiplusVersion;
+                void* DebugEventCallback;
+                int SuppressBackgroundThread;
+                int SuppressExternalCodecs;
+            } GdiplusStartupInput;
+
+            typedef struct {
+                unsigned int Width;
+                unsigned int Height;
+                int Stride;
+                int PixelFormat;
+                void* Scan0;
+                unsigned int Reserved;
+            } GdiplusBitmapData;
+
+            typedef struct {
+                int X;
+                int Y;
+                int Width;
+                int Height;
+            } GdiplusRect;
+
+            typedef struct IStreamVtbl {
+                void* QueryInterface;
+                void* AddRef;
+                unsigned long (*Release)(void* This);
+            } IStreamVtbl;
+
+            typedef struct IStream {
+                IStreamVtbl* lpVtbl;
+            } IStream;
+
+            int GdiplusStartup(unsigned long* token, const GdiplusStartupInput* input, void* output);
+            void GdiplusShutdown(unsigned long token);
+            int GdipCreateBitmapFromStream(IStream* stream, void** bitmap);
+            int GdipGetImageWidth(void* image, unsigned int* width);
+            int GdipGetImageHeight(void* image, unsigned int* height);
+            int GdipCreateBitmapFromScan0(int width, int height, int stride, int format, unsigned char* scan0, void** bitmap);
+            int GdipGetImageGraphicsContext(void* image, void** graphics);
+            int GdipGraphicsClear(void* graphics, unsigned int color);
+            int GdipSetInterpolationMode(void* graphics, int interpolationMode);
+            int GdipDrawImageRectRectI(void* graphics, void* image, int dstx, int dsty, int dstwidth, int dstheight, int srcx, int srcy, int srcwidth, int srcheight, int srcUnit, void* imageAttributes, void* callback, void* callbackData);
+            int GdipBitmapLockBits(void* bitmap, const GdiplusRect* rect, unsigned int flags, int format, GdiplusBitmapData* lockedBitmapData);
+            int GdipBitmapUnlockBits(void* bitmap, GdiplusBitmapData* lockedBitmapData);
+            int GdipDeleteGraphics(void* graphics);
+            int GdipDisposeImage(void* image);
+
+            IStream* SHCreateMemStream(const unsigned char* pInit, unsigned int cbInit);
+        ]]
+        GdiPlusRenderer.gdiplus = ffi.load("gdiplus.dll")
+        GdiPlusRenderer.shlwapi = ffi.load("shlwapi.dll")
+        GdiPlusRenderer.available = true
+    end)
+    if not ok then
+        GdiPlusRenderer.available = false
+    end
+end
+
+function GdiPlusRenderer.ensure_init()
+    if not GdiPlusRenderer.available then return false end
+    if GdiPlusRenderer.initialized then return true end
+
+    local token = ffi.new("unsigned long[1]")
+    local input = ffi.new("GdiplusStartupInput", { 1, nil, 0, 0 })
+    local st = GdiPlusRenderer.gdiplus.GdiplusStartup(token, input, nil)
+    if st == 0 then
+        GdiPlusRenderer.token = token
+        GdiPlusRenderer.initialized = true
+        return true
+    end
+    return false
+end
+
+function GdiPlusRenderer.shutdown()
+    if GdiPlusRenderer.initialized and GdiPlusRenderer.token then
+        pcall(function()
+            GdiPlusRenderer.gdiplus.GdiplusShutdown(GdiPlusRenderer.token[0])
+        end)
+        GdiPlusRenderer.initialized = false
+        GdiPlusRenderer.token = nil
+    end
+end
+
+function GdiPlusRenderer.render_half_blocks(data, w, h)
+    if not GdiPlusRenderer.ensure_init() then return nil end
+    if not data or #data < 10 then return nil end
+
+    local gdi = GdiPlusRenderer.gdiplus
+    local shl = GdiPlusRenderer.shlwapi
+
+    local stream = shl.SHCreateMemStream(ffi.cast("const unsigned char*", data), #data)
+    if stream == nil then return nil end
+
+    local pSrc = ffi.new("void*[1]")
+    local st = gdi.GdipCreateBitmapFromStream(stream, pSrc)
+    if st ~= 0 or pSrc[0] == nil then
+        pcall(function() stream.lpVtbl.Release(stream) end)
+        return nil
+    end
+
+    local srcW = ffi.new("unsigned int[1]")
+    local srcH = ffi.new("unsigned int[1]")
+    gdi.GdipGetImageWidth(pSrc[0], srcW)
+    gdi.GdipGetImageHeight(pSrc[0], srcH)
+
+    if srcW[0] == 0 or srcH[0] == 0 then
+        gdi.GdipDisposeImage(pSrc[0])
+        pcall(function() stream.lpVtbl.Release(stream) end)
+        return nil
+    end
+
+    local scale = math.min(w / srcW[0], (h * 2) / srcH[0])
+    local fit_w = math.max(1, math.floor(srcW[0] * scale))
+    local fit_h = math.max(1, math.floor(srcH[0] * scale))
+    local actual_h = math.min(h, math.max(1, math.ceil(fit_h / 2)))
+    local actual_pixel_h = actual_h * 2
+
+    local PixelFormat24bppRGB = 0x21808
+
+    local pDst = ffi.new("void*[1]")
+    st = gdi.GdipCreateBitmapFromScan0(fit_w, actual_pixel_h, 0, PixelFormat24bppRGB, nil, pDst)
+    if st ~= 0 or pDst[0] == nil then
+        gdi.GdipDisposeImage(pSrc[0])
+        pcall(function() stream.lpVtbl.Release(stream) end)
+        return nil
+    end
+
+    local pGfx = ffi.new("void*[1]")
+    st = gdi.GdipGetImageGraphicsContext(pDst[0], pGfx)
+    if st ~= 0 or pGfx[0] == nil then
+        gdi.GdipDisposeImage(pDst[0])
+        gdi.GdipDisposeImage(pSrc[0])
+        pcall(function() stream.lpVtbl.Release(stream) end)
+        return nil
+    end
+
+    -- Clear background with dark slate (ARGB 0xFF181818) so transparency composites cleanly
+    gdi.GdipGraphicsClear(pGfx[0], 0xFF181818)
+
+    -- InterpolationModeHighQualityBicubic = 7
+    gdi.GdipSetInterpolationMode(pGfx[0], 7)
+
+    -- Scale and resample image directly into destination buffer
+    st = gdi.GdipDrawImageRectRectI(pGfx[0], pSrc[0], 0, 0, fit_w, actual_pixel_h, 0, 0, srcW[0], srcH[0], 2, nil, nil, nil)
+    gdi.GdipDeleteGraphics(pGfx[0])
+    gdi.GdipDisposeImage(pSrc[0])
+    pcall(function() stream.lpVtbl.Release(stream) end)
+
+    if st ~= 0 then
+        gdi.GdipDisposeImage(pDst[0])
+        return nil
+    end
+
+    -- Lock bitmap bits for fast direct memory pointer reading
+    local rect = ffi.new("GdiplusRect", { 0, 0, fit_w, actual_pixel_h })
+    local bmpData = ffi.new("GdiplusBitmapData")
+    -- ImageLockModeRead = 1
+    st = gdi.GdipBitmapLockBits(pDst[0], rect, 1, PixelFormat24bppRGB, bmpData)
+    if st ~= 0 or bmpData.Scan0 == nil then
+        gdi.GdipDisposeImage(pDst[0])
+        return nil
+    end
+
+    local lines = {}
+    local ptr = ffi.cast("const uint8_t*", bmpData.Scan0)
+    local stride = bmpData.Stride
+
+    for row = 0, actual_h - 1 do
+        local row_buf = {}
+        local row1_offset = (row * 2) * stride
+        local row2_offset = (row * 2 + 1) * stride
+        for col = 0, fit_w - 1 do
+            -- GDI+ 24bpp is BGR byte order
+            local col_offset = col * 3
+            local b1 = ptr[row1_offset + col_offset]
+            local g1 = ptr[row1_offset + col_offset + 1]
+            local r1 = ptr[row1_offset + col_offset + 2]
+            local b2 = ptr[row2_offset + col_offset]
+            local g2 = ptr[row2_offset + col_offset + 1]
+            local r2 = ptr[row2_offset + col_offset + 2]
+            table.insert(row_buf, string.format("\27[38;2;%d;%d;%dm\27[48;2;%d;%d;%dm▀", r1, g1, b1, r2, g2, b2))
+        end
+        table.insert(row_buf, C.reset)
+        table.insert(lines, table.concat(row_buf))
+    end
+
+    gdi.GdipBitmapUnlockBits(pDst[0], bmpData)
+    gdi.GdipDisposeImage(pDst[0])
+
+    return lines
+end
+
+--------------------------------------------------------------------------------
 -- Image Terminal Rendering Engine (Half-Blocks & Graphics Protocol)
 --------------------------------------------------------------------------------
 local ImageRenderer = {
     protocol = "blocks", -- "blocks" (Universal Half-Blocks) or "graphics" (OSC 1337)
+    preferred_engine = "auto", -- "auto", "ffi", "chafa", "magick", "python"
+    last_engine = "None",
     cache = {},
 }
+
+local ENGINES = { "auto", "ffi", "chafa", "magick", "python" }
+
+function ImageRenderer.cycle_engine()
+    local cur = (ImageRenderer.preferred_engine or "auto"):lower()
+    for idx, e in ipairs(ENGINES) do
+        if e == cur then
+            local nxt = ENGINES[(idx % #ENGINES) + 1]
+            ImageRenderer.preferred_engine = nxt
+            ImageRenderer.cache = {}
+            return nxt
+        end
+    end
+    ImageRenderer.preferred_engine = "auto"
+    ImageRenderer.cache = {}
+    return "auto"
+end
 
 -- Detect file extension based on magic bytes or path
 local function detect_image_ext(path_or_bytes)
@@ -1020,9 +1248,42 @@ local function detect_image_ext(path_or_bytes)
     return ".png"
 end
 
--- Render downscaled image to 24-bit half-blocks via Chafa, ImageMagick (magick), or Python Pillow
+-- Render downscaled image to 24-bit half-blocks via FFI, Chafa, ImageMagick (magick), or Python Pillow
 function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
-    if w < 2 or h < 2 then return { " [Window too small for image preview] " } end
+    if w < 2 or h < 2 then return { " [Window too small for image preview] " }, "None" end
+
+    local pref = (ImageRenderer.preferred_engine or "auto"):lower()
+
+    -- 0. Windows Native In-Process FFI Engine (GDI+ via shlwapi/gdiplus)
+    if (pref == "auto" or pref == "ffi") and IS_WINDOWS and GdiPlusRenderer.available then
+        local raw_data = nil
+        local is_file = type(image_path_or_bytes) == "string" and #image_path_or_bytes < 1024
+            and not image_path_or_bytes:find("[\0\r\n]") and file_exists(image_path_or_bytes)
+        if is_file then
+            local f = io.open(image_path_or_bytes, "rb")
+            if f then
+                raw_data = f:read("*a")
+                f:close()
+            end
+        elseif type(image_path_or_bytes) == "string" then
+            raw_data = image_path_or_bytes
+        end
+
+        if raw_data and #raw_data > 0 then
+            local ffi_lines = GdiPlusRenderer.render_half_blocks(raw_data, w, h)
+            if ffi_lines and #ffi_lines > 0 then
+                ImageRenderer.last_engine = "FFI/GDI+"
+                return ffi_lines, "FFI/GDI+"
+            end
+        end
+        if pref == "ffi" then
+            ImageRenderer.last_engine = "None"
+            return { " [FFI/GDI+: Failed to decode image format in memory] " }, "None"
+        end
+    elseif pref == "ffi" then
+        ImageRenderer.last_engine = "None"
+        return { " [FFI Engine unavailable: Requires Windows GDI+] " }, "None"
+    end
 
     local null_dev = IS_WINDOWS and "2>nul" or "2>/dev/null"
     local ext = detect_image_ext(image_path_or_bytes)
@@ -1039,55 +1300,50 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
             f:close()
             src_file = tmp_file
         else
-            return { " [Failed to create preview cache] " }
+            return { " [Failed to create preview cache] " }, "None"
         end
     end
 
     local lines = {}
 
-    -- 1. Try Chafa (High-performance native terminal graphics engine)
-    local chafa_cmd = string.format("chafa --format symbols --symbols vhalf --colors full -s %dx%d %s %s",
-        w, h, shell_escape(src_file), null_dev)
-    local pipe = io.popen(chafa_cmd, "r")
-    if pipe then
-        local chafa_out = pipe:read("*a")
-        pipe:close()
-        if chafa_out and #chafa_out > 0 then
-            for l in chafa_out:gmatch("([^\r\n]+)") do
-                local clean = l:gsub("\27%[[%d;?]*%a", "")
-                if #clean > 0 then
-                    table.insert(lines, l .. C.reset)
+    -- 1. Try Chafa (if pref is "auto" or "chafa")
+    if pref == "auto" or pref == "chafa" then
+        local chafa_cmd = string.format("chafa --format symbols --symbols vhalf --colors full -s %dx%d %s %s",
+            w, h, shell_escape(src_file), null_dev)
+        local pipe = io.popen(chafa_cmd, "r")
+        if pipe then
+            local chafa_out = pipe:read("*a")
+            pipe:close()
+            if chafa_out and #chafa_out > 0 then
+                for l in chafa_out:gmatch("([^\r\n]+)") do
+                    local clean = l:gsub("\27%[[%d;?]*%a", "")
+                    if #clean > 0 then
+                        table.insert(lines, l .. C.reset)
+                    end
+                end
+                if #lines > 0 then
+                    if tmp_file then os.remove(tmp_file) end
+                    ImageRenderer.last_engine = "Chafa"
+                    return lines, "Chafa"
                 end
             end
-            if #lines > 0 then
-                if tmp_file then os.remove(tmp_file) end
-                ImageRenderer.last_engine = "Chafa"
-                return lines, "Chafa"
-            end
+        end
+        if pref == "chafa" then
+            if tmp_file then os.remove(tmp_file) end
+            ImageRenderer.last_engine = "None"
+            return { " [Chafa engine requested but failed or 'chafa' not in PATH] " }, "None"
         end
     end
 
-    -- 2. Try ImageMagick (magick)
-    local magick_cmd = IS_WINDOWS and "magick.exe" or "magick"
-    local resize_arg = IS_WINDOWS and string.format("-resize %dx%d!", w, h * 2) or string.format("-resize %dx%d\\!", w, h * 2)
-    local conv_cmd = string.format("%s %s %s -depth 8 rgb:- %s",
-        magick_cmd, shell_escape(src_file), resize_arg, null_dev)
-    pipe = io.popen(conv_cmd, "r")
+    -- 2. Try ImageMagick (if pref is "auto" or "magick")
     local raw_rgb = nil
     local engine_used = nil
-    if pipe then
-        raw_rgb = pipe:read("*a")
-        pipe:close()
-        if raw_rgb and #raw_rgb > 0 then
-            engine_used = "ImageMagick"
-        end
-    end
-
-    -- If on Unix and magick failed, try convert
-    if (not raw_rgb or #raw_rgb == 0) and not IS_WINDOWS then
-        conv_cmd = string.format("convert %s -resize %dx%d\\! -depth 8 rgb:- 2>/dev/null",
-            shell_escape(src_file), w, h * 2)
-        pipe = io.popen(conv_cmd, "r")
+    if pref == "auto" or pref == "magick" then
+        local magick_cmd = IS_WINDOWS and "magick.exe" or "magick"
+        local resize_arg = IS_WINDOWS and string.format("-resize %dx%d!", w, h * 2) or string.format("-resize %dx%d\\!", w, h * 2)
+        local conv_cmd = string.format("%s %s %s -depth 8 rgb:- %s",
+            magick_cmd, shell_escape(src_file), resize_arg, null_dev)
+        local pipe = io.popen(conv_cmd, "r")
         if pipe then
             raw_rgb = pipe:read("*a")
             pipe:close()
@@ -1095,16 +1351,36 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
                 engine_used = "ImageMagick"
             end
         end
+
+        -- If on Unix and magick failed, try convert
+        if (not raw_rgb or #raw_rgb == 0) and not IS_WINDOWS then
+            conv_cmd = string.format("convert %s -resize %dx%d\\! -depth 8 rgb:- 2>/dev/null",
+                shell_escape(src_file), w, h * 2)
+            pipe = io.popen(conv_cmd, "r")
+            if pipe then
+                raw_rgb = pipe:read("*a")
+                pipe:close()
+                if raw_rgb and #raw_rgb > 0 then
+                    engine_used = "ImageMagick"
+                end
+            end
+        end
+
+        if pref == "magick" and (not raw_rgb or #raw_rgb == 0) then
+            if tmp_file then os.remove(tmp_file) end
+            ImageRenderer.last_engine = "None"
+            return { " [ImageMagick engine requested but failed or 'magick' not in PATH] " }, "None"
+        end
     end
 
-    -- 3. Try Python Pillow (PIL) fallback
-    if not raw_rgb or #raw_rgb == 0 then
+    -- 3. Try Python Pillow (if pref is "auto" or "python")
+    if (not raw_rgb or #raw_rgb == 0) and (pref == "auto" or pref == "python") then
         local py_script = string.format(
             "import sys; from PIL import Image; img=Image.open(r'%s').convert('RGB').resize((%d,%d)); sys.stdout.buffer.write(img.tobytes())",
             src_file:gsub("'", "\\'"), w, h * 2
         )
         local py_cmd = string.format('python -c "%s" %s', py_script, null_dev)
-        pipe = io.popen(py_cmd, "rb")
+        local pipe = io.popen(py_cmd, "rb")
         if pipe then
             raw_rgb = pipe:read("*a")
             pipe:close()
@@ -1122,6 +1398,12 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
                     engine_used = "Python/Pillow"
                 end
             end
+        end
+
+        if pref == "python" and (not raw_rgb or #raw_rgb == 0) then
+            if tmp_file then os.remove(tmp_file) end
+            ImageRenderer.last_engine = "None"
+            return { " [Python/Pillow engine requested but failed or PIL not installed] " }, "None"
         end
     end
 
@@ -2021,8 +2303,9 @@ function App.draw()
     table.insert(buf, string.format("\27[%d;1H%s\27[K", content_h + 4, pad_string(stat_text, w)))
 
     -- 5. Footer Keybindings Guide
-    local footer = string.format(" [Enter/l] Open [h] Up [~] Home [j/k] Select [H] Server [.] Hidden:%s [I] Icons [/] Filter [?] Help [q] Quit ",
-        App.show_hidden and "ON" or "OFF"
+    local footer = string.format(" [Enter/l] Open [h] Up [~] Home [j/k] Select [H] Server [.] Hidden:%s [I] Icons [e] Engine:%s [/] Filter [?] Help [q] Quit ",
+        App.show_hidden and "ON" or "OFF",
+        (ImageRenderer.preferred_engine or "auto"):upper()
     )
     table.insert(buf, string.format("\27[%d;1H%s%s%s%s\27[K",
         content_h + 5,
@@ -2121,7 +2404,7 @@ end
 function App.draw_help_modal()
     local w, h = App.term_w, App.term_h
     local mw = math.min(68, w - 4)
-    local mh = 16
+    local mh = 17
     local mx = math.floor((w - mw) / 2)
     local my = math.floor((h - mh) / 2)
 
@@ -2135,6 +2418,7 @@ function App.draw_help_modal()
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, ".", C.reset, "Toggle hidden files/folders (.xxx)"),
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "J / K, PgDn/PgUp", C.reset, "Scroll preview content smoothly"),
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "I", C.reset, "Cycle icon mode (Nerd -> Emoji -> ASCII -> None)"),
+        string.format("  %s%-18s%s %s", C.bold .. C.yellow, "e", C.reset, "Cycle image engine (Auto -> FFI -> Chafa -> Magick -> Python)"),
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "i", C.reset, "Toggle image renderer (Half-Blocks / OSC 1337)"),
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "/", C.reset, "Inline fuzzy filter current directory"),
         string.format("  %s%-18s%s %s", C.bold .. C.yellow, "Tab", C.reset, "Switch focus between file tree & preview"),
@@ -2277,6 +2561,11 @@ function App.run()
                     ImageRenderer.protocol = (ImageRenderer.protocol == "blocks") and "graphics" or "blocks"
                     App.status_msg = "Image Renderer toggled to: " .. ImageRenderer.protocol:upper()
                     App.status_color = C.bright_yellow
+                elseif key == "e" then
+                    local eng = ImageRenderer.cycle_engine()
+                    Crawler.preview_cache = {}
+                    App.status_msg = "Image engine set to: " .. eng:upper()
+                    App.status_color = C.bright_cyan
                 elseif key == "/" then
                     App.filter_mode = true
                     App.filter_text = ""
@@ -2303,6 +2592,9 @@ function App.run()
     end
 
     Term.restore()
+    if GdiPlusRenderer and GdiPlusRenderer.shutdown then
+        GdiPlusRenderer.shutdown()
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -2428,14 +2720,41 @@ local function run_tests()
     App.modal = nil -- Reset
     print(C.bright_green .. string.format("  [PASS] Startup Server Selector modal activation (%d servers ready)", #App.modal_data.hosts) .. C.reset)
 
-    -- 13. ImageRenderer Half-Block Rendering & UTF-8 Cell Width Verification
+    -- 13. ImageRenderer Multi-Engine Half-Block Rendering
     assert(utf8_col_width("▀▀▀▀▀") == 5, "Half-block character ▀ must have single-column width (5)")
     local rendered_blocks, engine = ImageRenderer.render_half_blocks(DEMO_PNG_BYTES, 24, 10)
     assert(rendered_blocks and #rendered_blocks > 0, "ImageRenderer should render preview lines")
     assert(engine ~= nil and engine ~= "None", "ImageRenderer should report an active engine")
     print(C.bright_green .. string.format("  [PASS] ImageRenderer multi-engine half-blocks: %d lines rendered via %s", #rendered_blocks, engine) .. C.reset)
 
-    print(C.bold .. C.bright_green .. "\nALL 13 TESTS PASSED SUCCESSFULLY!" .. C.reset)
+    -- 14. Native In-Process FFI Image Rendering Verification
+    if IS_WINDOWS and GdiPlusRenderer.available then
+        local ffi_lines = GdiPlusRenderer.render_half_blocks(DEMO_PNG_BYTES, 24, 10)
+        assert(ffi_lines and #ffi_lines > 0, "GdiPlusRenderer should render half-block lines from DEMO_PNG_BYTES")
+        assert(ffi_lines[1]:find("▀"), "GdiPlusRenderer output lines must contain half-block character ▀")
+        print(C.bright_green .. string.format("  [PASS] GdiPlusRenderer native in-process FFI: %d lines rendered in RAM", #ffi_lines) .. C.reset)
+    else
+        print(C.gray .. "  [SKIP] GdiPlusRenderer native FFI (Non-Windows platform)" .. C.reset)
+    end
+
+    -- 15. Explicit Image Engine Selection & Cycling Verification
+    local orig_engine = ImageRenderer.preferred_engine
+    ImageRenderer.preferred_engine = "ffi"
+    local ffi_res, ffi_eng = ImageRenderer.render_half_blocks(DEMO_PNG_BYTES, 24, 10)
+    assert(ffi_eng == "FFI/GDI+", "Forced FFI engine must report 'FFI/GDI+'")
+
+    local c1 = ImageRenderer.cycle_engine()
+    assert(c1 == "chafa" and ImageRenderer.preferred_engine == "chafa", "Cycling engine should transition to 'chafa'")
+    local c2 = ImageRenderer.cycle_engine()
+    assert(c2 == "magick" and ImageRenderer.preferred_engine == "magick", "Cycling engine should transition to 'magick'")
+    local c3 = ImageRenderer.cycle_engine()
+    assert(c3 == "python" and ImageRenderer.preferred_engine == "python", "Cycling engine should transition to 'python'")
+    local c4 = ImageRenderer.cycle_engine()
+    assert(c4 == "auto" and ImageRenderer.preferred_engine == "auto", "Cycling engine should wrap back to 'auto'")
+    ImageRenderer.preferred_engine = orig_engine
+    print(C.bright_green .. "  [PASS] ImageRenderer explicit engine selection & cycle transitions" .. C.reset)
+
+    print(C.bold .. C.bright_green .. "\nALL 15 TESTS PASSED SUCCESSFULLY!" .. C.reset)
     return true
 end
 
@@ -2458,6 +2777,7 @@ Options:
   -u, --user <USER>       Remote SSH username
   -p, --port <PORT>       Remote SSH port (default: 22)
   -i, --identity <KEY>    Path to SSH private key
+  -e, --engine <ENGINE>   Image engine: auto (default), ffi, chafa, magick, python
   --icons <MODE>          Icon style: nerd (default), emoji, ascii, none
   --protocol <MODE>       Image protocol: blocks (default) or graphics (OSC 1337)
   --demo                  Start in simulated offline demo mode
@@ -2493,6 +2813,9 @@ local function main(args)
             App.draw_host_picker_modal()
             io.write("\n\n")
             return
+        elseif (a == "-e" or a == "--engine") and i < #args then
+            i = i + 1
+            ImageRenderer.preferred_engine = args[i]:lower()
         elseif a == "--icons" and i < #args then
             i = i + 1
             IconEngine.mode = args[i]:lower()
@@ -2505,6 +2828,15 @@ local function main(args)
             local path = args[i + 2] or "/home/user/app/server.lua"
             local pw = tonumber(args[i + 3]) or 80
             local ph = tonumber(args[i + 4]) or 24
+            if host:find(":") then
+                local h, p = host:match("^([^:]+):(.+)$")
+                if h and p then
+                    pw = tonumber(path) or 80
+                    ph = tonumber(args[i + 3]) or 24
+                    host = h
+                    path = p
+                end
+            end
             local cfg = { hostname = host, is_demo = (host == "demo") }
             local ext = (path:match("%.([%w_%-]+)$") or ""):lower()
             local is_img = (ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "gif" or ext == "bmp" or ext == "webp")
