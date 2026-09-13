@@ -61,7 +61,7 @@ elseif IS_WINDOWS then
         typedef unsigned long DWORD;
         typedef int BOOL;
         typedef unsigned short WORD;
-        typedef unsigned long ULONG_PTR;
+        typedef uintptr_t ULONG_PTR;
 
         typedef struct {
             DWORD dwSize;
@@ -409,7 +409,7 @@ local function interactive_fzf()
     local script_path = debug.getinfo(1, "S").source:sub(2)
     -- Normalize absolute path
     if not script_path:match("^/") and not script_path:match("^%a:[/\\]") then
-        local pwd = io.popen("pwd 2>/dev/null || cd"):read("*line") or "."
+        local pwd = io.popen(IS_WINDOWS and "cd" or "pwd 2>/dev/null || pwd"):read("*line") or "."
         script_path = pwd .. "/" .. script_path
     end
 
