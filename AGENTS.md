@@ -2,32 +2,40 @@
 
 For any issue, feature request, review, or modification task, the agent MUST follow this workflow:
 
-1.  **Research & Think**: Analyze the request (including any review notes), explore the relevant parts of the codebase, and identify the root cause or the optimal design for the change.
-2.  **Design & Plan**: Formulate a clear plan of action and test strategy. **ALWAYS show the user the plan/design before making any code changes.**
-3.  **Implement**: Perform surgical and idiomatic changes to the codebase directly.
-4.  **Verify**: Validate the changes through testing, manual verification, or relevant shell commands to ensure the solution is correct and does not introduce regressions. Double check and verify every fix/solution thoroughly before concluding.
+1.  **Research & Think**: Analyze the request (including any review notes), explore the relevant parts of the codebase, and identify the root cause or optimal design for the change.
+2.  **Design & Plan**: Formulate a clear plan of action and verification strategy.
+    *   **Verification Strategy**: For every change, **ALWAYS consider and define how to verify/validate the change** (e.g., test suites, manual verification commands, edge-case checks) before writing code.
+    *   **UI / Command Mockup**: If the task involves a TUI, GUI, or command output, **ALWAYS show a visual mockup UI or sample output preview**.
+    *   **Recommendation**: Give clear, actionable recommendations with rationale.
+    *   **ALWAYS show the user the plan/design before making any code changes.**
+3.  **Approval Gate**: Wait for user approval before starting implementation (unless the user has indicated auto-approval).
+4.  **Implement**: Perform surgical and idiomatic changes to the codebase directly.
+5.  **Verify**: Validate the changes through testing, manual verification, or relevant shell commands to ensure the solution is correct and does not introduce regressions. Double check and verify every fix/solution thoroughly before concluding.
 
 Verification is the only path to finality. Do not assume success. Always double check and verify every fix or solution for correctness.
 
-## Testing Guidelines
+## Verification & Validation Guidelines
 
-When creating a test plan or verifying changes, consider the following:
-*   **Edge Cases**: Test invalid inputs and boundary values.
-*   **Invariants**: Assert that core logic and state remain consistent.
-*   **Error Handling**: Use mocks or stubs to simulate errors and verify recovery.
-*   **Performance**: Consider stress testing for performance-critical changes.
-*   **Security & Stability**: Use tools like Valgrind or AddressSanitizer to check for memory errors.
+For every change, consider how to prove correctness before concluding:
+*   **Pre-Implementation Strategy**: Identify test commands, scripts, or reproduction steps *before* writing code.
+*   **Automated Tests**: Run test suites (`--test`, unit tests, integration tests). Add new test cases covering the change and edge cases.
+*   **Live Verification**: Execute the actual command or utility in the environment to confirm the fix works in practice.
+*   **Edge Cases & Regressions**: Test boundary inputs, invalid parameters, error handling, and ensure existing behavior is preserved.
+*   **Verification is Mandatory**: Never assume a fix works without running verification commands and inspecting output.
 
-## Issue / Problem Workflow
+## Request & Issue Workflow
 
-When the user asks about an issue or problem, the agent MUST:
+When the user asks about an issue, problem, feature, or modification, the agent MUST:
 
-1.  **Explain the problem**: Describe the root cause clearly.
-2.  **Propose a solution**: Explain what needs to change and why.
-3.  **Show code comparison**: Present a before/after diff so the user can see exactly what changes.
-4.  **Approval Mode**:
+1.  **Think & Analyze**: Explain the root cause or understand the requirement clearly.
+2.  **Propose a Solution & Design**: Explain what needs to change, the plan of action, and why.
+3.  **Define Verification / Validation Plan**: Explicitly state how the change will be tested and validated (commands to run, expected results, edge cases).
+4.  **Show Mockup UI / Command Output**: If the request involves TUI, GUI, or command output, provide a realistic mockup or sample output preview.
+5.  **Give Recommendation**: Provide your professional recommendation and options.
+6.  **Show Code Comparison**: Present a before/after diff so the user can see exactly what changes.
+7.  **Approval Mode**:
     *   If the user has indicated **"approve always"**, **"do it"**, **"auto approve"**, or explicitly asks to fix/implement directly: proceed immediately with implementation and verification without asking for confirmation.
-    *   Otherwise: wait for user approval before applying changes.
+    *   Otherwise: **WAIT for user approval before applying changes or starting implementation.**
 
 ## Commit Workflow
 
