@@ -1,6 +1,16 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: 0. Delegate to fast LuaJIT/FFI fcd.lua if luajit is available
+where luajit >nul 2>nul
+if %errorlevel% equ 0 if exist "%~dp0fcd.lua" (
+    for /f "usebackq delims=" %%i in (`luajit "%~dp0fcd.lua" %*`) do (
+        endlocal & cd /d "%%i"
+        exit /b 0
+    )
+    exit /b 0
+)
+
 set "BASE_DIR=."
 set "QUERY="
 

@@ -4,6 +4,16 @@ param(
     [string[]]$QueryArgs
 )
 
+# Delegate to fast LuaJIT/FFI fcd.lua if available
+if ((Get-Command luajit -ErrorAction SilentlyContinue) -and (Test-Path "$PSScriptRoot/fcd.lua")) {
+    $target = & luajit "$PSScriptRoot/fcd.lua" @args
+    if ($target) {
+        Set-Location $target
+        return
+    }
+    return
+}
+
 $baseDir = "."
 $query = ""
 
