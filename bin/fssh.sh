@@ -2,6 +2,10 @@
 # fssh.sh - Shell wrapper for fssh (Git Bash / WSL / Linux / macOS)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+if command -v luajit >/dev/null 2>&1 && [ -f "$SCRIPT_DIR/fssh.lua" ]; then
+    exec luajit "$SCRIPT_DIR/fssh.lua" "$@"
+fi
+
 PY_BIN=""
 for candidate in python python3 py; do
     if command -v "$candidate" >/dev/null 2>&1; then
