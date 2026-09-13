@@ -484,6 +484,30 @@ local function pad_ansi_box(s, width)
     if w < width then return s .. string.rep(" ", width - w) else return s end
 end
 
+local function get_file_icon(name, is_dir)
+    if BOX == BOX_ASCII then
+        return is_dir and (C.bright_blue .. "[DIR] " .. C.reset) or "      "
+    end
+    if is_dir then
+        if name == ".." then
+            return C.bright_yellow .. "📁 " .. C.reset
+        else
+            return C.bright_blue .. "📁 " .. C.reset
+        end
+    end
+    local ext = (name:match("%.([%w_%-]+)$") or ""):lower()
+    if ext == "lua" then return C.bright_cyan .. "🌙 " .. C.reset
+    elseif ext == "py" or ext == "pyw" then return C.bright_yellow .. "🐍 " .. C.reset
+    elseif ext == "sh" or ext == "bat" or ext == "cmd" or ext == "ps1" then return C.bright_green .. "⚡ " .. C.reset
+    elseif ext == "md" or ext == "txt" or ext == "doc" or ext == "pdf" then return C.bright_white .. "📝 " .. C.reset
+    elseif ext == "json" or ext == "yaml" or ext == "yml" or ext == "toml" or ext == "conf" or ext == "ini" or ext == "sql" then return C.bright_yellow .. "⚙  " .. C.reset
+    elseif ext == "zip" or ext == "tar" or ext == "gz" or ext == "7z" or ext == "rar" or ext == "xz" then return C.bright_red .. "📦 " .. C.reset
+    elseif ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "gif" or ext == "svg" or ext == "ico" then return C.bright_magenta .. "🖼 " .. C.reset
+    elseif ext == "c" or ext == "cpp" or ext == "h" or ext == "hpp" or ext == "rs" or ext == "go" or ext == "js" or ext == "ts" or ext == "html" or ext == "css" then return C.bright_blue .. "📜 " .. C.reset
+    elseif ext == "exe" or ext == "dll" or ext == "so" or ext == "bin" then return C.bright_red .. "🔧 " .. C.reset
+    else return C.gray .. "📄 " .. C.reset end
+end
+
 local function shell_escape(s)
     if not s:find("[^%w_%-%.%/:]") then
         return s
@@ -1063,22 +1087,23 @@ function App.draw()
             local is_sel = App.left.selected[l_item.name]
             local prefix = is_sel and (C.bright_yellow .. "[*]" .. C.reset) or "   "
             local cur_arrow = is_cur and ">" or " "
-            local type_icon = l_item.is_dir and (C.bright_blue .. "[DIR]" .. C.reset) or "     "
+            local type_icon = get_file_icon(l_item.name, l_item.is_dir)
             local size_str = pad_string(l_item.is_dir and "-" or format_size(l_item.size), 7, true)
             local date_str = ""
-            local meta_w = 19
+            local icon_w = (BOX == BOX_ASCII) and 6 or 3
+            local meta_w = 13 + icon_w
             if half_w >= 48 then
                 date_str = " " .. pad_string(l_item.mtime or "-", 16)
-                meta_w = 36
+                meta_w = meta_w + 17
             elseif half_w >= 36 then
                 local short_date = (l_item.mtime and l_item.mtime:match("(%d%d%-%d%d)")) or (l_item.mtime and l_item.mtime:sub(1, 5)) or "-"
                 date_str = " " .. pad_string(short_date, 5)
-                meta_w = 25
+                meta_w = meta_w + 6
             end
             local avail_name_w = math.max(6, half_w - meta_w)
             local name_disp = pad_string(l_item.name, avail_name_w)
             local line_color = is_cur and (C.reverse .. C.bold) or (l_item.is_dir and C.bright_white or C.white)
-            l_str = string.format("%s%s %s %s%s %s%s", cur_arrow, prefix, type_icon, line_color, name_disp .. C.reset, size_str, date_str)
+            l_str = string.format("%s%s %s%s%s %s%s", cur_arrow, prefix, type_icon, line_color, name_disp .. C.reset, size_str, date_str)
         else
             l_str = string.rep(" ", half_w)
         end
@@ -1092,22 +1117,23 @@ function App.draw()
             local is_sel = App.right.selected[r_item.name]
             local prefix = is_sel and (C.bright_yellow .. "[*]" .. C.reset) or "   "
             local cur_arrow = is_cur and ">" or " "
-            local type_icon = r_item.is_dir and (C.bright_blue .. "[DIR]" .. C.reset) or "     "
+            local type_icon = get_file_icon(r_item.name, r_item.is_dir)
             local size_str = pad_string(r_item.is_dir and "-" or format_size(r_item.size), 7, true)
             local date_str = ""
-            local meta_w = 19
+            local icon_w = (BOX == BOX_ASCII) and 6 or 3
+            local meta_w = 13 + icon_w
             if right_w >= 48 then
                 date_str = " " .. pad_string(r_item.mtime or "-", 16)
-                meta_w = 36
+                meta_w = meta_w + 17
             elseif right_w >= 36 then
                 local short_date = (r_item.mtime and r_item.mtime:match("(%d%d%-%d%d)")) or (r_item.mtime and r_item.mtime:sub(1, 5)) or "-"
                 date_str = " " .. pad_string(short_date, 5)
-                meta_w = 25
+                meta_w = meta_w + 6
             end
             local avail_name_w = math.max(6, right_w - meta_w)
             local name_disp = pad_string(r_item.name, avail_name_w)
             local line_color = is_cur and (C.reverse .. C.bold) or (r_item.is_dir and C.bright_white or C.white)
-            r_str = string.format("%s%s %s %s%s %s%s", cur_arrow, prefix, type_icon, line_color, name_disp .. C.reset, size_str, date_str)
+            r_str = string.format("%s%s %s%s%s %s%s", cur_arrow, prefix, type_icon, line_color, name_disp .. C.reset, size_str, date_str)
         else
             r_str = string.rep(" ", right_w)
         end
@@ -1701,6 +1727,31 @@ local function main(...)
             local padded = pad_ansi_box(test_str, 40)
             assert(utf8_col_width(padded) == 40, "Padded string should have width 40")
             print("  [PASS] UTF-8 column width and alignment tests")
+
+            -- 9. Test get_file_icon for directories, extensions, and ASCII fallback
+            local prev_box = BOX
+            BOX = BOX_UNICODE
+            local dir_icon = get_file_icon("bin", true)
+            assert(dir_icon:find("📁"), "Directory icon should contain folder emoji")
+            local dot_dir_icon = get_file_icon("..", true)
+            assert(dot_dir_icon:find("📁"), "Parent dir icon should contain folder emoji")
+            assert(get_file_icon("test.lua", false):find("🌙"), "Lua icon should be crescent moon")
+            assert(get_file_icon("test.py", false):find("🐍"), "Python icon should be snake")
+            assert(get_file_icon("test.sh", false):find("⚡"), "Shell icon should be lightning")
+            assert(get_file_icon("test.md", false):find("📝"), "Markdown icon should be memo")
+            assert(get_file_icon("test.json", false):find("⚙"), "Config icon should be gear")
+            assert(get_file_icon("test.zip", false):find("📦"), "Archive icon should be package")
+            assert(get_file_icon("test.png", false):find("🖼"), "Image icon should be frame")
+            assert(get_file_icon("test.c", false):find("📜"), "C source icon should be scroll")
+            assert(get_file_icon("test.exe", false):find("🔧"), "Exe icon should be wrench")
+            assert(get_file_icon("unknown.xyz", false):find("📄"), "Default icon should be document")
+
+            BOX = BOX_ASCII
+            assert(get_file_icon("bin", true):find("%[DIR%]"), "ASCII dir icon should contain [DIR]")
+            assert(get_file_icon("test.lua", false) == "      ", "ASCII file icon should be 6 spaces")
+            BOX = prev_box
+            print("  [PASS] File and folder icons classification tests")
+
             print(C.bold .. C.bright_green .. "[ALL TESTS PASSED SUCCESSFULLY]" .. C.reset)
             return
         elseif arg == "--snapshot" then
