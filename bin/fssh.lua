@@ -550,9 +550,9 @@ local function run_fzf_interactive(hosts)
     local preview_cmd = string.format("luajit %q -p {1}", script_path)
 
     local fzf_cmd = string.format(
-        '%s | fzf --prompt="Select SSH Host > " --delimiter="\t" --with-nth=1,2,3,4 ' ..
+        '%s | fzf --prompt="[LuaJIT] SSH Host > " --delimiter="\t" --with-nth=1,2,3,4 ' ..
         '--layout=reverse --height=50%% --border --preview=%q --preview-window=right:55%%:wrap ' ..
-        '--header="ENTER: Connect | ESC: Cancel"',
+        '--header="⚡ LuaJIT FFI | ENTER: Connect | ESC: Cancel"',
         list_cmd, preview_cmd
     )
 
@@ -651,7 +651,7 @@ local function connect(selected_host, override_user, extra_args, dry_run, use_pu
         return
     end
 
-    print(string.format("[fssh] Connecting to %s (%s)...", name, hostname))
+    print(string.format("[fssh] ⚡ [%s %s FFI] Connecting to %s (%s)...", (jit and jit.version or "LuaJIT"), ffi.os, name, hostname))
 
     if not IS_WINDOWS then
         local c_args = ffi.new("const char*[?]", #cmd + 1)

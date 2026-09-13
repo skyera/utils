@@ -420,7 +420,8 @@ Options:
     end
 
     io.write(string.format("%s========================================================%s\n", C.b_cyan, C.reset))
-    io.write(string.format("%s  CLEAN C DRIVE - High-Speed LuaJIT FFI Cleaner%s\n", C.b_yellow, C.reset))
+    io.write(string.format("%s  CLEAN C DRIVE - High-Speed Drive Cleaner%s\n", C.b_yellow, C.reset))
+    io.write(string.format("%s  ⚡ Engine: %s (%s FFI)%s\n", C.green, (jit and jit.version or "LuaJIT"), ffi.os, C.reset))
     io.write(string.format("%s========================================================%s\n", C.b_cyan, C.reset))
 
     -- 1. Check Administrator Rights
