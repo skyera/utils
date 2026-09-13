@@ -2,9 +2,6 @@
 # Dynamic theme switcher for Linux / macOS / WSL
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if command -v luajit >/dev/null 2>&1 && [ -f "$SCRIPT_DIR/ftheme.lua" ]; then
-    exec luajit "$SCRIPT_DIR/ftheme.lua" "$@"
-fi
 QUERY=""
 
 show_help() {
