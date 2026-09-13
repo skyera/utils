@@ -1442,10 +1442,67 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
     return lines, "None"
 end
 
+-- Detect terminal native graphics protocol support
+function ImageRenderer.detect_graphics_protocol()
+    local term_prog = os.getenv("TERM_PROGRAM") or ""
+    local term = os.getenv("TERM") or ""
+    local wez_pane = os.getenv("WEZTERM_PANE")
+    local kitty_pid = os.getenv("KITTY_PID") or os.getenv("KITTY_WINDOW_ID")
+
+    if term_prog == "WezTerm" or wez_pane ~= nil or term_prog:find("iTerm") then
+        return "iterm2"
+    elseif term_prog == "ghostty" or kitty_pid ~= nil or term:find("kitty") then
+        return "kitty"
+    end
+    return "iterm2" -- default fallback for graphics
+end
+
 -- Generate WezTerm / iTerm2 OSC 1337 inline graphics escape code
 function ImageRenderer.render_osc1337(data, w, h)
     local b64 = base64_encode(data)
     return string.format("\27]1337;File=inline=1;width=%dcell;height=%dcell;preserveAspectRatio=1:%s\007", w, h, b64)
+end
+
+-- Generate Kitty Graphics Protocol chunked escape code
+function ImageRenderer.render_kitty(data, w, h)
+    local b64 = base64_encode(data)
+    local CHUNK_SIZE = 4096
+    local len = #b64
+    local num_chunks = math.ceil(len / CHUNK_SIZE)
+    if num_chunks <= 1 then
+        return string.format("\27_Ga=T,f=100,c=%d,r=%d,m=0;%s\27\\", w, h, b64)
+    end
+    local chunks = {}
+    for i = 1, num_chunks do
+        local start_idx = (i - 1) * CHUNK_SIZE + 1
+        local end_idx = math.min(i * CHUNK_SIZE, len)
+        local chunk = b64:sub(start_idx, end_idx)
+        local is_last = (i == num_chunks)
+        local m = is_last and 0 or 1
+        if i == 1 then
+            table.insert(chunks, string.format("\27_Ga=T,f=100,c=%d,r=%d,m=%d;%s\27\\", w, h, m, chunk))
+        else
+            table.insert(chunks, string.format("\27_Gm=%d;%s\27\\", m, chunk))
+        end
+    end
+    return table.concat(chunks)
+end
+
+-- Universal graphics protocol dispatcher
+function ImageRenderer.render_graphics(data, w, h)
+    local proto = ImageRenderer.protocol:lower()
+    if proto == "kitty" then
+        return ImageRenderer.render_kitty(data, w, h), "Kitty"
+    elseif proto == "iterm" or proto == "wezterm" or proto == "osc1337" then
+        return ImageRenderer.render_osc1337(data, w, h), "WezTerm/OSC-1337"
+    else
+        local detected = ImageRenderer.detect_graphics_protocol()
+        if detected == "kitty" then
+            return ImageRenderer.render_kitty(data, w, h), "Kitty"
+        else
+            return ImageRenderer.render_osc1337(data, w, h), "WezTerm/OSC-1337"
+        end
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -2227,11 +2284,16 @@ function App.draw()
                     end
                 end
             else
-                table.insert(preview_lines, string.format("%sFormat:%s %s  │  %sSize:%s %s  │  %sRes:%s %s  │  %sEngine:%s %sOSC-1337%s",
-                    C.bold, C.reset, fmt, C.bold, C.reset, format_size(sel_it.size), C.bold, C.reset, res, C.bold, C.reset, C.bright_magenta, C.reset))
+                local gfx, proto_name = ImageRenderer.render_graphics(data, right_w - 4, content_h - 4)
+                table.insert(preview_lines, string.format("%sFormat:%s %s  │  %sSize:%s %s  │  %sRes:%s %s  │  %sProtocol:%s %s%s%s",
+                    C.bold, C.reset, fmt, C.bold, C.reset, format_size(sel_it.size), C.bold, C.reset, res, C.bold, C.reset, C.bright_magenta, proto_name, C.reset))
                 table.insert(preview_lines, C.gray .. string.rep("─", right_w - 2) .. C.reset)
-                table.insert(preview_lines, C.bright_magenta .. "[OSC 1337 Graphics Protocol Output Mode]" .. C.reset)
-                table.insert(preview_lines, ImageRenderer.render_osc1337(data, right_w - 4, content_h - 4))
+                table.insert(preview_lines, C.dim .. string.format("[Hardware Pixel Graphics: %s]", proto_name) .. C.reset)
+                App.pending_graphic = {
+                    x = left_w + 3,
+                    y = 6,
+                    data = gfx,
+                }
             end
         else
             -- Text file preview
@@ -2313,6 +2375,11 @@ function App.draw()
     ))
 
     io.write(table.concat(buf))
+    if App.pending_graphic then
+        local g = App.pending_graphic
+        io.write(string.format("\27[%d;%dH%s", g.y, g.x, g.data))
+        App.pending_graphic = nil
+    end
     io.flush()
 
     if App.modal == "help" then
@@ -2754,7 +2821,22 @@ local function run_tests()
     ImageRenderer.preferred_engine = orig_engine
     print(C.bright_green .. "  [PASS] ImageRenderer explicit engine selection & cycle transitions" .. C.reset)
 
-    print(C.bold .. C.bright_green .. "\nALL 15 TESTS PASSED SUCCESSFULLY!" .. C.reset)
+    -- 16. Real Pixel Graphics Protocol Escape Sequences (WezTerm / iTerm2 OSC 1337 & Kitty)
+    local osc_code = ImageRenderer.render_osc1337(DEMO_PNG_BYTES, 30, 15)
+    assert(osc_code:find("^\27%]1337;File=inline=1;width=30cell;height=15cell;preserveAspectRatio=1:"), "OSC 1337 format must match specification")
+    assert(osc_code:find("\007$"), "OSC 1337 format must terminate with BEL \\007")
+
+    local kitty_code = ImageRenderer.render_kitty(DEMO_PNG_BYTES, 30, 15)
+    assert(kitty_code:find("^\27_Ga=T,f=100,c=30,r=15"), "Kitty protocol format must match specification")
+    assert(kitty_code:find("\27\\$"), "Kitty protocol must terminate with ST \\27\\\\")
+
+    local detected_proto = ImageRenderer.detect_graphics_protocol()
+    assert(detected_proto == "iterm2" or detected_proto == "kitty", "detect_graphics_protocol must detect terminal protocol")
+    local gfx_out, gfx_name = ImageRenderer.render_graphics(DEMO_PNG_BYTES, 30, 15)
+    assert(gfx_out and #gfx_out > 0 and gfx_name ~= nil, "render_graphics must produce valid output")
+    print(C.bright_green .. string.format("  [PASS] Real Pixel Graphics Protocols: WezTerm/iTerm2 OSC 1337 & Kitty (Active: %s)", gfx_name) .. C.reset)
+
+    print(C.bold .. C.bright_green .. "\nALL 16 TESTS PASSED SUCCESSFULLY!" .. C.reset)
     return true
 end
 
@@ -2845,10 +2927,19 @@ local function main(args)
             if is_img then
                 local hdr = ImageParser.parse_header(content)
                 local res = hdr and string.format("%d×%d px", hdr.width, hdr.height) or "Unknown"
-                local blocks, engine = ImageRenderer.render_half_blocks(content, pw, ph - 2)
-                print(string.format("%s[Image Preview: %s · %s · %s · Engine: %s%s%s]%s",
-                    C.bold .. C.bright_magenta, path, res, format_size(#content), C.bright_cyan, engine or "None", C.bright_magenta, C.reset))
-                for _, l in ipairs(blocks) do print(l) end
+                local proto = (ImageRenderer.protocol or "blocks"):lower()
+                if proto == "graphics" or proto == "iterm" or proto == "wezterm" or proto == "kitty" then
+                    local gfx, proto_name = ImageRenderer.render_graphics(content, pw, ph - 2)
+                    print(string.format("%s[Image Preview: %s · %s · %s · Protocol: %s%s%s]%s",
+                        C.bold .. C.bright_magenta, path, res, format_size(#content), C.bright_cyan, proto_name, C.bright_magenta, C.reset))
+                    io.write(gfx .. "\n")
+                    io.flush()
+                else
+                    local blocks, engine = ImageRenderer.render_half_blocks(content, pw, ph - 2)
+                    print(string.format("%s[Image Preview: %s · %s · %s · Engine: %s%s%s]%s",
+                        C.bold .. C.bright_magenta, path, res, format_size(#content), C.bright_cyan, engine or "None", C.bright_magenta, C.reset))
+                    for _, l in ipairs(blocks) do print(l) end
+                end
             else
                 local l_num = 1
                 for l in (content .. "\n"):gmatch("([^\r\n]*)\r?\n") do
