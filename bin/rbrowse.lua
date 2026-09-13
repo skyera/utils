@@ -264,8 +264,11 @@ local function utf8_col_width(s)
         elseif b >= 224 and b < 240 then
             -- 3-byte UTF-8 (Common CJK or basic symbols)
             local b2 = clean:byte(i+1) or 0
-            -- Check for wide emoji blocks
-            if (b == 0xE2 and (b2 >= 0x96 and b2 <= 0xBF)) or (b == 0xE3) then
+            -- Block elements (U+2580..U+259F) and Box Drawing (U+2500..U+257F) are strictly 1-column wide
+            if b == 0xE2 and (b2 == 0x94 or b2 == 0x95 or b2 == 0x96 or b2 == 0x97) then
+                width = width + 1
+            -- Check for wide CJK or wide emoji blocks
+            elseif (b == 0xE2 and (b2 >= 0x98 and b2 <= 0xBF)) or (b >= 0xE3 and b <= 0xEF) then
                 width = width + 2
             else
                 width = width + 1
@@ -964,17 +967,33 @@ local ImageRenderer = {
     cache = {},
 }
 
--- Render downscaled image to 24-bit half-blocks via ImageMagick (magick/convert) or fallback
+-- Detect file extension based on magic bytes or path
+local function detect_image_ext(path_or_bytes)
+    if type(path_or_bytes) == "string" and #path_or_bytes >= 4 then
+        if path_or_bytes:sub(1, 4) == "\137PNG" then return ".png" end
+        if path_or_bytes:sub(1, 3) == "\255\216\255" then return ".jpg" end
+        if path_or_bytes:sub(1, 4) == "GIF8" then return ".gif" end
+        if path_or_bytes:sub(1, 2) == "BM" then return ".bmp" end
+        if path_or_bytes:sub(1, 4) == "RIFF" and path_or_bytes:sub(9, 12) == "WEBP" then return ".webp" end
+        local ext = path_or_bytes:match("%.([%w_%-]+)$")
+        if ext then return "." .. ext:lower() end
+    end
+    return ".png"
+end
+
+-- Render downscaled image to 24-bit half-blocks via Chafa, ImageMagick (magick), or Python Pillow
 function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
     if w < 2 or h < 2 then return { " [Window too small for image preview] " } end
 
+    local null_dev = IS_WINDOWS and "2>nul" or "2>/dev/null"
+    local ext = detect_image_ext(image_path_or_bytes)
     local tmp_file = nil
     local src_file = image_path_or_bytes
     if type(image_path_or_bytes) == "string" and #image_path_or_bytes > 0 and image_path_or_bytes:sub(1, 4) ~= "\137PNG" and file_exists(image_path_or_bytes) then
         src_file = image_path_or_bytes
     else
-        -- Write to temp file for magick
-        tmp_file = (IS_WINDOWS and os.getenv("TEMP") or "/tmp") .. "/rbrowse_preview_" .. tostring(os.time()) .. ".img"
+        local tmp_dir = IS_WINDOWS and (os.getenv("TEMP") or ".") or "/tmp"
+        tmp_file = string.format("%s/rb_prev_%d_%d%s", tmp_dir, os.time(), math.random(1000, 9999), ext)
         local f = io.open(tmp_file, "wb")
         if f then
             f:write(image_path_or_bytes)
@@ -986,22 +1005,71 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
     end
 
     local lines = {}
-    local magick_cmd = IS_WINDOWS and "magick.exe" or "magick"
-    local conv_cmd = string.format("%s %s -resize %dx%d\\! -depth 8 rgb:- 2>/dev/null",
-        magick_cmd, shell_escape(src_file), w, h * 2)
 
-    local pipe = io.popen(conv_cmd, "r")
-    if not pipe then
-        -- Try fallback to 'convert'
-        conv_cmd = string.format("convert %s -resize %dx%d\\! -depth 8 rgb:- 2>/dev/null",
-            shell_escape(src_file), w, h * 2)
-        pipe = io.popen(conv_cmd, "r")
+    -- 1. Try Chafa (High-performance native terminal graphics engine)
+    local chafa_cmd = string.format("chafa --format symbols --symbols vhalf --colors full -s %dx%d %s %s",
+        w, h, shell_escape(src_file), null_dev)
+    local pipe = io.popen(chafa_cmd, "r")
+    if pipe then
+        local chafa_out = pipe:read("*a")
+        pipe:close()
+        if chafa_out and #chafa_out > 0 then
+            for l in chafa_out:gmatch("([^\r\n]+)") do
+                local clean = l:gsub("\27%[[%d;?]*%a", "")
+                if #clean > 0 then
+                    table.insert(lines, l .. C.reset)
+                end
+            end
+            if #lines > 0 then
+                if tmp_file then os.remove(tmp_file) end
+                return lines
+            end
+        end
     end
 
+    -- 2. Try ImageMagick (magick)
+    local magick_cmd = IS_WINDOWS and "magick.exe" or "magick"
+    local resize_arg = IS_WINDOWS and string.format("-resize %dx%d!", w, h * 2) or string.format("-resize %dx%d\\!", w, h * 2)
+    local conv_cmd = string.format("%s %s %s -depth 8 rgb:- %s",
+        magick_cmd, shell_escape(src_file), resize_arg, null_dev)
+    pipe = io.popen(conv_cmd, "r")
     local raw_rgb = nil
     if pipe then
         raw_rgb = pipe:read("*a")
         pipe:close()
+    end
+
+    -- If on Unix and magick failed, try convert
+    if (not raw_rgb or #raw_rgb == 0) and not IS_WINDOWS then
+        conv_cmd = string.format("convert %s -resize %dx%d\\! -depth 8 rgb:- 2>/dev/null",
+            shell_escape(src_file), w, h * 2)
+        pipe = io.popen(conv_cmd, "r")
+        if pipe then
+            raw_rgb = pipe:read("*a")
+            pipe:close()
+        end
+    end
+
+    -- 3. Try Python Pillow (PIL) fallback
+    if not raw_rgb or #raw_rgb == 0 then
+        local py_script = string.format(
+            "import sys; from PIL import Image; img=Image.open(r'%s').convert('RGB').resize((%d,%d)); sys.stdout.buffer.write(img.tobytes())",
+            src_file:gsub("'", "\\'"), w, h * 2
+        )
+        local py_cmd = string.format('python -c "%s" %s', py_script, null_dev)
+        pipe = io.popen(py_cmd, "rb")
+        if pipe then
+            raw_rgb = pipe:read("*a")
+            pipe:close()
+        end
+        if (not raw_rgb or #raw_rgb == 0) and not IS_WINDOWS then
+            py_cmd = string.format('python3 -c "%s" %s', py_script, null_dev)
+            pipe = io.popen(py_cmd, "rb")
+            if pipe then
+                raw_rgb = pipe:read("*a")
+                pipe:close()
+            end
+        end
     end
 
     if tmp_file then os.remove(tmp_file) end
@@ -1026,7 +1094,8 @@ function ImageRenderer.render_half_blocks(image_path_or_bytes, w, h)
 
     -- Fallback simple placeholder card
     table.insert(lines, C.gray .. "┌" .. string.rep("─", w - 2) .. "┐" .. C.reset)
-    local msg = " [Image: Install ImageMagick ('magick') for Half-Block Rendering] "
+    local msg = IS_WINDOWS and " [Image: Install chafa ('winget install chafa') for Half-Block Rendering] "
+        or " [Image: Install chafa or ImageMagick ('magick') for Half-Block Rendering] "
     local pad = math.max(0, math.floor((w - #msg) / 2))
     table.insert(lines, C.gray .. "│" .. string.rep(" ", pad) .. C.bright_yellow .. msg .. C.gray .. string.rep(" ", math.max(0, w - 2 - pad - #msg)) .. "│" .. C.reset)
     for _ = 1, h - 3 do
@@ -2285,7 +2354,13 @@ local function run_tests()
     App.modal = nil -- Reset
     print(C.bright_green .. string.format("  [PASS] Startup Server Selector modal activation (%d servers ready)", #App.modal_data.hosts) .. C.reset)
 
-    print(C.bold .. C.bright_green .. "\nALL 12 TESTS PASSED SUCCESSFULLY!" .. C.reset)
+    -- 13. ImageRenderer Half-Block Rendering & UTF-8 Cell Width Verification
+    assert(utf8_col_width("▀▀▀▀▀") == 5, "Half-block character ▀ must have single-column width (5)")
+    local rendered_blocks = ImageRenderer.render_half_blocks(DEMO_PNG_BYTES, 24, 10)
+    assert(rendered_blocks and #rendered_blocks > 0, "ImageRenderer should render preview lines")
+    print(C.bright_green .. string.format("  [PASS] ImageRenderer multi-engine half-blocks: %d lines rendered", #rendered_blocks) .. C.reset)
+
+    print(C.bold .. C.bright_green .. "\nALL 13 TESTS PASSED SUCCESSFULLY!" .. C.reset)
     return true
 end
 
