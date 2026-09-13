@@ -469,6 +469,27 @@ local function pad_string(s, width, align_right)
     end
 end
 
+local function utf8_col_width(s)
+    local clean = (s or ""):gsub("\27%[[%d;]*%a", "")
+    local len = 0
+    for i = 1, #clean do
+        local b = clean:byte(i)
+        if b < 0x80 or b >= 0xC0 then len = len + 1 end
+    end
+    return len
+end
+
+local function pad_ansi_box(s, width)
+    local w = utf8_col_width(s)
+    if w < width then return s .. string.rep(" ", width - w) else return s end
+end
+
+local function get_banner_lines()
+    local l1 = " " .. C.bold .. C.bright_cyan .. "█▀▀ " .. C.cyan .. "█▀▀ " .. C.bright_blue .. "█▀▀ " .. C.bright_magenta .. "█▀█" .. C.gray .. " ── " .. C.bright_magenta .. "▀█▀ " .. C.magenta .. "█ █ " .. C.bright_cyan .. "▀█▀" .. C.reset .. C.gray .. " │ " .. C.bold .. C.bright_white .. "FAST DUAL-PANE FILE TRANSFER" .. C.reset
+    local l2 = " " .. C.bold .. C.bright_cyan .. "█▀  " .. C.cyan .. "▄██ " .. C.bright_blue .. "█▄▄ " .. C.bright_magenta .. "█▀▀" .. C.gray .. "    " .. C.bright_magenta .. " █  " .. C.magenta .. "▀▄█ " .. C.bright_cyan .. "▄█▄" .. C.reset .. C.gray .. " │ " .. C.bright_yellow .. "v1.0" .. C.gray .. " [SSH • SCP • Rsync Engine]" .. C.reset
+    return l1, l2
+end
+
 local function shell_escape(s)
     if not s:find("[^%w_%-%.%/:]") then
         return s
@@ -981,7 +1002,10 @@ function App.draw()
     local buf = {}
     table.insert(buf, "\27[H") -- move to top-left
 
-    -- 1. Top Header Bar
+    -- 1. Top Header / Banner (Adaptive: 2-line neon banner if h >= 28 and w >= 70, else compact 1-line)
+    local show_banner = (h >= 28 and w >= 70)
+    local top_offset = show_banner and 3 or 2
+
     local host_display = App.host_cfg.is_demo and (C.bright_yellow .. "[DEMO MODE: Simulated Server]" .. C.reset) or
         (C.bright_green .. string.format("[Connected: %s%s:%s]",
             (App.host_cfg.user ~= "" and (App.host_cfg.user .. "@") or ""),
@@ -989,20 +1013,22 @@ function App.draw()
             App.host_cfg.port
         ) .. C.reset)
 
-    local raw_title = string.format(" FSCP-TUI v1.0 | %s ",
-        App.host_cfg.is_demo and "[DEMO MODE: Simulated Server]" or
-        string.format("[Connected: %s%s:%s]",
-            (App.host_cfg.user ~= "" and (App.host_cfg.user .. "@") or ""),
-            (App.host_cfg.hostname or App.host_cfg.name),
-            App.host_cfg.port
-        )
-    )
-    local styled_title = string.format(" %s%sFSCP-TUI v1.0%s | %s ", C.bold, C.bright_cyan, C.reset, host_display)
-    local rem_len = math.max(0, w - #raw_title)
-    table.insert(buf, string.format("\27[1;1H%s%s%s%s\27[K", styled_title, C.cyan, BOX.h:rep(rem_len), C.reset))
+    if show_banner then
+        local l1, l2 = get_banner_lines()
+        local pad1 = math.max(1, w - 62 - utf8_col_width(host_display))
+        table.insert(buf, string.format("\27[1;1H%s%s%s\27[K", l1, string.rep(" ", pad1), host_display))
+
+        local l2_right = C.gray .. "[?] Help  [.] Hidden:" .. (App.show_hidden and "ON" or "OFF") .. "  [q] Quit" .. C.reset
+        local pad2 = math.max(1, w - 65 - utf8_col_width(l2_right))
+        table.insert(buf, string.format("\27[2;1H%s%s%s\27[K", l2, string.rep(" ", pad2), l2_right))
+    else
+        local styled_title = string.format(" %s%s⚡ FSCP-TUI v1.0%s | %s ", C.bold, C.bright_cyan, C.reset, host_display)
+        local rem_len = math.max(0, w - utf8_col_width(styled_title))
+        table.insert(buf, string.format("\27[1;1H%s%s%s%s\27[K", styled_title, C.cyan, BOX.h:rep(rem_len), C.reset))
+    end
 
     -- 2. Pane Geometry
-    local content_h = h - 5
+    local content_h = h - 3 - top_offset
     if content_h < 4 then content_h = 4 end
 
     local half_w = math.floor((w - 3) / 2)
@@ -1024,7 +1050,8 @@ function App.draw()
     if right_sel_n > 0 then right_title_text = right_title_text .. string.format("(%d sel, %s) ", right_sel_n, format_size(right_sel_b)) end
     right_title_text = pad_string(right_title_text, right_w)
 
-    table.insert(buf, string.format("\27[2;1H%s%s%s%s%s%s%s\27[K",
+    table.insert(buf, string.format("\27[%d;1H%s%s%s%s%s%s%s\27[K",
+        top_offset,
         left_accent, BOX.tl, left_title_text:sub(1, half_w), BOX.tt,
         right_accent, right_title_text:sub(1, right_w), BOX.tr .. C.reset
     ))
@@ -1046,7 +1073,7 @@ function App.draw()
     end
 
     for row = 1, content_h do
-        local cur_y = 2 + row
+        local cur_y = top_offset + row
         -- Left Pane Column
         local l_idx = App.left.scroll_top + row - 1
         local l_item = left_items[l_idx]
@@ -1116,7 +1143,7 @@ function App.draw()
     end
 
     -- 4. Pane Bottom Borders
-    local btm_y = content_h + 3
+    local btm_y = top_offset + content_h + 1
     table.insert(buf, string.format("\27[%d;1H%s%s%s%s%s%s\27[K",
         btm_y,
         left_accent, BOX.bl, BOX.h:rep(half_w), BOX.tb,
@@ -1124,14 +1151,14 @@ function App.draw()
     ))
 
     -- 5. Status / Message Line
-    local stat_y = content_h + 4
+    local stat_y = top_offset + content_h + 2
     table.insert(buf, string.format("\27[%d;1H%s%s%s\27[K",
         stat_y,
         App.status_color, pad_string(" " .. App.status_msg, w), C.reset
     ))
 
     -- 6. Keyboard Guide Footer Bar
-    local foot_y = content_h + 5
+    local foot_y = top_offset + content_h + 3
     local keyguide = string.format(" [Tab] Switch  [Space] Select  [.] Hidden:%s  [u] Upload ->  [d] <- Download  [r] Refresh  [?] Help  [q] Quit ",
         App.show_hidden and "ON" or "OFF"
     )
@@ -1229,7 +1256,7 @@ end
 function App.draw_host_picker_modal()
     local w, h = App.term_w, App.term_h
     local mw = math.min(86, w - 4)
-    local mh = math.min(18, h - 4)
+    local mh = math.min(20, h - 2)
     local mx = math.floor((w - mw) / 2)
     local my = math.floor((h - mh) / 2)
 
@@ -1238,8 +1265,11 @@ function App.draw_host_picker_modal()
     local cur = d.cursor or 1
     local filter_str = d.filter or ""
 
+    local l1, l2 = get_banner_lines()
     local lines = {
         BOX.tl .. pad_string(" Connect to Remote Server ", mw - 2) .. BOX.tr,
+        BOX.v .. pad_ansi_box(l1, mw - 2) .. BOX.v,
+        BOX.v .. pad_ansi_box(l2, mw - 2) .. BOX.v,
         BOX.v .. pad_string(" [↑/↓ or j/k] Navigate   [Enter or l] Connect   [Type] Filter   [Esc] Demo Mode", mw - 2) .. BOX.v,
     }
 
@@ -1251,7 +1281,7 @@ function App.draw_host_picker_modal()
     table.insert(lines, BOX.v .. pad_string(string.format("   %-18s %-26s %-10s %-6s %s", "NAME", "HOST / IP", "USER", "PORT", "SOURCE"), mw - 2) .. BOX.v)
     table.insert(lines, BOX.v .. BOX.h:rep(mw - 2) .. BOX.v)
 
-    local view_h = mh - (filter_str ~= "" and 7 or 6)
+    local view_h = mh - (filter_str ~= "" and 9 or 8)
     if view_h < 4 then view_h = 4 end
     local scroll = math.max(1, cur - view_h + 1)
 
@@ -1687,6 +1717,14 @@ local function main(...)
             assert(#filtered_on >= #filtered_off, "Show hidden ON should have >= items than OFF")
             App.show_hidden = false
             print("  [PASS] Hidden items filtering tests")
+
+            -- 8. Test banner and UTF-8 width alignment
+            local l1, l2 = get_banner_lines()
+            assert(utf8_col_width(l1) == 62, "Banner line 1 visible width should be 62, got " .. utf8_col_width(l1))
+            assert(utf8_col_width(l2) == 65, "Banner line 2 visible width should be 65, got " .. utf8_col_width(l2))
+            local boxed1 = pad_ansi_box(l1, 80)
+            assert(utf8_col_width(boxed1) == 80, "Padded banner line 1 should have width 80")
+            print("  [PASS] Banner UTF-8 column width and alignment tests")
             print(C.bold .. C.bright_green .. "[ALL TESTS PASSED SUCCESSFULLY]" .. C.reset)
             return
         elseif arg == "--snapshot" then
