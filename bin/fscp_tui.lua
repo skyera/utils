@@ -872,6 +872,7 @@ local App = {
     term_h = 30,
     status_msg = "Ready. Press [?] for help, [Tab] to switch panes.",
     status_color = C.gray,
+    show_hidden = false, -- Default: hide hidden files/folders (.xxx)
 
     -- Host config
     host_cfg = {
@@ -944,14 +945,14 @@ function App.refresh_right(force_network)
 end
 
 function App.get_filtered_items(pane)
-    if not pane.filter or pane.filter == "" then
-        return pane.items
-    end
     local filtered = {}
-    local query = pane.filter:lower()
+    local query = (pane.filter and pane.filter ~= "") and pane.filter:lower() or nil
     for _, it in ipairs(pane.items) do
-        if it.name == ".." or it.name:lower():find(query, 1, true) then
-            table.insert(filtered, it)
+        local is_hidden = (it.name:sub(1, 1) == "." and it.name ~= "..")
+        if App.show_hidden or not is_hidden then
+            if not query or it.name == ".." or it.name:lower():find(query, 1, true) then
+                table.insert(filtered, it)
+            end
         end
     end
     return filtered
@@ -1131,7 +1132,9 @@ function App.draw()
 
     -- 6. Keyboard Guide Footer Bar
     local foot_y = content_h + 5
-    local keyguide = " [Tab] Switch  [Space] Select  [a] All  [u] Upload ->  [d] <- Download  [r] Refresh  [?] Help  [q] Quit "
+    local keyguide = string.format(" [Tab] Switch  [Space] Select  [.] Hidden:%s  [u] Upload ->  [d] <- Download  [r] Refresh  [?] Help  [q] Quit ",
+        App.show_hidden and "ON" or "OFF"
+    )
     table.insert(buf, string.format("\27[%d;1H%s%s%s%s\27[K",
         foot_y,
         C.bg_gray, C.bold .. C.bright_white, pad_string(keyguide, w), C.reset
@@ -1199,6 +1202,7 @@ function App.draw_help_modal()
         BOX.v .. pad_string(" Enter / l / Right     Enter selected directory", mw - 2) .. BOX.v,
         BOX.v .. pad_string(" Backspace / h / Left  Go up to parent directory (..)", mw - 2) .. BOX.v,
         BOX.v .. pad_string(" Space                 Toggle multi-select on current item", mw - 2) .. BOX.v,
+        BOX.v .. pad_string(" .                     Toggle hidden files/folders (default: OFF)", mw - 2) .. BOX.v,
         BOX.v .. pad_string(" a / A                 Select ALL / Deselect ALL items", mw - 2) .. BOX.v,
         BOX.v .. pad_string(" u / F5                Upload selected items (Local -> Remote)", mw - 2) .. BOX.v,
         BOX.v .. pad_string(" d / F5                Download selected items (Remote -> Local)", mw - 2) .. BOX.v,
@@ -1584,6 +1588,14 @@ function App.handle_input(key)
         cur_pane.cursor = 1
         cur_pane.scroll_top = 1
         if App.active_pane == "left" then App.refresh_left() else App.refresh_right(false) end
+    elseif key == "." then
+        App.show_hidden = not App.show_hidden
+        App.status_msg = App.show_hidden and "Showing hidden files and folders." or "Hidden files/folders are now hidden."
+        App.status_color = App.show_hidden and C.bright_yellow or C.gray
+        local left_items = App.get_filtered_items(App.left)
+        if App.left.cursor > #left_items then App.left.cursor = math.max(1, #left_items) end
+        local right_items = App.get_filtered_items(App.right)
+        if App.right.cursor > #right_items then App.right.cursor = math.max(1, #right_items) end
     elseif key == "H" then
         local hosts = aggregate_ssh_hosts()
         table.insert(hosts, 1, {
@@ -1663,6 +1675,18 @@ local function main(...)
             local count, bytes = App.get_selected_count(App.left)
             assert(count == 1, "Selection count should be 1")
             print(string.format("  [PASS] Selection engine: 1 item (%s: %s)", target_item.name, format_size(bytes)))
+
+            -- 7. Test hidden items filtering
+            App.show_hidden = false
+            local filtered_off = App.get_filtered_items(App.left)
+            for _, it in ipairs(filtered_off) do
+                assert(it.name == ".." or it.name:sub(1, 1) ~= ".", "Hidden item should not appear when show_hidden is false: " .. it.name)
+            end
+            App.show_hidden = true
+            local filtered_on = App.get_filtered_items(App.left)
+            assert(#filtered_on >= #filtered_off, "Show hidden ON should have >= items than OFF")
+            App.show_hidden = false
+            print("  [PASS] Hidden items filtering tests")
             print(C.bold .. C.bright_green .. "[ALL TESTS PASSED SUCCESSFULLY]" .. C.reset)
             return
         elseif arg == "--snapshot" then
