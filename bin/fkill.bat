@@ -1,6 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: 0. Delegate to fast LuaJIT/FFI engine if luajit is available
+where luajit >nul 2>nul
+if %errorlevel% equ 0 if exist "%~dp0fkill.lua" (
+    luajit "%~dp0fkill.lua" %*
+    exit /b !errorlevel!
+)
+
 :: 1. Verify tasklist and taskkill are available
 where tasklist >nul 2>nul || (echo Error: tasklist is not available.& goto :end)
 where taskkill >nul 2>nul || (echo Error: taskkill is not available.& goto :end)
