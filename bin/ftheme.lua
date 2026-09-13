@@ -92,6 +92,20 @@ local function get_home_dir()
     return os.getenv("HOME") or os.getenv("USERPROFILE") or "."
 end
 
+local function detect_terminal()
+    if os.getenv("WT_SESSION") then return "Windows Terminal" end
+    local tp = os.getenv("TERM_PROGRAM") or ""
+    local term = os.getenv("TERM") or ""
+    if os.getenv("WEZTERM_PANE") or tp:lower():find("wezterm") then return "WezTerm" end
+    if os.getenv("ALACRITTY_LOG") or os.getenv("ALACRITTY_SOCKET") or term:lower():find("alacritty") or tp:lower():find("alacritty") then return "Alacritty" end
+    if os.getenv("KITTY_WINDOW_ID") or term:lower():find("kitty") or tp:lower():find("kitty") then return "Kitty" end
+    if os.getenv("MINTTY_SHORTCUT") or tp:lower():find("mintty") then return "Mintty" end
+    if os.getenv("TMUX") or tp:lower():find("tmux") then return "tmux" end
+    if tp ~= "" then return tp end
+    if term ~= "" and term ~= "dumb" then return term end
+    return IS_WINDOWS and "Windows Console" or "Standard Terminal"
+end
+
 local function trim(s)
     return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
@@ -444,9 +458,12 @@ end
 local function render_preview(theme_key, theme)
     local border = string.rep("─", 54)
     local reset = "\27[0m"
+    local term_name = detect_terminal()
 
     io.write(string.format("%s┌%s┐%s\n", C.b_cyan, border, reset))
     io.write(string.format("%s│ %s%-52s%s │%s\n", C.b_cyan, C.b_yellow, string.format("THEME PREVIEW: %s [⚡ LuaJIT FFI]", theme.name), C.b_cyan, reset))
+    io.write(string.format("%s├%s┤%s\n", C.b_cyan, border, reset))
+    io.write(string.format("%s│ %sTerminal: %s%-42s%s │%s\n", C.b_cyan, C.dim, C.b_white, term_name, C.b_cyan, reset))
     io.write(string.format("%s├%s┤%s\n", C.b_cyan, border, reset))
 
     -- Color Swatches: Standard (0-7)
@@ -497,14 +514,15 @@ local function interactive_fzf(themes)
         script_path = pwd .. "/" .. script_path
     end
 
+    local term_name = detect_terminal()
     local preview_cmd = string.format("luajit %q -p {1}", script_path)
     local list_cmd    = string.format("luajit %q --list", script_path)
 
     local fzf_cmd = string.format(
         '%s | fzf --prompt="[LuaJIT] Select Theme > " ' ..
         '--layout=reverse --height=65%% --border --preview=%q --preview-window=right:55%%:wrap ' ..
-        '--header="⚡ LuaJIT FFI | ENTER: Apply Theme | ESC: Cancel"',
-        list_cmd, preview_cmd
+        '--header="⚡ LuaJIT FFI | Terminal: %s | ENTER: Apply Theme | ESC: Cancel"',
+        list_cmd, preview_cmd, term_name
     )
 
     local pipe = io.popen(fzf_cmd, "r")
@@ -525,7 +543,7 @@ local function interactive_fzf(themes)
             -- 2. Apply persistent config
             apply_alacritty_persistent(t, key)
             apply_wezterm_persistent(t, key)
-            io.write(string.format("\n%s✔ Successfully switched terminal theme to '%s'!%s\n", C.b_green, t.name, C.reset))
+            io.write(string.format("\n%s✔ Successfully switched theme to '%s' (Terminal: %s)!%s\n", C.b_green, t.name, term_name, C.reset))
         end
     end
 end
@@ -616,9 +634,10 @@ Options:
     end
 
     -- Apply based on mode
+    local term_name = detect_terminal()
     if window_only then
         apply_live_osc(t)
-        io.write(string.format("%s✔ Live window theme switched to '%s' (OSC sequences applied).%s\n", C.b_green, t.name, C.reset))
+        io.write(string.format("%s✔ Live window theme switched to '%s' (Terminal: %s, OSC sequences applied).%s\n", C.b_green, t.name, term_name, C.reset))
         return
     end
 
@@ -635,7 +654,7 @@ Options:
         persistent_applied = ok1 or ok2
     end
 
-    io.write(string.format("%s✔ Theme switched to '%s'!%s\n", C.b_green, t.name, C.reset))
+    io.write(string.format("%s✔ Theme switched to '%s' (Terminal: %s)!%s\n", C.b_green, t.name, term_name, C.reset))
 end
 
 main({...})
