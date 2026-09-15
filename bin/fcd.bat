@@ -15,15 +15,33 @@ set "BASE_DIR=."
 set "QUERY="
 
 if not "%~1"=="" (
-    if exist "%~1\*" (
+    set "IS_DIR=0"
+    pushd "%~1" 2>nul && (
+        popd
+        set "IS_DIR=1"
+    )
+    if "!IS_DIR!"=="1" (
         set "BASE_DIR=%~1"
-        for /f "tokens=1* delims= " %%A in ("%*") do (
-            set "QUERY=%%B"
-        )
+        shift
+        goto parse_query
     ) else (
         set "QUERY=%*"
+        goto run_fcd
     )
 )
+goto run_fcd
+
+:parse_query
+if "%~1"=="" goto run_fcd
+if not defined QUERY (
+    set "QUERY=%~1"
+) else (
+    set "QUERY=!QUERY! %~1"
+)
+shift
+goto parse_query
+
+:run_fcd
 
 set "PREVIEW_CMD=cmd /c dir /b \"{}\" 2>nul"
 where eza >nul 2>&1 && set "PREVIEW_CMD=eza --tree --level=2 --icons=always --color=always \"{}\" 2>nul"

@@ -18,13 +18,9 @@ $baseDir = "."
 $query = ""
 
 if ($Path -and (Test-Path -Path $Path -PathType Container)) {
-    if ($Path -match '^[.\\/]|:' -or $Path.Contains('\') -or $Path.Contains('/')) {
-        $baseDir = $Path
-        if ($QueryArgs) {
-            $query = $QueryArgs -join " "
-        }
-    } else {
-        $query = if ($QueryArgs) { "$Path " + ($QueryArgs -join " ") } else { $Path }
+    $baseDir = $Path
+    if ($QueryArgs) {
+        $query = $QueryArgs -join " "
     }
 } elseif ($Path) {
     $query = if ($QueryArgs) { "$Path " + ($QueryArgs -join " ") } else { $Path }

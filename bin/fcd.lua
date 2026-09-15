@@ -92,6 +92,7 @@ if IS_WINDOWS then
         HANDLE GetStdHandle(DWORD nStdHandle);
         BOOL GetConsoleMode(HANDLE hConsoleHandle, DWORD* lpMode);
         BOOL SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode);
+        DWORD GetFileAttributesW(LPCWSTR lpFileName);
         BOOL SetConsoleOutputCP(unsigned int wCodePageID);
         BOOL SetConsoleCP(unsigned int wCodePageID);
     ]]
@@ -177,15 +178,45 @@ local IGNORE_DIRS = {
 -- Directory Scanner (Windows Win32 FFI & Linux POSIX FFI)
 --------------------------------------------------------------------------------
 local FILE_ATTRIBUTE_DIRECTORY = 0x10
+local INVALID_FILE_ATTRIBUTES  = 0xFFFFFFFF
+
+local function is_directory(path)
+    if not path or path == "" then return false end
+    if IS_WINDOWS then
+        local attr = ffi.C.GetFileAttributesW(to_wide(path))
+        if attr ~= INVALID_FILE_ATTRIBUTES and attr ~= ffi.cast("DWORD", -1) then
+            return (bit.band(attr, FILE_ATTRIBUTE_DIRECTORY) ~= 0)
+        end
+        return false
+    else
+        local d = ffi.C.opendir(path)
+        if d ~= nil then
+            ffi.C.closedir(d)
+            return true
+        end
+        return false
+    end
+end
+
+local function join_path_win(dir, file)
+    if dir:sub(-1) == "\\" or dir:sub(-1) == "/" then
+        return dir .. file
+    else
+        return dir .. "\\" .. file
+    end
+end
 
 local function scan_dirs_win32(base_dir, max_depth, include_all)
     local results = {}
-    local sep = "\\"
-    base_dir = base_dir:gsub("[/\\]+$", "")
+    if base_dir:match("^%a:[/\\]*$") then
+        base_dir = base_dir:sub(1, 2):upper() .. "\\"
+    elseif base_dir ~= "/" and base_dir ~= "\\" then
+        base_dir = base_dir:gsub("[/\\]+$", "")
+    end
 
     local function recurse(current_path, current_depth)
         if current_depth > max_depth then return end
-        local pattern = current_path .. "\\*"
+        local pattern = join_path_win(current_path, "*")
         local find_data = ffi.new("WIN32_FIND_DATAW")
         local hFind = ffi.C.FindFirstFileW(to_wide(pattern), find_data)
         if hFind == nil or hFind == ffi.cast("HANDLE", -1) then return end
@@ -203,7 +234,7 @@ local function scan_dirs_win32(base_dir, max_depth, include_all)
                         end
                     end
                     if not skip then
-                        local child_path = current_path .. sep .. name
+                        local child_path = join_path_win(current_path, name)
                         table.insert(results, child_path)
                         recurse(child_path, current_depth + 1)
                     end
@@ -266,7 +297,7 @@ local function get_dir_contents_win32(dir_path)
     local files = {}
     local total_size = 0
 
-    local pattern = dir_path:gsub("[/\\]+$", "") .. "\\*"
+    local pattern = join_path_win(dir_path, "*")
     local find_data = ffi.new("WIN32_FIND_DATAW")
     local hFind = ffi.C.FindFirstFileW(to_wide(pattern), find_data)
     if hFind ~= nil and hFind ~= ffi.cast("HANDLE", -1) then
@@ -396,9 +427,13 @@ local function interactive_fzf(base_dir, max_depth, include_all, query)
         script_path = pwd .. "/" .. script_path
     end
 
-    local preview_cmd = string.format("luajit %q --preview {}", script_path)
-    local list_cmd    = string.format("luajit %q --list -d %d %s %q",
-        script_path, max_depth, include_all and "-a" or "", base_dir)
+    local norm_script = IS_WINDOWS and script_path:gsub("\\", "/") or script_path
+    local norm_base   = IS_WINDOWS and base_dir:gsub("\\", "/") or base_dir
+
+    local preview_cmd = string.format("luajit \"%s\" --preview {}", norm_script)
+    local all_flag    = include_all and "-a " or ""
+    local list_cmd    = string.format("luajit \"%s\" --list -d %d %s\"%s\"",
+        norm_script, max_depth, all_flag, norm_base)
 
     local query_flag = (query and query ~= "") and string.format("--query=%q ", query) or ""
 
@@ -463,15 +498,7 @@ Options:
             max_depth = tonumber(args[i]) or 6
         elseif not a:match("^-") then
             -- Check if argument is an existing directory
-            local is_exist = false
-            if IS_WINDOWS then
-                is_exist = (os.execute(string.format('if exist "%s\\*" exit 0 else exit 1', a)) == 0)
-            else
-                local d = ffi.C.opendir(a)
-                if d ~= nil then ffi.C.closedir(d) is_exist = true end
-            end
-
-            if is_exist and base_dir == "." then
+            if base_dir == "." and is_directory(a) then
                 base_dir = a
             else
                 query = query and (query .. " " .. a) or a
