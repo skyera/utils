@@ -320,24 +320,16 @@ return {
     event = { "BufReadPre", "BufNewFile" },
     config = function() require("cscope_maps").setup({ prefix = "<C-\\>", skip_input_prompt = true }) end,
   },
-  {
-    "tpope/vim-surround",
-    event = { "BufReadPre", "BufNewFile" },
-  },
-  {
-    "tpope/vim-commentary",
-    event = { "BufReadPre", "BufNewFile" },
-  },
-  {
-    "tpope/vim-unimpaired",
-    event = { "BufReadPre", "BufNewFile" },
-  },
+  "tpope/vim-surround",
+  "tpope/vim-commentary",
+  "tpope/vim-unimpaired",
   {
     "tpope/vim-fugitive",
     cmd = { "G", "Git", "Gdiffsplit", "Gvdiffsplit", "Gedit", "Gread", "Gwrite", "Ggrep", "Glgrep", "Gclog" },
   },
   {
     "lewis6991/gitsigns.nvim",
+    cmd = { "Gitsigns" },
     event = { "BufReadPre", "BufNewFile" },
     opts = {
       signs = {
@@ -418,6 +410,7 @@ return {
   -- LSP & Autocomplete (C/C++, Python, Bash, Lua)
   {
     "folke/lazydev.nvim",
+    cmd = { "LazyDev" },
     ft = "lua",
     opts = {
       library = {
@@ -443,6 +436,7 @@ return {
   },
   {
     "neovim/nvim-lspconfig",
+    cmd = { "LspInfo", "LspLog", "LspStart", "LspRestart", "LspStop" },
     event = { "BufReadPre", "BufNewFile" },
     dependencies = {
       "williamboman/mason.nvim",
