@@ -1065,6 +1065,7 @@ function TUI.log(msg)
     if TUI.log_auto_scroll then
         TUI.log_scroll = math.max(0, #TUI.logs - 6)
     end
+    TUI.log_updated = true
 end
 
 function TUI.get_active_extensions()
@@ -1186,21 +1187,24 @@ function TUI.start_pipeline()
 end
 
 function TUI.poll_workers()
-    if not TUI.pipeline_running or not TUI.workers.cscope then return end
+    if not TUI.pipeline_running or not TUI.workers.cscope then return false end
 
     local cs_done, cs_exit = ProcessRunner.poll(TUI.workers.cscope)
     local ct_done, ct_exit = ProcessRunner.poll(TUI.workers.ctags)
+    local state_changed = false
 
     if cs_done and TUI.steps.cscope.status == "RUNNING" then
         TUI.steps.cscope.status = (cs_exit == 0) and "DONE" or "ERROR"
         TUI.steps.cscope.elapsed = TUI.workers.cscope.elapsed or 0
         TUI.log(string.format("[cscope] Completed in %.3fs (code %d).", TUI.steps.cscope.elapsed, cs_exit or 0))
+        state_changed = true
     end
 
     if ct_done and TUI.steps.ctags.status == "RUNNING" then
         TUI.steps.ctags.status = (ct_exit == 0) and "DONE" or "ERROR"
         TUI.steps.ctags.elapsed = TUI.workers.ctags.elapsed or 0
         TUI.log(string.format("[ctags] Completed in %.3fs (code %d).", TUI.steps.ctags.elapsed, ct_exit or 0))
+        state_changed = true
     end
 
     if cs_done and ct_done then
@@ -1208,7 +1212,9 @@ function TUI.poll_workers()
         TUI.total_build_time = get_time_sec() - TUI.pipeline_start_time
         TUI.status = "DONE"
         TUI.log(string.format("[DONE] Tri-Engine indexing complete in %.3fs!", TUI.total_build_time))
+        state_changed = true
     end
+    return state_changed
 end
 
 --------------------------------------------------------------------------------
@@ -1409,7 +1415,7 @@ function TUI.render_modal(cols, rows, buf)
                 mwrite(i, C.b_yellow .. BOX.v .. " " .. pad_right(line, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
             end
         end
-        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" [Space] Toggle  [a] All  [n] None  [Enter/Esc] Close", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
+        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" [Space] Toggle  [a] All  [n] None  [e/Enter/Esc] Close", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
 
     elseif TUI.modal == "excludes" then
         mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Manage Excluded Directories " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 33)) .. BOX.tr .. C.reset)
@@ -1424,7 +1430,7 @@ function TUI.render_modal(cols, rows, buf)
                 mwrite(i, C.b_yellow .. BOX.v .. " " .. pad_right(line, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
             end
         end
-        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" [Space] Toggle  [Enter/Esc] Close", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
+        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" [Space] Toggle  [x/Enter/Esc] Close", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
 
     elseif TUI.modal == "verify" then
         mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Quick Index Verification Browser " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 37)) .. BOX.tr .. C.reset)
@@ -1438,7 +1444,7 @@ function TUI.render_modal(cols, rows, buf)
                 mwrite(i, C.b_yellow .. BOX.v .. " " .. pad_right(line, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
             end
         end
-        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(string.format(" Showing %d indexed files  [Esc] Close", #TUI.verify_items), mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
+        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(string.format(" Showing %d indexed files  [PgUp/PgDn]  [v/Enter/Esc] Close", #TUI.verify_items), mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
 
     elseif TUI.modal == "help" then
         mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Keyboard Shortcuts & Help " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 30)) .. BOX.tr .. C.reset)
@@ -1459,7 +1465,7 @@ function TUI.render_modal(cols, rows, buf)
                 mwrite(i, C.b_yellow .. BOX.v .. " " .. C.white .. pad_right(hl, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
             end
         end
-        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" Press [Esc] or [?] to close help", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
+        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" Press [Esc], [Enter], or [?] to close help", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
     end
 end
 
@@ -1473,15 +1479,59 @@ function TUI.run()
     TUI.start_pipeline()
 
     local running = true
+    local needs_render = true
+    local last_tick = 0
+    local last_cols, last_rows = 0, 0
+
     while running do
-        TUI.poll_workers()
-        TUI.render()
+        local cols, rows = Term.get_size()
+        if cols ~= last_cols or rows ~= last_rows then
+            last_cols, last_rows = cols, rows
+            needs_render = true
+        end
+
+        local worker_changed = TUI.poll_workers()
+        if worker_changed then
+            needs_render = true
+        end
+
+        if TUI.pipeline_running then
+            local now = get_time_sec()
+            if now - last_tick >= 0.1 then
+                last_tick = now
+                needs_render = true
+            end
+        end
+
+        if TUI.log_updated then
+            needs_render = true
+            TUI.log_updated = false
+        end
+
+        if needs_render then
+            TUI.render()
+            needs_render = false
+        end
 
         local key = Term.read_key()
         if key then
+            needs_render = true
             if TUI.modal then
-                if key == "esc" or key == "enter" or (TUI.modal == "help" and key == "?") then
+                if key == "esc" or key == "enter"
+                    or (TUI.modal == "help" and key == "?")
+                    or (TUI.modal == "exts" and key == "e")
+                    or (TUI.modal == "excludes" and key == "x")
+                    or (TUI.modal == "verify" and key == "v") then
                     TUI.modal = nil
+                elseif key == "pageup" then
+                    local step = 8
+                    TUI.modal_selection = math.max(1, TUI.modal_selection - step)
+                    TUI.modal_scroll = math.max(0, TUI.modal_scroll - step)
+                elseif key == "pagedown" then
+                    local max_items = (TUI.modal == "exts" and #TUI.extensions) or (TUI.modal == "excludes" and #TUI.excluded_dirs) or #TUI.verify_items
+                    local step = 8
+                    TUI.modal_selection = math.min(max_items, TUI.modal_selection + step)
+                    TUI.modal_scroll = math.min(math.max(0, max_items - 12), TUI.modal_scroll + step)
                 elseif key == "up" or key == "k" then
                     if TUI.modal_selection > 1 then
                         TUI.modal_selection = TUI.modal_selection - 1
