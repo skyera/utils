@@ -316,6 +316,7 @@ return {
   -- Coding
   {
     "dhananjaylatkar/cscope_maps.nvim",
+    cmd = { "Cscope", "Cs", "Cstag", "CsPrompt", "CsStackView" },
     event = { "BufReadPre", "BufNewFile" },
     config = function() require("cscope_maps").setup({ prefix = "<C-\\>", skip_input_prompt = true }) end,
   },
