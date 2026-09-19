@@ -83,6 +83,8 @@ if IS_WINDOWS then
         void Sleep(DWORD dwMilliseconds);
         int SetEnvironmentVariableA(const char* lpName, const char* lpValue);
         DWORD GetCurrentDirectoryA(DWORD nBufferLength, char* lpBuffer);
+        BOOL SetCurrentDirectoryA(const char* lpPathName);
+        unsigned long long GetTickCount64(void);
 
         // Win32 Directory Traversal
         typedef struct {
@@ -172,6 +174,13 @@ else
         struct winsize {
             unsigned short ws_row, ws_col, ws_xpixel, ws_ypixel;
         };
+        struct timespec {
+            long tv_sec;
+            long tv_nsec;
+        };
+        int clock_gettime(int clk_id, struct timespec *tp);
+        int open(const char *pathname, int flags, ...);
+        int chdir(const char *path);
         int ioctl(int fd, unsigned long request, ...);
         int read(int fd, void *buf, size_t count);
         int isatty(int fd);
@@ -194,6 +203,7 @@ else
         // POSIX Process Management
         int pipe(int pipefd[2]);
         int fork(void);
+        int execlp(const char *file, const char *arg0, ...);
         int execvp(const char *file, char *const argv[]);
         int waitpid(int pid, int *status, int options);
         int kill(int pid, int sig);
@@ -274,7 +284,16 @@ local BOX = {
 --------------------------------------------------------------------------------
 local function get_time_sec()
     -- Fast monotonic/epoch time in seconds
-    return os.clock()
+    if IS_WINDOWS then
+        local ok, val = pcall(function() return tonumber(ffi.C.GetTickCount64()) / 1000.0 end)
+        if ok and val then return val end
+    elseif IS_POSIX then
+        local ts = ffi.new("struct timespec")
+        if ffi.C.clock_gettime(1, ts) == 0 then -- CLOCK_MONOTONIC = 1
+            return tonumber(ts.tv_sec) + tonumber(ts.tv_nsec) / 1e9
+        end
+    end
+    return os.time()
 end
 
 local function file_exists(path)
@@ -481,8 +500,8 @@ function Term.enable_raw()
             local raw = ffi.new("struct termios")
             ffi.copy(raw, Term.orig_termios, ffi.sizeof("struct termios"))
             raw.c_lflag = bit.band(raw.c_lflag, bit.bnot(bit.bor(0x0002, 0x0008, 0x0001))) -- ICANON, ECHO, ISIG
-            raw.c_cc[5] = 0 -- VMIN
-            raw.c_cc[6] = 1 -- VTIME
+            raw.c_cc[5] = 0 -- VTIME = 0 (non-blocking)
+            raw.c_cc[6] = 0 -- VMIN  = 0 (non-blocking)
             ffi.C.tcsetattr(0, 0, raw)
         end
     end
@@ -906,6 +925,27 @@ function ProcessRunner.spawn_async(cmd_str, log_file)
                 exit_code = nil,
             }
         end
+    elseif IS_POSIX then
+        local pid = ffi.C.fork()
+        if pid == 0 then
+            local devnull = ffi.C.open("/dev/null", 2) -- O_RDWR = 2
+            if devnull >= 0 then
+                ffi.C.dup2(devnull, 1)
+                ffi.C.dup2(devnull, 2)
+                ffi.C.close(devnull)
+            end
+            ffi.C.execlp("sh", "sh", "-c", cmd_str, nil)
+            os.exit(127)
+        elseif pid > 0 then
+            return {
+                type = "posix",
+                pid = pid,
+                start_time = get_time_sec(),
+                cmd = cmd_str,
+                done = false,
+                exit_code = nil,
+            }
+        end
     end
     return nil
 end
@@ -923,6 +963,22 @@ function ProcessRunner.poll(proc)
             proc.exit_code = tonumber(code[0])
             proc.elapsed = get_time_sec() - proc.start_time
             return true, proc.exit_code
+        end
+        return false, nil
+    elseif proc.type == "posix" then
+        local status = ffi.new("int[1]")
+        local res = ffi.C.waitpid(proc.pid, status, 1) -- WNOHANG = 1
+        if res == proc.pid then
+            proc.done = true
+            local raw_st = status[0]
+            proc.exit_code = bit.band(bit.rshift(raw_st, 8), 0xff)
+            proc.elapsed = get_time_sec() - proc.start_time
+            return true, proc.exit_code
+        elseif res == -1 then
+            proc.done = true
+            proc.exit_code = -1
+            proc.elapsed = get_time_sec() - proc.start_time
+            return true, -1
         end
         return false, nil
     end
@@ -1101,20 +1157,23 @@ function TUI.start_pipeline()
     TUI.log("[3/4] Spawning cscope engine: cscope -b -q -k -i cscope.files...")
     TUI.log("[4/4] Spawning ctags engine: ctags -L cscope.files...")
 
-    local p_cscope = ProcessRunner.spawn_async("cscope.exe -b -q -k -i " .. CSCOPE_FILE_NAME)
-    local p_ctags  = ProcessRunner.spawn_async("ctags.exe -L " .. CSCOPE_FILE_NAME)
+    local cs_bin = IS_WINDOWS and "cscope.exe" or "cscope"
+    local ct_bin = IS_WINDOWS and "ctags.exe" or "ctags"
+    local p_cscope = ProcessRunner.spawn_async(cs_bin .. " -b -q -k -i " .. CSCOPE_FILE_NAME)
+    local p_ctags  = ProcessRunner.spawn_async(ct_bin .. " -L " .. CSCOPE_FILE_NAME)
 
     if p_cscope and p_ctags then
         TUI.workers = { cscope = p_cscope, ctags = p_ctags }
     else
         -- Fallback synchronous execution
+        TUI.render()
         TUI.log("[INFO] Running cscope and ctags in foreground...")
-        local ok_cs, el_cs = ProcessRunner.run_command_sync("cscope -b -q -k -i " .. CSCOPE_FILE_NAME)
+        local ok_cs, el_cs = ProcessRunner.run_command_sync(cs_bin .. " -b -q -k -i " .. CSCOPE_FILE_NAME)
         TUI.steps.cscope.status = ok_cs and "DONE" or "ERROR"
         TUI.steps.cscope.elapsed = el_cs
         TUI.log(string.format("[cscope] Finished in %.3fs (exit %s)", el_cs, tostring(ok_cs)))
 
-        local ok_ct, el_ct = ProcessRunner.run_command_sync("ctags -L " .. CSCOPE_FILE_NAME)
+        local ok_ct, el_ct = ProcessRunner.run_command_sync(ct_bin .. " -L " .. CSCOPE_FILE_NAME)
         TUI.steps.ctags.status = ok_ct and "DONE" or "ERROR"
         TUI.steps.ctags.elapsed = el_ct
         TUI.log(string.format("[ctags] Finished in %.3fs (exit %s)", el_ct, tostring(ok_ct)))
@@ -1411,6 +1470,7 @@ function TUI.run()
     Term.init()
     Term.enable_raw()
     TUI.init_config()
+    TUI.start_pipeline()
 
     local running = true
     while running do
@@ -1692,6 +1752,12 @@ local function run_test_suite()
     local truncated = truncate_string("very long path that exceeds twenty cols", 20)
     assert_eq(utf8_col_width(truncated), 20, "truncate_string visual column width")
 
+    -- Test 6: Monotonic Clock
+    print("\n[Test 6] High-Resolution Monotonic Clock...")
+    local t1 = get_time_sec()
+    assert_eq(type(t1), "number", "get_time_sec returned number")
+    assert_eq(t1 > 0, true, "get_time_sec is positive")
+
     print(string.format("\nTest Results: %d Passed, %d Failed.", passed, failed))
     return failed == 0 and 0 or 1
 end
@@ -1706,6 +1772,26 @@ local function main(args)
     for _, a in ipairs(args) do
         if a == "--test" then
             os.exit(run_test_suite())
+        end
+    end
+
+    -- Check for target directory argument
+    local target_dir = nil
+    for _, a in ipairs(args) do
+        if not a:find("^-") then
+            target_dir = a
+            break
+        end
+    end
+    if target_dir then
+        if target_dir:sub(1, 2) == "~/" or target_dir == "~" then
+            local home = os.getenv("HOME") or os.getenv("USERPROFILE") or ""
+            target_dir = home .. target_dir:sub(2)
+        end
+        if IS_WINDOWS then
+            ffi.C.SetCurrentDirectoryA(target_dir)
+        else
+            ffi.C.chdir(target_dir)
         end
     end
 
