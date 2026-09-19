@@ -82,6 +82,7 @@ if IS_WINDOWS then
         BOOL CloseHandle(HANDLE hObject);
         void Sleep(DWORD dwMilliseconds);
         int SetEnvironmentVariableA(const char* lpName, const char* lpValue);
+        DWORD GetCurrentDirectoryA(DWORD nBufferLength, char* lpBuffer);
 
         // Win32 Directory Traversal
         typedef struct {
@@ -175,6 +176,7 @@ else
         int read(int fd, void *buf, size_t count);
         int isatty(int fd);
         int usleep(unsigned int usec);
+        char *getcwd(char *buf, size_t size);
 
         // POSIX Directory Traversal
         typedef void DIR;
@@ -297,21 +299,117 @@ local function format_bytes(bytes)
     return string.format("%.2f GB", bytes / (1024 * 1024 * 1024))
 end
 
-local function truncate_str(str, max_len)
-    if not str then return "" end
-    if #str <= max_len then return str end
-    if max_len <= 3 then return str:sub(1, max_len) end
-    return str:sub(1, max_len - 3) .. "..."
+local function clean_path(path)
+    return path:gsub("\\", "/")
+end
+
+local function get_cwd()
+    if IS_WINDOWS then
+        local buf = ffi.new("char[1024]")
+        local len = ffi.C.GetCurrentDirectoryA(1024, buf)
+        if len > 0 then return clean_path(ffi.string(buf, len)) end
+    else
+        local buf = ffi.new("char[1024]")
+        local res = ffi.C.getcwd(buf, 1024)
+        if res ~= nil then return clean_path(ffi.string(res)) end
+    end
+    return clean_path(os.getenv("PWD") or ".")
+end
+
+local function utf8_col_width(s)
+    if not s then return 0 end
+    local clean = s:gsub("\27%[[%?%d;]*[a-zA-Z]", "")
+    local width = 0
+    local i = 1
+    local len = #clean
+    while i <= len do
+        local b = clean:byte(i)
+        if b < 128 then
+            width = width + 1
+            i = i + 1
+        elseif b >= 192 and b < 224 then
+            width = width + 1
+            i = i + 2
+        elseif b >= 224 and b < 240 then
+            local b2 = clean:byte(i + 1) or 0
+            local b3 = clean:byte(i + 2) or 0
+            if b == 0xEF and b2 == 0xB8 and (b3 >= 0x80 and b3 <= 0x8F) then
+                -- Zero-width variation selector (e.g. U+FE0F)
+            elseif b == 0xE2 and (b2 == 0x94 or b2 == 0x95 or b2 == 0x96 or b2 == 0x97) then
+                width = width + 1 -- Box drawing (U+2500..U+257F)
+            elseif (b == 0xE2 and (b2 >= 0x98 and b2 <= 0xBF)) or (b >= 0xE3 and b <= 0xEF) then
+                width = width + 2 -- Wide CJK / symbols
+            else
+                width = width + 1
+            end
+            i = i + 3
+        elseif b >= 240 then
+            width = width + 2 -- 4-byte emojis
+            i = i + 4
+        else
+            width = width + 1
+            i = i + 1
+        end
+    end
+    return width
+end
+
+local function pad_string(s, target_width)
+    s = s or ""
+    local cur_w = utf8_col_width(s)
+    if cur_w < target_width then
+        return s .. string.rep(" ", target_width - cur_w)
+    else
+        return s
+    end
+end
+
+local function truncate_string(s, max_width)
+    if not s then return "" end
+    local cur_w = utf8_col_width(s)
+    if cur_w <= max_width then return s end
+    if max_width <= 1 then return "…" end
+    local clean = s:gsub("\27%[[%?%d;]*[a-zA-Z]", "")
+    local res = ""
+    local w = 0
+    local i = 1
+    local len = #clean
+    while i <= len and w < max_width - 1 do
+        local b = clean:byte(i)
+        local step = 1
+        local ch_w = 1
+        if b < 128 then
+            step = 1; ch_w = 1
+        elseif b >= 192 and b < 224 then
+            step = 2; ch_w = 1
+        elseif b >= 224 and b < 240 then
+            step = 3
+            local b2 = clean:byte(i + 1) or 0
+            local b3 = clean:byte(i + 2) or 0
+            if b == 0xEF and b2 == 0xB8 and (b3 >= 0x80 and b3 <= 0x8F) then
+                ch_w = 0
+            elseif (b == 0xE2 and (b2 >= 0x98 and b2 <= 0xBF)) or (b >= 0xE3 and b <= 0xEF) then
+                ch_w = 2
+            else
+                ch_w = 1
+            end
+        elseif b >= 240 then
+            step = 4; ch_w = 2
+        end
+        if w + ch_w > max_width - 1 then break end
+        res = res .. clean:sub(i, i + step - 1)
+        w = w + ch_w
+        i = i + step
+    end
+    return res .. "…"
 end
 
 local function pad_right(str, len)
-    str = str or ""
-    if #str >= len then return str:sub(1, len) end
-    return str .. string.rep(" ", len - #str)
+    return pad_string(str, len)
 end
 
-local function clean_path(path)
-    return path:gsub("\\", "/")
+local function truncate_str(str, max_len)
+    return truncate_string(str, max_len)
 end
 
 --------------------------------------------------------------------------------
@@ -1061,9 +1159,9 @@ local function make_bar(status, elapsed)
     if status == "DONE" then
         return C.b_green .. "[ DONE ]" .. C.reset .. string.format(" in %6.3fs", elapsed or 0)
     elseif status == "RUNNING" then
-        return C.b_yellow .. "[ RUN  ]" .. C.reset .. " in progress..."
+        return C.b_yellow .. "[ RUN  ]" .. C.reset .. C.yellow .. " in progress..." .. C.reset
     elseif status == "ERROR" then
-        return C.b_red .. "[ FAIL ]" .. C.reset .. " error occurred"
+        return C.b_red .. "[ FAIL ]" .. C.reset .. C.red .. " error occurred" .. C.reset
     else
         return C.dim .. "[ READY]" .. C.reset .. " waiting..."
     end
@@ -1079,80 +1177,107 @@ function TUI.render()
     -- Hide cursor & clear buffer
     write_str("\27[?25l\27[H")
 
+    local inner_w = cols - 2
+    local half_w = math.floor((cols - 3) / 2)
+    local right_w = cols - 3 - half_w
+
+    local function make_full_row(content)
+        return C.b_cyan .. BOX.v .. C.reset .. pad_string(content, inner_w) .. C.b_cyan .. BOX.v .. C.reset .. "\n"
+    end
+
+    local function make_split_row(left_str, right_str)
+        local l = pad_string(left_str, half_w)
+        local r = pad_string(right_str, right_w)
+        return C.b_cyan .. BOX.v .. C.reset .. l .. C.b_cyan .. BOX.v .. C.reset .. r .. C.b_cyan .. BOX.v .. C.reset .. "\n"
+    end
+
     -- 1. Header Box
     local os_label = IS_WINDOWS and "Windows / Win32 FFI" or "Linux / POSIX FFI"
-    local cwd_str = truncate_str(clean_path(os.getenv("PWD") or "."), 35)
-    local title_left = string.format(" DOTAG TUI v1.0 [%s] ", os_label)
+    local raw_cwd = get_cwd()
+    local title_left = string.format(" DOTAG TUI v1.1 [%s] ", os_label)
+    local max_cwd_len = math.max(12, cols - utf8_col_width(title_left) - 14)
+    local cwd_str = truncate_string(raw_cwd, max_cwd_len)
     local title_right = string.format(" CWD: %s ", cwd_str)
-    local fill_len = cols - 2 - #title_left - #title_right
+    local fill_len = cols - 2 - utf8_col_width(title_left) - utf8_col_width(title_right)
     if fill_len < 0 then fill_len = 0 end
 
     write_str(C.b_cyan .. BOX.tl .. C.b_white .. title_left .. C.b_cyan .. string.rep(BOX.h, fill_len) .. C.gray .. title_right .. C.b_cyan .. BOX.tr .. C.reset .. "\n")
 
     -- 2. Crawl & Database Status Pane (Split View)
-    local half_w = math.floor((cols - 3) / 2)
-    local right_w = cols - 3 - half_w
-
-    -- Inspect existing files
     local cscope_stat = get_file_stats("cscope.out")
     local tags_stat   = get_file_stats("tags")
     local fnames_stat = get_file_stats("filenametags")
 
+    local function format_art_stat(stat)
+        if not stat then
+            return C.gray .. "[○ Not found]" .. C.reset
+        end
+        return C.b_green .. string.format("[● %s]", format_bytes(stat.size)) .. C.reset
+    end
+
     local l1 = string.format(" %sCrawl & Build Options%s", C.b_white, C.reset)
     local r1 = string.format(" %sDatabase Artifact Status%s", C.b_white, C.reset)
-    write_str(string.format("%s%s%s %s%s%s\n", C.b_cyan .. BOX.v .. C.reset, pad_right(l1, half_w + 9), C.b_cyan .. BOX.v .. C.reset, pad_right(r1, right_w + 9), C.b_cyan .. BOX.v .. C.reset, ""))
+    write_str(make_split_row(l1, r1))
 
-    local l2 = string.format(" • Discovery:  %s(*) %s%s", C.cyan, TUI.method:upper(), C.reset)
-    local r2 = string.format(" • tags:         %s%s%s", C.b_green, tags_stat and format_bytes(tags_stat.size) or "Not found", C.reset)
-    write_str(string.format("%s%s%s %s%s%s\n", C.b_cyan .. BOX.v .. C.reset, pad_right(l2, half_w + 9), C.b_cyan .. BOX.v .. C.reset, pad_right(r2, right_w + 9), C.b_cyan .. BOX.v .. C.reset, ""))
+    local l2 = string.format("  • Discovery : %s(*) %s%s", C.cyan, TUI.method:upper(), C.reset)
+    local r2 = string.format("  • tags         : %s", format_art_stat(tags_stat))
+    write_str(make_split_row(l2, r2))
 
-    local l3 = string.format(" • Clean DB:   %s[%s] Enabled (-c)%s", TUI.clean_before and C.b_green or C.gray, TUI.clean_before and "X" or " ", C.reset)
-    local r3 = string.format(" • cscope.out:   %s%s%s", C.b_green, cscope_stat and format_bytes(cscope_stat.size) or "Not found", C.reset)
-    write_str(string.format("%s%s%s %s%s%s\n", C.b_cyan .. BOX.v .. C.reset, pad_right(l3, half_w + 9), C.b_cyan .. BOX.v .. C.reset, pad_right(r3, right_w + 9), C.b_cyan .. BOX.v .. C.reset, ""))
+    local l3 = string.format("  • Clean DB  : %s[%s] Enabled (-c)%s", TUI.clean_before and C.b_green or C.gray, TUI.clean_before and "X" or " ", C.reset)
+    local r3 = string.format("  • cscope.out   : %s", format_art_stat(cscope_stat))
+    write_str(make_split_row(l3, r3))
 
-    local l4 = string.format(" • Ignore:     %s[%s] Respect .ignore%s", not TUI.no_ignore and C.b_green or C.gray, not TUI.no_ignore and "X" or " ", C.reset)
-    local r4 = string.format(" • filenametags: %s%s%s", C.b_green, fnames_stat and format_bytes(fnames_stat.size) or "Not found", C.reset)
-    write_str(string.format("%s%s%s %s%s%s\n", C.b_cyan .. BOX.v .. C.reset, pad_right(l4, half_w + 9), C.b_cyan .. BOX.v .. C.reset, pad_right(r4, right_w + 9), C.b_cyan .. BOX.v .. C.reset, ""))
+    local l4 = string.format("  • Ignore    : %s[%s] Respect .ignore%s", not TUI.no_ignore and C.b_green or C.gray, not TUI.no_ignore and "X" or " ", C.reset)
+    local r4 = string.format("  • filenametags : %s", format_art_stat(fnames_stat))
+    write_str(make_split_row(l4, r4))
 
-    -- 3. Extensions & Excludes Separator
-    write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, half_w) .. BOX.tt .. string.rep(BOX.h, right_w) .. BOX.vr .. C.reset .. "\n")
+    -- Divider closing split view with bottom tee (┴)
+    write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, half_w) .. BOX.tb .. string.rep(BOX.h, right_w) .. BOX.vr .. C.reset .. "\n")
 
+    -- 3. Extensions & Excludes
     local active_exts = TUI.get_active_extensions()
     local exts_str = table.concat(active_exts, " ")
-    local ext_header = string.format(" File Extensions (%d enabled) - [e] to Edit: ", #active_exts)
-    local ext_line = ext_header .. truncate_str(exts_str, cols - 4 - #ext_header)
-    write_str(C.b_cyan .. BOX.v .. C.reset .. " " .. C.gray .. pad_right(ext_line, cols - 4) .. " " .. C.b_cyan .. BOX.v .. C.reset .. "\n")
+    local ext_header = string.format(" File Extensions (%d enabled) - [e]: ", #active_exts)
+    local ext_line = ext_header .. exts_str
+    write_str(make_full_row(" " .. C.gray .. truncate_string(ext_line, inner_w - 2) .. C.reset))
 
     local active_excls = TUI.get_active_excludes()
     local excl_str = table.concat(active_excls, ", ")
-    local excl_header = string.format(" Excluded Directories (%d rules) - [x] to Edit: ", #active_excls)
-    local excl_line = excl_header .. truncate_str(excl_str, cols - 4 - #excl_header)
-    write_str(C.b_cyan .. BOX.v .. C.reset .. " " .. C.gray .. pad_right(excl_line, cols - 4) .. " " .. C.b_cyan .. BOX.v .. C.reset .. "\n")
+    local excl_header = string.format(" Excluded Dirs (%d rules) - [x]: ", #active_excls)
+    local excl_line = excl_header .. excl_str
+    write_str(make_full_row(" " .. C.gray .. truncate_string(excl_line, inner_w - 2) .. C.reset))
 
     -- 4. Tri-Engine Pipeline Status Box
-    write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, cols - 2) .. BOX.vr .. C.reset .. "\n")
-    local pipe_title = string.format(" Tri-Engine Concurrent Pipeline Status                     Discovered: %d files ", TUI.total_files)
-    write_str(C.b_cyan .. BOX.v .. C.b_white .. pad_right(pipe_title, cols - 4) .. "  " .. C.b_cyan .. BOX.v .. C.reset .. "\n")
+    write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, inner_w) .. BOX.vr .. C.reset .. "\n")
+    local pipe_title = string.format(" Tri-Engine Concurrent Pipeline Status%sDiscovered: %d files ",
+        string.rep(" ", math.max(2, inner_w - 62)), TUI.total_files)
+    write_str(make_full_row(C.b_white .. pipe_title .. C.reset))
 
-    local p1 = string.format(" 1. 🔍 File Crawler   %s  (%s)", make_bar(TUI.steps.crawl.status, TUI.steps.crawl.elapsed), TUI.steps.crawl.msg)
-    write_str(C.b_cyan .. BOX.v .. C.reset .. pad_right(p1, cols - 3 + 18) .. C.b_cyan .. BOX.v .. C.reset .. "\n")
+    local function make_pipeline_row(num, icon, name, status, elapsed, msg)
+        local bar = make_bar(status, elapsed)
+        local left_part = string.format("  %d. %s %-15s %s", num, icon, name, bar)
+        local left_w = utf8_col_width(left_part)
+        local max_msg_w = inner_w - left_w - 4
+        local msg_part = ""
+        if max_msg_w > 6 then
+            msg_part = "  " .. C.gray .. "(" .. truncate_string(msg, max_msg_w) .. ")" .. C.reset
+        end
+        return make_full_row(left_part .. msg_part)
+    end
 
-    local p2 = string.format(" 2. 🔎 cscope Engine  %s  (%s)", make_bar(TUI.steps.cscope.status, TUI.steps.cscope.elapsed), TUI.steps.cscope.msg)
-    write_str(C.b_cyan .. BOX.v .. C.reset .. pad_right(p2, cols - 3 + 18) .. C.b_cyan .. BOX.v .. C.reset .. "\n")
-
-    local p3 = string.format(" 3. 🏷️ ctags Engine   %s  (%s)", make_bar(TUI.steps.ctags.status, TUI.steps.ctags.elapsed), TUI.steps.ctags.msg)
-    write_str(C.b_cyan .. BOX.v .. C.reset .. pad_right(p3, cols - 3 + 18) .. C.b_cyan .. BOX.v .. C.reset .. "\n")
-
-    local p4 = string.format(" 4. 📁 filenametags   %s  (%s)", make_bar(TUI.steps.tags_f.status, TUI.steps.tags_f.elapsed), TUI.steps.tags_f.msg)
-    write_str(C.b_cyan .. BOX.v .. C.reset .. pad_right(p4, cols - 3 + 18) .. C.b_cyan .. BOX.v .. C.reset .. "\n")
+    write_str(make_pipeline_row(1, "🔍", "File Crawler", TUI.steps.crawl.status, TUI.steps.crawl.elapsed, TUI.steps.crawl.msg))
+    write_str(make_pipeline_row(2, "📁", "filenametags", TUI.steps.tags_f.status, TUI.steps.tags_f.elapsed, TUI.steps.tags_f.msg))
+    write_str(make_pipeline_row(3, "🔎", "cscope Engine", TUI.steps.cscope.status, TUI.steps.cscope.elapsed, TUI.steps.cscope.msg))
+    write_str(make_pipeline_row(4, "🏷️", "ctags Engine", TUI.steps.ctags.status, TUI.steps.ctags.elapsed, TUI.steps.ctags.msg))
 
     -- 5. Activity Log Pane
-    write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, cols - 2) .. BOX.vr .. C.reset .. "\n")
+    write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, inner_w) .. BOX.vr .. C.reset .. "\n")
     local log_lines_avail = rows - 19
     if log_lines_avail < 3 then log_lines_avail = 3 end
 
-    local log_header = string.format(" Activity & Telemetry Log (%d entries)                     [Auto-Scroll: %s] ", #TUI.logs, TUI.log_auto_scroll and "ON" or "OFF")
-    write_str(C.b_cyan .. BOX.v .. C.dim .. pad_right(log_header, cols - 4) .. "  " .. C.b_cyan .. BOX.v .. C.reset .. "\n")
+    local log_header = string.format(" Activity & Telemetry Log (%d entries)%s[Auto-Scroll: %s] ",
+        #TUI.logs, string.rep(" ", math.max(2, inner_w - 56)), TUI.log_auto_scroll and "ON" or "OFF")
+    write_str(make_full_row(C.dim .. log_header .. C.reset))
 
     local start_idx = math.max(1, #TUI.logs - log_lines_avail + 1)
     if not TUI.log_auto_scroll then
@@ -1162,22 +1287,29 @@ function TUI.render()
     for i = 1, log_lines_avail do
         local entry_idx = start_idx + i - 1
         local entry = TUI.logs[entry_idx] or ""
+        local color = C.gray
         if entry:find("%[ERROR%]") then
-            entry = C.b_red .. entry .. C.reset
+            color = C.b_red
         elseif entry:find("%[WARN%]") then
-            entry = C.b_yellow .. entry .. C.reset
+            color = C.b_yellow
         elseif entry:find("%[DONE%]") then
-            entry = C.b_green .. entry .. C.reset
-        else
-            entry = C.gray .. entry .. C.reset
+            color = C.b_green
         end
-        write_str(C.b_cyan .. BOX.v .. C.reset .. " " .. pad_right(entry, cols - 4 + 9) .. " " .. C.b_cyan .. BOX.v .. C.reset .. "\n")
+        local entry_disp = truncate_string(entry, inner_w - 2)
+        write_str(make_full_row(" " .. color .. entry_disp .. C.reset))
     end
 
     -- 6. Footer Box
-    write_str(C.b_cyan .. BOX.bl .. string.rep(BOX.h, cols - 2) .. BOX.br .. C.reset .. "\n")
-    local footer = " [Space] Run All (cscope+ctags+filenametags)  [c] Clean  [m] Method  [e] Exts  [x] Excl  [v] Verify  [?] Help  [q] Quit "
-    write_str(C.bg_darkblue .. C.b_white .. pad_right(footer, cols) .. C.reset)
+    write_str(C.b_cyan .. BOX.bl .. string.rep(BOX.h, inner_w) .. BOX.br .. C.reset .. "\n")
+    local footer
+    if cols >= 120 then
+        footer = " [Space] Run Tri-Engine  [c] Clean  [m] Method  [e] Extensions  [x] Excludes  [v] Verify  [?] Help  [q] Quit "
+    elseif cols >= 92 then
+        footer = " [Space] Run  [c] Clean  [m] Method  [e] Exts  [x] Excl  [v] Verify  [?] Help  [q] Quit "
+    else
+        footer = " [Space] Run [c] Clean [m] Method [e] Ext [x] Excl [v] Ver [?] Help [q] Quit "
+    end
+    write_str(C.bg_darkblue .. C.b_white .. pad_string(footer, cols) .. C.reset)
 
     -- Render Modal if active
     if TUI.modal then
@@ -1206,7 +1338,7 @@ function TUI.render_modal(cols, rows, buf)
     mwrite(mh - 1, C.b_yellow .. BOX.bl .. string.rep(BOX.h, mw - 2) .. BOX.br .. C.reset)
 
     if TUI.modal == "exts" then
-        mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Manage File Extensions " .. C.b_yellow .. string.rep(BOX.h, mw - 28) .. BOX.tr .. C.reset)
+        mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Manage File Extensions " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 28)) .. BOX.tr .. C.reset)
         local visible_rows = mh - 4
         for i = 1, visible_rows do
             local idx = TUI.modal_scroll + i
@@ -1221,7 +1353,7 @@ function TUI.render_modal(cols, rows, buf)
         mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" [Space] Toggle  [a] All  [n] None  [Enter/Esc] Close", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
 
     elseif TUI.modal == "excludes" then
-        mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Manage Excluded Directories " .. C.b_yellow .. string.rep(BOX.h, mw - 33) .. BOX.tr .. C.reset)
+        mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Manage Excluded Directories " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 33)) .. BOX.tr .. C.reset)
         local visible_rows = mh - 4
         for i = 1, visible_rows do
             local idx = TUI.modal_scroll + i
@@ -1236,7 +1368,7 @@ function TUI.render_modal(cols, rows, buf)
         mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" [Space] Toggle  [Enter/Esc] Close", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
 
     elseif TUI.modal == "verify" then
-        mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Quick Index Verification Browser " .. C.b_yellow .. string.rep(BOX.h, mw - 37) .. BOX.tr .. C.reset)
+        mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Quick Index Verification Browser " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 37)) .. BOX.tr .. C.reset)
         local visible_rows = mh - 4
         for i = 1, visible_rows do
             local idx = TUI.modal_scroll + i
@@ -1250,7 +1382,7 @@ function TUI.render_modal(cols, rows, buf)
         mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(string.format(" Showing %d indexed files  [Esc] Close", #TUI.verify_items), mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
 
     elseif TUI.modal == "help" then
-        mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Keyboard Shortcuts & Help " .. C.b_yellow .. string.rep(BOX.h, mw - 30) .. BOX.tr .. C.reset)
+        mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Keyboard Shortcuts & Help " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 30)) .. BOX.tr .. C.reset)
         local help_lines = {
             "Space       - Run Tri-Engine Pipeline (cscope + ctags + filenametags)",
             "c           - Toggle 'Clean DB Before Starting'",
@@ -1549,6 +1681,16 @@ local function run_test_suite()
     if f_dummy then f_dummy:write("dummy"); f_dummy:close() end
     local cleaned = clean_all_databases()
     assert_eq(file_exists("cscope.out"), false, "Cleaned cscope.out successfully")
+
+    -- Test 5: TUI Unicode & ANSI Layout Geometry
+    print("\n[Test 5] TUI Unicode & ANSI Layout Geometry...")
+    assert_eq(utf8_col_width(C.b_green .. "OK" .. C.reset), 2, "ANSI escape sequence width stripping")
+    assert_eq(utf8_col_width("🔍 File Crawler"), 15, "Emoji width calculation (🔍)")
+    assert_eq(utf8_col_width("🏷️ ctags Engine"), 15, "Emoji with variation selector width (🏷️)")
+    local padded = pad_string(C.b_yellow .. "[ RUN  ]" .. C.reset, 20)
+    assert_eq(utf8_col_width(padded), 20, "pad_string visual column width")
+    local truncated = truncate_string("very long path that exceeds twenty cols", 20)
+    assert_eq(utf8_col_width(truncated), 20, "truncate_string visual column width")
 
     print(string.format("\nTest Results: %d Passed, %d Failed.", passed, failed))
     return failed == 0 and 0 or 1
