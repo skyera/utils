@@ -20,7 +20,10 @@
     dogit [OPTIONS] [TARGET]
 
   Options:
-    -f, --force          Force checkout (-f / --force), discarding local modifications
+    -f, --force          Force checkout (git checkout -f) [DEFAULT: ON]
+    --no-force           Disable force checkout (normal checkout)
+    -s, --submodule      Synchronize submodules after checkout (git submodule update --init --recursive -f)
+    --no-submodule       Disable submodule synchronization [DEFAULT: OFF]
     -b, --branch         Start filtered to branches only
     -t, --tag            Start filtered to tags only
     -r, --remote         Start filtered to remote branches only
@@ -31,7 +34,8 @@
 
   TUI Keybindings:
     Enter                Checkout selected branch or tag
-    f                    Toggle Force Mode (git checkout -f)
+    f                    Toggle Force Mode (git checkout -f) [Default: ON]
+    s                    Toggle Submodule Auto-Sync (git submodule update --init --recursive -f)
     Tab                  Cycle category tab: All -> Branches -> Tags -> Remotes
     w                    Create Git Worktree for selected ref
     Up / k, Down / j     Move selection cursor up / down
@@ -661,6 +665,22 @@ function Git.execute_checkout(item, force)
     return (ok == true or ok == 0), cmd, out
 end
 
+function Git.build_submodule_cmd(force)
+    if force then
+        return "git submodule update --init --recursive -f"
+    else
+        return "git submodule update --init --recursive"
+    end
+end
+
+function Git.update_submodules(force)
+    local cmd = Git.build_submodule_cmd(force)
+    local p = io.popen(cmd .. " 2>&1")
+    local out = p and p:read("*a") or ""
+    local ok = p and p:close()
+    return (ok == true or ok == 0), cmd, out
+end
+
 function Git.execute_worktree(item, path)
     local target = item.name
     if item.type == "remote" then
@@ -683,20 +703,21 @@ local TUI = {
     scroll = 0,
     query = "",
     filter_tab = "all", -- "all", "branches", "tags", "remotes"
-    force = false,
+    force = true,
+    submodule = false,
     dirty = false,
     modified_count = 0,
     untracked_count = 0,
     repo_root = "",
     current_head = "",
     preview_cache = {},
-    status_msg = "Ready. Use arrows to browse, Enter to switch, 'f' to toggle Force.",
+    status_msg = "Ready. Enter: Switch, 'f': Toggle Force (ON), 's': Toggle Submodule Sync.",
     status_color = C.gray,
     modal = nil, -- nil, "worktree", "help"
     worktree_input = "",
 }
 
-function TUI.init(initial_filter, initial_force)
+function TUI.init(initial_filter, initial_force, initial_submodule)
     if not Git.is_repo() then
         io.stderr:write("Error: Not a git repository (or any of the parent directories).\n")
         os.exit(1)
@@ -704,7 +725,12 @@ function TUI.init(initial_filter, initial_force)
     TUI.repo_root = Git.get_repo_root()
     TUI.current_head = Git.get_current_head()
     TUI.dirty, TUI.modified_count, TUI.untracked_count = Git.get_dirty_status()
-    TUI.force = initial_force or false
+    if initial_force ~= nil then
+        TUI.force = initial_force
+    else
+        TUI.force = true
+    end
+    TUI.submodule = initial_submodule or false
     if initial_filter then TUI.filter_tab = initial_filter end
     TUI.reload_refs()
 end
@@ -813,15 +839,23 @@ function TUI.render()
 
     local force_badge
     if TUI.force then
-        force_badge = C.bg_red .. C.b_white .. " [FORCE: ON] " .. C.reset .. C.b_yellow .. " (git checkout -f)" .. C.reset
+        force_badge = C.bg_red .. C.b_white .. " [FORCE: ON] " .. C.reset
     else
-        force_badge = C.gray .. "[FORCE: OFF]" .. C.reset .. C.dim .. " (Press 'f' to toggle)" .. C.reset
+        force_badge = C.gray .. "[FORCE: OFF]" .. C.reset
+    end
+
+    local sub_badge
+    if TUI.submodule then
+        sub_badge = C.bg_cyan .. C.b_white .. " [SUBMODULE: ON] " .. C.reset
+    else
+        sub_badge = C.gray .. "[SUBMODULE: OFF]" .. C.reset
     end
 
     local head_disp = string.format(" HEAD: %s%s%s  %s", C.b_green, TUI.current_head, C.reset, dirty_badge)
-    local head_gap = inner_w - utf8_col_width(head_disp) - utf8_col_width(force_badge) - 1
+    local badges = force_badge .. " " .. sub_badge
+    local head_gap = inner_w - utf8_col_width(head_disp) - utf8_col_width(badges) - 1
     if head_gap < 1 then head_gap = 1 end
-    write_str(make_full_row(head_disp .. string.rep(" ", head_gap) .. force_badge .. " "))
+    write_str(make_full_row(head_disp .. string.rep(" ", head_gap) .. badges .. " "))
 
     -- Split separator
     write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, left_w) .. BOX.tt .. string.rep(BOX.h, right_w) .. BOX.vr .. C.reset .. "\n")
@@ -944,16 +978,19 @@ function TUI.render()
     end
 
     local footer_keys
-    if cols >= 110 then
-        footer_keys = " " .. fmt_hotkey("Enter", "Checkout") .. fmt_hotkey("f", "Toggle Force")
+    if cols >= 115 then
+        footer_keys = " " .. fmt_hotkey("Enter", "Checkout") .. fmt_hotkey("f", "Force")
+                   .. fmt_hotkey("s", "Submodule")
                    .. fmt_hotkey("Tab", "Tabs") .. fmt_hotkey("w", "Worktree")
                    .. fmt_hotkey("?", "Help") .. fmt_hotkey("q", "Quit")
-    elseif cols >= 85 then
+    elseif cols >= 90 then
         footer_keys = " " .. fmt_hotkey("Enter", "Checkout") .. fmt_hotkey("f", "Force")
+                   .. fmt_hotkey("s", "Submodule")
                    .. fmt_hotkey("Tab", "Tab") .. fmt_hotkey("w", "Worktree")
                    .. fmt_hotkey("q", "Quit")
     else
         footer_keys = " " .. fmt_hotkey("Enter", "Switch") .. fmt_hotkey("f", "Force")
+                   .. fmt_hotkey("s", "Sub")
                    .. fmt_hotkey("Tab", "Tab") .. fmt_hotkey("q", "Quit")
     end
 
@@ -964,12 +1001,20 @@ function TUI.render()
         force_pill = C.bg_darkblue .. C.gray .. " FORCE: OFF " .. C.reset
     end
 
+    local sub_pill
+    if TUI.submodule then
+        sub_pill = C.bg_cyan .. C.b_white .. " SUB: ON " .. C.reset
+    else
+        sub_pill = C.bg_darkblue .. C.gray .. " SUB: OFF " .. C.reset
+    end
+
+    local pills = force_pill .. " " .. sub_pill
     local keys_w = utf8_col_width(footer_keys)
-    local pill_w = utf8_col_width(force_pill)
+    local pill_w = utf8_col_width(pills)
     local footer_gap = cols - keys_w - pill_w
     if footer_gap < 0 then footer_gap = 0 end
 
-    write_str(C.bg_darkblue .. footer_keys .. string.rep(" ", footer_gap) .. force_pill .. C.reset)
+    write_str(C.bg_darkblue .. footer_keys .. string.rep(" ", footer_gap) .. pills .. C.reset)
 
     -- Render Modal if open
     if TUI.modal then
@@ -1014,7 +1059,8 @@ function TUI.render_modal(cols, rows, buf)
             "  Tab              Cycle filter: All -> Branches -> Tags -> Remotes",
             C.b_yellow .. "Switch & Actions:" .. C.reset,
             "  Enter            Checkout selected branch or tag",
-            "  f                Toggle Force Mode (git checkout -f)",
+            "  f                Toggle Force Mode (git checkout -f) [Default: ON]",
+            "  s                Toggle Submodule Auto-Sync (--init --recursive -f)",
             "  w                Create Git Worktree for selected ref",
             C.b_yellow .. "Search & Filter:" .. C.reset,
             "  Type letters     Fuzzy search ref name or commit subject",
@@ -1041,6 +1087,7 @@ function TUI.run()
     local needs_render = true
     local checkout_target = nil
     local checkout_force = false
+    local checkout_submodule = false
 
     while running do
         if needs_render then
@@ -1096,6 +1143,16 @@ function TUI.run()
                         TUI.status_color = C.b_yellow
                     else
                         TUI.status_msg = "Force Mode DISABLED"
+                        TUI.status_color = C.gray
+                    end
+
+                elseif key == "s" and #TUI.query == 0 then
+                    TUI.submodule = not TUI.submodule
+                    if TUI.submodule then
+                        TUI.status_msg = "Submodule Sync ENABLED (git submodule update --init --recursive -f)"
+                        TUI.status_color = C.b_cyan
+                    else
+                        TUI.status_msg = "Submodule Sync DISABLED"
                         TUI.status_color = C.gray
                     end
 
@@ -1158,6 +1215,7 @@ function TUI.run()
                     if item then
                         checkout_target = item
                         checkout_force = TUI.force
+                        checkout_submodule = TUI.submodule
                         running = false
                     end
 
@@ -1187,6 +1245,16 @@ function TUI.run()
             if #out > 0 then
                 io.write(out)
             end
+            if checkout_submodule then
+                print(C.b_cyan .. "[DOGIT] Synchronizing submodules: " .. Git.build_submodule_cmd(checkout_force) .. C.reset)
+                local s_ok, s_cmd, s_out = Git.update_submodules(checkout_force)
+                if s_ok then
+                    print(C.b_green .. "[SUCCESS] Submodules synchronized." .. C.reset)
+                    if #s_out > 0 then io.write(s_out) end
+                else
+                    print(C.b_red .. "[WARNING] Submodule synchronization returned warnings/errors:\n" .. s_out .. C.reset)
+                end
+            end
         else
             print(C.b_red .. "[ERROR] Checkout failed:\n" .. out .. C.reset)
             if not checkout_force and TUI.dirty then
@@ -1200,7 +1268,7 @@ end
 --------------------------------------------------------------------------------
 -- Non-Interactive CLI / Batch Mode
 --------------------------------------------------------------------------------
-local function run_cli_list(force, filter_type)
+local function run_cli_list(force, filter_type, submodule)
     local items = Git.fetch_all_refs()
     local dirty, mod, untrk = Git.get_dirty_status()
     local current_head = Git.get_current_head()
@@ -1209,8 +1277,9 @@ local function run_cli_list(force, filter_type)
     print(string.format("Current HEAD: %s%s%s | Working Tree: %s",
         C.b_green, current_head, C.reset,
         dirty and (C.b_yellow .. string.format("[DIRTY: %d modified]", mod) .. C.reset) or (C.b_green .. "[CLEAN]" .. C.reset)))
-    print(string.format("Force Mode: %s | Filter: %s\n",
+    print(string.format("Force Mode: %s | Submodules: %s | Filter: %s\n",
         force and (C.b_red .. "ENABLED" .. C.reset) or (C.gray .. "DISABLED" .. C.reset),
+        submodule and (C.b_cyan .. "ENABLED" .. C.reset) or (C.gray .. "DISABLED" .. C.reset),
         filter_type and (C.cyan .. filter_type:upper() .. C.reset) or (C.gray .. "ALL" .. C.reset)))
 
     print(string.format("%-10s %-32s %-10s %-16s %s", "TYPE", "NAME", "COMMIT", "DATE", "SUBJECT"))
@@ -1234,7 +1303,7 @@ local function run_cli_list(force, filter_type)
     end
 end
 
-local function run_cli_checkout(target_name, force)
+local function run_cli_checkout(target_name, force, submodule)
     local items = Git.fetch_all_refs()
     local matched = nil
 
@@ -1261,11 +1330,21 @@ local function run_cli_checkout(target_name, force)
         os.exit(1)
     end
 
-    print(string.format("[DOGIT] Switching to %s '%s' (force=%s)...", matched.type, matched.name, tostring(force)))
+    print(string.format("[DOGIT] Switching to %s '%s' (force=%s, submodule=%s)...", matched.type, matched.name, tostring(force), tostring(submodule)))
     local ok, cmd, out = Git.execute_checkout(matched, force)
     if ok then
         print(C.b_green .. "[SUCCESS] Checked out: " .. matched.name .. C.reset)
         if #out > 0 then io.write(out) end
+        if submodule then
+            print(C.b_cyan .. "[DOGIT] Synchronizing submodules: " .. Git.build_submodule_cmd(force) .. C.reset)
+            local s_ok, s_cmd, s_out = Git.update_submodules(force)
+            if s_ok then
+                print(C.b_green .. "[SUCCESS] Submodules synchronized." .. C.reset)
+                if #s_out > 0 then io.write(s_out) end
+            else
+                io.stderr:write(C.b_red .. "[WARNING] Submodule synchronization returned warnings/errors:\n" .. s_out .. C.reset .. "\n")
+            end
+        end
         os.exit(0)
     else
         io.stderr:write(C.b_red .. "[ERROR] Checkout failed:\n" .. out .. C.reset .. "\n")
@@ -1341,6 +1420,11 @@ local function run_test_suite()
     local head = Git.get_current_head()
     assert_eq(#head > 0, true, "Successfully retrieved current HEAD branch")
 
+    -- Test 6: Submodule Command Construction
+    print("\n[Test 6] Submodule Command Construction...")
+    assert_eq(Git.build_submodule_cmd(true), "git submodule update --init --recursive -f", "Force submodule update command")
+    assert_eq(Git.build_submodule_cmd(false), "git submodule update --init --recursive", "Non-force submodule update command")
+
     print(string.format("\nTest Results: %d Passed, %d Failed.", passed, failed))
     return failed == 0 and 0 or 1
 end
@@ -1351,7 +1435,8 @@ end
 local function main(args)
     args = args or {}
 
-    local force = false
+    local force = true
+    local submodule = false
     local list_mode = false
     local initial_filter = nil
     local target = nil
@@ -1364,6 +1449,12 @@ local function main(args)
             os.exit(run_test_suite())
         elseif a == "-f" or a == "--force" then
             force = true
+        elseif a == "--no-force" then
+            force = false
+        elseif a == "-s" or a == "--submodule" then
+            submodule = true
+        elseif a == "--no-submodule" then
+            submodule = false
         elseif a == "-l" or a == "--list" then
             list_mode = true
         elseif a == "-b" or a == "--branch" then
@@ -1384,7 +1475,10 @@ Usage:
   luajit dogit.lua [OPTIONS] [TARGET]
 
 Options:
-  -f, --force          Force checkout (-f / --force), discarding local modifications
+  -f, --force          Force checkout (git checkout -f) [DEFAULT: ON]
+  --no-force           Disable force checkout (normal checkout)
+  -s, --submodule      Synchronize submodules after checkout (git submodule update --init --recursive -f)
+  --no-submodule       Disable submodule synchronization [DEFAULT: OFF]
   -b, --branch         Start filtered to branches only
   -t, --tag            Start filtered to tags only
   -r, --remote         Start filtered to remote branches only
@@ -1395,7 +1489,8 @@ Options:
 
 TUI Controls:
   Enter                Checkout selected branch or tag
-  f                    Toggle Force Mode (git checkout -f)
+  f                    Toggle Force Mode (git checkout -f) [Default: ON]
+  s                    Toggle Submodule Auto-Sync (git submodule update --init --recursive -f)
   Tab                  Cycle tab: All -> Branches -> Tags -> Remotes
   w                    Create Git Worktree for selected ref
   Up / Down, j / k     Navigate list
@@ -1411,7 +1506,7 @@ TUI Controls:
     end
 
     if list_mode then
-        run_cli_list(force, initial_filter)
+        run_cli_list(force, initial_filter, submodule)
         os.exit(0)
     end
 
@@ -1420,18 +1515,18 @@ TUI Controls:
             io.stderr:write("Error: --batch requires a target branch or tag.\n")
             os.exit(1)
         end
-        run_cli_checkout(target, force)
+        run_cli_checkout(target, force, submodule)
         os.exit(0)
     end
 
     -- Non-TTY check (auto fallback to list mode if redirected)
     if not IS_WINDOWS and ffi.C.isatty(1) == 0 then
-        run_cli_list(force, initial_filter)
+        run_cli_list(force, initial_filter, submodule)
         os.exit(0)
     end
 
     -- Interactive TUI mode
-    TUI.init(initial_filter, force)
+    TUI.init(initial_filter, force, submodule)
     TUI.run()
 end
 
