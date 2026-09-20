@@ -720,7 +720,7 @@ function Git.fetch_all_refs()
     return items
 end
 
-function Git.get_commit_details(ref_name)
+function Git.get_commit_details(ref_name, is_commit)
     local info = {
         hash = "",
         author = "",
@@ -728,11 +728,13 @@ function Git.get_commit_details(ref_name)
         date = "",
         subject = "",
         body = {},
+        stat = {},
         graph = {},
+        display_lines = {},
     }
 
     -- 1. Metadata
-    local cmd_meta = string.format('git log -1 --format="%%H	%%an	%%ae	%%ar	%%s" %s 2>nul', ref_name)
+    local cmd_meta = string.format('git log -1 --format="%%H\t%%an\t%%ae\t%%ar\t%%s" %s 2>nul', ref_name)
     local p_meta = io.popen(cmd_meta)
     if p_meta then
         local line = p_meta:read("*l")
@@ -747,7 +749,19 @@ function Git.get_commit_details(ref_name)
         p_meta:close()
     end
 
-    -- 2. Recent commit graph
+    -- 2. Diffstat & Changed files
+    local cmd_stat = string.format('git show --stat --color=never --format= %s 2>nul', ref_name)
+    local p_stat = io.popen(cmd_stat)
+    if p_stat then
+        for line in p_stat:lines() do
+            if #line > 0 then
+                table.insert(info.stat, line)
+            end
+        end
+        p_stat:close()
+    end
+
+    -- 3. Recent commit graph
     local cmd_graph = string.format('git log -7 --graph --oneline --color=never %s 2>nul', ref_name)
     local p_graph = io.popen(cmd_graph)
     if p_graph then
@@ -755,6 +769,46 @@ function Git.get_commit_details(ref_name)
             table.insert(info.graph, line)
         end
         p_graph:close()
+    end
+
+    -- 4. Build unified display lines based on whether this is a commit or branch
+    if is_commit then
+        if #info.stat > 0 then
+            table.insert(info.display_lines, C.b_yellow .. "Changed Files & Diffstat:" .. C.reset)
+            for _, s in ipairs(info.stat) do
+                if s:find("changed") then
+                    table.insert(info.display_lines, " " .. C.b_cyan .. s:gsub("^%s+", "") .. C.reset)
+                else
+                    table.insert(info.display_lines, " " .. C.white .. s .. C.reset)
+                end
+            end
+            table.insert(info.display_lines, "")
+        end
+        if #info.graph > 0 then
+            table.insert(info.display_lines, C.b_yellow .. "Commit Context & Ancestry:" .. C.reset)
+            for _, g in ipairs(info.graph) do
+                table.insert(info.display_lines, " " .. C.cyan .. g .. C.reset)
+            end
+        end
+    else
+        -- Branch or Tag: Prioritize recent graph then latest commit diffstat
+        if #info.graph > 0 then
+            table.insert(info.display_lines, C.b_yellow .. "Recent Commits on Branch:" .. C.reset)
+            for _, g in ipairs(info.graph) do
+                table.insert(info.display_lines, " " .. C.cyan .. g .. C.reset)
+            end
+        end
+        if #info.stat > 0 then
+            table.insert(info.display_lines, "")
+            table.insert(info.display_lines, C.b_yellow .. "Head Commit Changed Files:" .. C.reset)
+            for _, s in ipairs(info.stat) do
+                if s:find("changed") then
+                    table.insert(info.display_lines, " " .. C.b_cyan .. s:gsub("^%s+", "") .. C.reset)
+                else
+                    table.insert(info.display_lines, " " .. C.white .. s .. C.reset)
+                end
+            end
+        end
     end
 
     return info
@@ -965,7 +1019,7 @@ function TUI.get_active_preview()
     local item = TUI.filtered_items[TUI.selection]
     if not item then return nil end
     if not TUI.preview_cache[item.full_ref] then
-        TUI.preview_cache[item.full_ref] = Git.get_commit_details(item.full_ref)
+        TUI.preview_cache[item.full_ref] = Git.get_commit_details(item.full_ref, item.type == "commit")
     end
     return item, TUI.preview_cache[item.full_ref]
 end
@@ -1048,7 +1102,11 @@ function TUI.render()
             search_disp = string.format(" Search: %s[/ to search]%s", C.gray, C.reset)
         end
     end
-    local right_header = C.b_white .. " Commit Details & Graph" .. C.reset
+    local cur_item, cur_preview = TUI.get_active_preview()
+    local is_commit_sel = (cur_item and cur_item.type == "commit")
+    local right_header = is_commit_sel
+        and (C.b_white .. " Commit Details & Changed Files" .. C.reset)
+        or (C.b_white .. " Ref Details & Commit Graph" .. C.reset)
     write_str(make_split_row(search_disp, right_header))
 
     local function make_tab(label, key, active)
@@ -1066,15 +1124,18 @@ function TUI.render()
         make_tab("Remotes", "remotes", TUI.filter_tab == "remotes"),
         make_tab("Commits", "commits", TUI.filter_tab == "commits")
     )
-    local cur_item, cur_preview = TUI.get_active_preview()
     local r_hash_disp = ""
     if cur_item and cur_preview then
         local head_tag = cur_item.is_head and (C.b_green .. " (HEAD)" .. C.reset) or ""
-        local ref_label = (cur_item.type == "commit") and "Commit:" or "Ref:"
-        r_hash_disp = string.format(" %s %s%s%s  Commit: %s%s%s%s",
-            ref_label,
-            C.b_cyan, truncate_string(cur_item.name, 18), C.reset,
-            C.b_yellow, cur_item.sha, C.reset, head_tag)
+        if cur_item.type == "commit" then
+            local date_str = (#cur_item.date > 0) and ("  " .. C.gray .. cur_item.date .. C.reset) or ""
+            r_hash_disp = string.format(" Commit: %s%s%s%s%s",
+                C.b_yellow, cur_item.sha, C.reset, head_tag, date_str)
+        else
+            r_hash_disp = string.format(" Ref: %s%s%s  Commit: %s%s%s%s",
+                C.b_cyan, truncate_string(cur_item.name, 18), C.reset,
+                C.b_yellow, cur_item.sha, C.reset, head_tag)
+        end
     else
         r_hash_disp = C.gray .. " (No ref selected)" .. C.reset
     end
@@ -1151,10 +1212,10 @@ function TUI.render()
                     r_line = C.dim .. string.rep("─", right_w - 2) .. C.reset
                 end
             else
-                local graph_idx = (i - 4) + TUI.preview_scroll
-                local g_entry = cur_preview.graph[graph_idx]
-                if g_entry then
-                    r_line = " " .. C.cyan .. truncate_string(g_entry, right_w - 4) .. C.reset
+                local line_idx = (i - 4) + TUI.preview_scroll
+                local entry = (cur_preview.display_lines and cur_preview.display_lines[line_idx]) or (cur_preview.graph and cur_preview.graph[line_idx])
+                if entry then
+                    r_line = " " .. truncate_string(entry, right_w - 4)
                 end
             end
         end
@@ -1892,6 +1953,9 @@ local function run_test_suite()
     local commits = Git.fetch_recent_commits(5)
     assert_eq(#commits > 0, true, "Git.fetch_recent_commits retrieves commits")
     assert_eq(commits[1].type, "commit", "First fetched item has type 'commit'")
+    local c_details = Git.get_commit_details("HEAD", true)
+    assert_eq(#c_details.display_lines > 0, true, "Commit details has display_lines for preview pane")
+    assert_eq(type(c_details.stat), "table", "Commit details has stat table")
 
     -- Test 10: Color Palette Completeness & Search Mode Badge
     print("\n[Test 10] Color Palette & Search Mode Safety...")
