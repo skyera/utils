@@ -24,8 +24,8 @@
   Options:
     -f, --force          Force checkout (git checkout -f) [DEFAULT: ON]
     --no-force           Disable force checkout (normal checkout)
-    -s, --submodule      Synchronize submodules after checkout (git submodule update --init --recursive -f)
-    --no-submodule       Disable submodule synchronization [DEFAULT: OFF]
+    -s, --submodule      Synchronize submodules after checkout (git submodule update --init --recursive -f) [DEFAULT: ON]
+    --no-submodule       Disable submodule synchronization
     -b, --branch         Start filtered to branches only
     -t, --tag            Start filtered to tags only
     -r, --remote         Start filtered to remote branches only
@@ -825,7 +825,7 @@ local TUI = {
     preview_scroll = 0,
     filter_tab = "all", -- "all", "branches", "tags", "remotes"
     force = true,
-    submodule = false,
+    submodule = true,
     dirty = false,
     modified_count = 0,
     untracked_count = 0,
@@ -854,7 +854,11 @@ function TUI.init(initial_filter, initial_force, initial_submodule)
     else
         TUI.force = true
     end
-    TUI.submodule = initial_submodule or false
+    if initial_submodule ~= nil then
+        TUI.submodule = initial_submodule
+    else
+        TUI.submodule = true
+    end
     TUI.mode = "normal"
     TUI.saved_query = ""
     TUI.g_pending = false
@@ -1350,7 +1354,7 @@ function TUI.run()
     local needs_render = true
     local checkout_target = nil
     local checkout_force = false
-    local checkout_submodule = false
+    local checkout_submodule = true
 
     while running do
         if needs_render then
@@ -1817,10 +1821,16 @@ local function run_test_suite()
     local head = Git.get_current_head()
     assert_eq(#head > 0, true, "Successfully retrieved current HEAD branch")
 
-    -- Test 6: Submodule Command Construction
-    print("\n[Test 6] Submodule Command Construction...")
+    -- Test 6: Submodule Command Construction & Default State
+    print("\n[Test 6] Submodule Command Construction & Defaults...")
     assert_eq(Git.build_submodule_cmd(true), "git submodule update --init --recursive -f", "Force submodule update command")
     assert_eq(Git.build_submodule_cmd(false), "git submodule update --init --recursive", "Non-force submodule update command")
+    local orig_sub = TUI.submodule
+    TUI.init(nil, true, nil)
+    assert_eq(TUI.submodule, true, "Submodule sync is enabled by default in TUI")
+    TUI.init(nil, true, false)
+    assert_eq(TUI.submodule, false, "Submodule sync can be disabled via initial parameter")
+    TUI.submodule = orig_sub
 
     -- Test 7: Vim Navigation & Tab Cycling Logic
     print("\n[Test 7] Vim Navigation & Tab Cycling...")
@@ -1939,7 +1949,7 @@ local function main(args)
     args = args or {}
 
     local force = true
-    local submodule = false
+    local submodule = true
     local list_mode = false
     local initial_filter = nil
     local target = nil
@@ -1984,8 +1994,8 @@ TARGET can be a branch name, tag name, or commit SHA (e.g. 7-40 hex chars).
 Options:
   -f, --force          Force checkout (git checkout -f) [DEFAULT: ON]
   --no-force           Disable force checkout (normal checkout)
-  -s, --submodule      Synchronize submodules after checkout (git submodule update --init --recursive -f)
-  --no-submodule       Disable submodule synchronization [DEFAULT: OFF]
+  -s, --submodule      Synchronize submodules after checkout (git submodule update --init --recursive -f) [DEFAULT: ON]
+  --no-submodule       Disable submodule synchronization
   -b, --branch         Start filtered to branches only
   -t, --tag            Start filtered to tags only
   -r, --remote         Start filtered to remote branches only
