@@ -32,20 +32,29 @@
     --test               Run automated test suite and exit
     -h, --help           Show this help message
 
-  TUI Keybindings:
-    Enter                Checkout selected branch or tag
-    f                    Toggle Force Mode (git checkout -f) [Default: ON]
-    s                    Toggle Submodule Auto-Sync (git submodule update --init --recursive -f)
-    Tab                  Cycle category tab: All -> Branches -> Tags -> Remotes
-    w                    Create Git Worktree for selected ref
-    Up / k, Down / j     Move selection cursor up / down
-    PgUp / PgDn          Scroll list by page
-    Home / End           Jump to first / last item
-    Typing (a-z, 0-9)    Live fuzzy search query
-    Backspace            Delete character from query
-    Esc                  Clear query, or quit if query is empty
-    ?                    Show keyboard help modal
-    q / Ctrl+C           Quit
+  TUI Keybindings (Vim-Style Dual Mode):
+    Normal Mode:
+      j / Down, k / Up     Move selection cursor down / up
+      h / Left, l / Right  Cycle category tabs left / right
+      gg / G               Jump to first / last ref
+      Ctrl+d / Ctrl+u      Half-page scroll down / up
+      Ctrl+e / Ctrl+y      Scroll commit details / graph down / up
+      /                    Enter Search Mode (type query to filter)
+      n / N                Jump to next / previous match in filtered list
+      Enter                Checkout selected branch or tag
+      f                    Toggle Force Mode (git checkout -f) [Default: ON]
+      s                    Toggle Submodule Auto-Sync (git submodule update --init --recursive -f)
+      w                    Create Git Worktree for selected ref
+      Tab                  Cycle category tab: All -> Branches -> Tags -> Remotes
+      Esc                  Clear search filter (or quit if filter empty)
+      ?                    Show keyboard help modal
+      q / Ctrl+C           Quit
+    Search Mode (/):
+      Typing (a-z, 0-9)    Live fuzzy filter query
+      Backspace            Delete character from query
+      Enter                Confirm / lock search query and return to Normal mode
+      Esc                  Cancel search, restore previous query, return to Normal mode
+      Up / Down, Ctrl+p/n  Navigate candidates while typing
 ]]
 
 local ffi = require("ffi")
@@ -435,6 +444,12 @@ function Term.read_key()
         elseif ch == 32 then return "space"
         elseif ch == 27 then return "esc"
         elseif ch == 3 then return "ctrl_c"
+        elseif ch == 4 then return "ctrl_d"
+        elseif ch == 21 then return "ctrl_u"
+        elseif ch == 5 then return "ctrl_e"
+        elseif ch == 25 then return "ctrl_y"
+        elseif ch == 14 then return "ctrl_n"
+        elseif ch == 16 then return "ctrl_p"
         else
             return string.char(ch)
         end
@@ -463,6 +478,12 @@ function Term.read_key()
         elseif ch == 127 or ch == 8 then return "backspace"
         elseif ch == 32 then return "space"
         elseif ch == 3 then return "ctrl_c"
+        elseif ch == 4 then return "ctrl_d"
+        elseif ch == 21 then return "ctrl_u"
+        elseif ch == 5 then return "ctrl_e"
+        elseif ch == 25 then return "ctrl_y"
+        elseif ch == 14 then return "ctrl_n"
+        elseif ch == 16 then return "ctrl_p"
         else
             return string.char(ch)
         end
@@ -702,6 +723,10 @@ local TUI = {
     selection = 1,
     scroll = 0,
     query = "",
+    saved_query = "",
+    mode = "normal", -- "normal", "search"
+    g_pending = false,
+    preview_scroll = 0,
     filter_tab = "all", -- "all", "branches", "tags", "remotes"
     force = true,
     submodule = false,
@@ -711,7 +736,7 @@ local TUI = {
     repo_root = "",
     current_head = "",
     preview_cache = {},
-    status_msg = "Ready. Enter: Switch, 'f': Toggle Force (ON), 's': Toggle Submodule Sync.",
+    status_msg = "Ready. j/k: Nav, /: Search, Enter: Switch, f: Force, s: Submodule.",
     status_color = C.gray,
     modal = nil, -- nil, "worktree", "help"
     worktree_input = "",
@@ -731,6 +756,10 @@ function TUI.init(initial_filter, initial_force, initial_submodule)
         TUI.force = true
     end
     TUI.submodule = initial_submodule or false
+    TUI.mode = "normal"
+    TUI.saved_query = ""
+    TUI.g_pending = false
+    TUI.preview_scroll = 0
     if initial_filter then TUI.filter_tab = initial_filter end
     TUI.reload_refs()
 end
@@ -783,6 +812,46 @@ function TUI.filter_and_rank()
     if TUI.selection < 1 and #TUI.filtered_items > 0 then
         TUI.selection = 1
     end
+end
+
+function TUI.cycle_tab_forward()
+    if TUI.filter_tab == "all" then TUI.filter_tab = "branches"
+    elseif TUI.filter_tab == "branches" then TUI.filter_tab = "tags"
+    elseif TUI.filter_tab == "tags" then TUI.filter_tab = "remotes"
+    else TUI.filter_tab = "all" end
+    TUI.selection = 1
+    TUI.preview_scroll = 0
+    TUI.filter_and_rank()
+end
+
+function TUI.cycle_tab_backward()
+    if TUI.filter_tab == "all" then TUI.filter_tab = "remotes"
+    elseif TUI.filter_tab == "remotes" then TUI.filter_tab = "tags"
+    elseif TUI.filter_tab == "tags" then TUI.filter_tab = "branches"
+    else TUI.filter_tab = "all" end
+    TUI.selection = 1
+    TUI.preview_scroll = 0
+    TUI.filter_and_rank()
+end
+
+function TUI.next_match()
+    if #TUI.filtered_items == 0 then return end
+    if TUI.selection < #TUI.filtered_items then
+        TUI.selection = TUI.selection + 1
+    else
+        TUI.selection = 1 -- wrap around to top
+    end
+    TUI.preview_scroll = 0
+end
+
+function TUI.prev_match()
+    if #TUI.filtered_items == 0 then return end
+    if TUI.selection > 1 then
+        TUI.selection = TUI.selection - 1
+    else
+        TUI.selection = #TUI.filtered_items -- wrap around to bottom
+    end
+    TUI.preview_scroll = 0
 end
 
 function TUI.get_active_preview()
@@ -861,7 +930,16 @@ function TUI.render()
     write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, left_w) .. BOX.tt .. string.rep(BOX.h, right_w) .. BOX.vr .. C.reset .. "\n")
 
     -- 3. Left Header: Search Input & Tabs; Right Header: Commit Meta
-    local search_disp = string.format(" Search: %s[%s]%s", C.b_yellow, TUI.query, C.reset)
+    local search_disp
+    if TUI.mode == "search" then
+        search_disp = string.format(" Search: %s/%s%s█%s", C.b_yellow, TUI.query, C.reverse, C.reset)
+    else
+        if #TUI.query > 0 then
+            search_disp = string.format(" Search: %s[%s]%s %s(/ edit, Esc clr)%s", C.b_yellow, TUI.query, C.reset, C.gray, C.reset)
+        else
+            search_disp = string.format(" Search: %s[/ to search]%s", C.gray, C.reset)
+        end
+    end
     local right_header = C.b_white .. " Commit Details & Graph" .. C.reset
     write_str(make_split_row(search_disp, right_header))
 
@@ -946,9 +1024,16 @@ function TUI.render()
             elseif i == 3 then
                 r_line = string.format(" Subj:   %s%s%s", C.white, truncate_string(cur_preview.subject, right_w - 10), C.reset)
             elseif i == 4 then
-                r_line = C.dim .. string.rep("─", right_w - 2) .. C.reset
+                if TUI.preview_scroll > 0 then
+                    local scroll_info = string.format(" [▲ +%d]", TUI.preview_scroll)
+                    local bar_len = right_w - 2 - utf8_col_width(scroll_info)
+                    if bar_len < 2 then bar_len = 2 end
+                    r_line = C.dim .. string.rep("─", bar_len) .. C.reset .. C.b_yellow .. scroll_info .. C.reset
+                else
+                    r_line = C.dim .. string.rep("─", right_w - 2) .. C.reset
+                end
             else
-                local graph_idx = i - 4
+                local graph_idx = (i - 4) + TUI.preview_scroll
                 local g_entry = cur_preview.graph[graph_idx]
                 if g_entry then
                     r_line = " " .. C.cyan .. truncate_string(g_entry, right_w - 4) .. C.reset
@@ -965,7 +1050,10 @@ function TUI.render()
     -- 5. Status / Warning Line
     local total_count = #TUI.filtered_items
     local pos_info = string.format(" Showing %d of %d refs ", total_count, #TUI.items)
-    local stat_left = " " .. TUI.status_color .. TUI.status_msg .. C.reset
+    local mode_badge = (TUI.mode == "search")
+        and (C.bg_yellow .. C.b_black .. " [SEARCH] " .. C.reset)
+        or (C.bg_blue .. C.b_white .. " [NORMAL] " .. C.reset)
+    local stat_left = " " .. mode_badge .. " " .. TUI.status_color .. TUI.status_msg .. C.reset
     local stat_gap = inner_w - utf8_col_width(stat_left) - utf8_col_width(pos_info) - 1
     if stat_gap < 1 then stat_gap = 1 end
     write_str(make_full_row(stat_left .. string.rep(" ", stat_gap) .. C.gray .. pos_info .. C.reset))
@@ -978,20 +1066,26 @@ function TUI.render()
     end
 
     local footer_keys
-    if cols >= 115 then
-        footer_keys = " " .. fmt_hotkey("Enter", "Checkout") .. fmt_hotkey("f", "Force")
-                   .. fmt_hotkey("s", "Submodule")
-                   .. fmt_hotkey("Tab", "Tabs") .. fmt_hotkey("w", "Worktree")
-                   .. fmt_hotkey("?", "Help") .. fmt_hotkey("q", "Quit")
-    elseif cols >= 90 then
-        footer_keys = " " .. fmt_hotkey("Enter", "Checkout") .. fmt_hotkey("f", "Force")
-                   .. fmt_hotkey("s", "Submodule")
-                   .. fmt_hotkey("Tab", "Tab") .. fmt_hotkey("w", "Worktree")
-                   .. fmt_hotkey("q", "Quit")
+    if TUI.mode == "search" then
+        footer_keys = " " .. fmt_hotkey("Enter", "Apply") .. fmt_hotkey("Esc", "Cancel")
+                   .. fmt_hotkey("Up/Down", "Select") .. fmt_hotkey("Ctrl+p/n", "Nav")
     else
-        footer_keys = " " .. fmt_hotkey("Enter", "Switch") .. fmt_hotkey("f", "Force")
-                   .. fmt_hotkey("s", "Sub")
-                   .. fmt_hotkey("Tab", "Tab") .. fmt_hotkey("q", "Quit")
+        if cols >= 120 then
+            footer_keys = " " .. fmt_hotkey("Enter", "Checkout") .. fmt_hotkey("j/k", "Nav")
+                       .. fmt_hotkey("/", "Search") .. fmt_hotkey("n/N", "Match")
+                       .. fmt_hotkey("f", "Force") .. fmt_hotkey("s", "Sub")
+                       .. fmt_hotkey("h/l", "Tabs") .. fmt_hotkey("w", "Worktree")
+                       .. fmt_hotkey("?", "Help") .. fmt_hotkey("q", "Quit")
+        elseif cols >= 95 then
+            footer_keys = " " .. fmt_hotkey("Enter", "Checkout") .. fmt_hotkey("j/k", "Nav")
+                       .. fmt_hotkey("/", "Search") .. fmt_hotkey("f", "Force")
+                       .. fmt_hotkey("s", "Sub") .. fmt_hotkey("w", "Worktree")
+                       .. fmt_hotkey("q", "Quit")
+        else
+            footer_keys = " " .. fmt_hotkey("Enter", "Switch") .. fmt_hotkey("j/k", "Nav")
+                       .. fmt_hotkey("/", "Search") .. fmt_hotkey("f", "Force")
+                       .. fmt_hotkey("q", "Quit")
+        end
     end
 
     local force_pill
@@ -1026,8 +1120,8 @@ function TUI.render()
 end
 
 function TUI.render_modal(cols, rows, buf)
-    local mw = math.min(70, cols - 4)
-    local mh = math.min(14, rows - 4)
+    local mw = math.min(74, cols - 4)
+    local mh = math.min(22, rows - 2)
     local mx = math.floor((cols - mw) / 2)
     local my = math.floor((rows - mh) / 2)
 
@@ -1053,19 +1147,23 @@ function TUI.render_modal(cols, rows, buf)
     elseif TUI.modal == "help" then
         mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Keyboard Shortcuts & Help " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 30)) .. BOX.tr .. C.reset)
         local lines = {
-            C.b_yellow .. "Navigation & Selection:" .. C.reset,
-            "  Up / Down, j/k   Move selection cursor",
-            "  PgUp / PgDn      Scroll list by page",
-            "  Tab              Cycle filter: All -> Branches -> Tags -> Remotes",
-            C.b_yellow .. "Switch & Actions:" .. C.reset,
-            "  Enter            Checkout selected branch or tag",
-            "  f                Toggle Force Mode (git checkout -f) [Default: ON]",
-            "  s                Toggle Submodule Auto-Sync (--init --recursive -f)",
-            "  w                Create Git Worktree for selected ref",
-            C.b_yellow .. "Search & Filter:" .. C.reset,
-            "  Type letters     Fuzzy search ref name or commit subject",
-            "  Backspace        Erase search character",
-            "  Esc              Clear search query, or quit",
+            C.b_yellow .. "Vim Navigation (Normal Mode):" .. C.reset,
+            "  j / Down, k / Up   Move selection cursor down / up",
+            "  h / Left, l / Right  Cycle tabs (All -> Branches -> Tags -> Remotes)",
+            "  gg / G, Home / End Jump to first / last ref",
+            "  Ctrl+d / Ctrl+u    Half-page scroll down / up",
+            "  Ctrl+e / Ctrl+y    Scroll commit preview & graph down / up",
+            C.b_yellow .. "Search & Filtering:" .. C.reset,
+            "  /                  Enter Search Mode (live fuzzy filtering)",
+            "  n / N              Jump to next / previous match in list",
+            "  Enter (in Search)  Lock search and return to Normal Mode",
+            "  Esc                Cancel search mode, or clear active filter",
+            C.b_yellow .. "Actions & Checkout:" .. C.reset,
+            "  Enter              Checkout selected branch or tag",
+            "  f                  Toggle Force Mode (git checkout -f) [Default: ON]",
+            "  s                  Toggle Submodule Auto-Sync (--init --recursive -f)",
+            "  w                  Create Git Worktree for selected ref",
+            "  q / Ctrl+C         Quit DOGIT",
         }
         for i, l in ipairs(lines) do
             if i <= mh - 4 then
@@ -1131,12 +1229,124 @@ function TUI.run()
                     TUI.modal = nil
                 end
 
+            elseif TUI.mode == "search" then
+                if key == "enter" then
+                    TUI.mode = "normal"
+                    TUI.status_msg = "Search locked. [j/k] Nav, [n/N] Next/Prev match, [Esc] Clear."
+                    TUI.status_color = C.b_green
+
+                elseif key == "esc" then
+                    TUI.query = TUI.saved_query
+                    TUI.filter_and_rank()
+                    TUI.mode = "normal"
+                    TUI.status_msg = "Search cancelled."
+                    TUI.status_color = C.gray
+
+                elseif key == "backspace" then
+                    if #TUI.query > 0 then
+                        TUI.query = TUI.query:sub(1, -2)
+                        TUI.filter_and_rank()
+                    end
+
+                elseif key == "up" or key == "ctrl_p" then
+                    if TUI.selection > 1 then
+                        TUI.selection = TUI.selection - 1
+                        TUI.preview_scroll = 0
+                    end
+
+                elseif key == "down" or key == "ctrl_n" then
+                    if TUI.selection < #TUI.filtered_items then
+                        TUI.selection = TUI.selection + 1
+                        TUI.preview_scroll = 0
+                    end
+
+                elseif #key == 1 and key:byte(1) >= 32 and key:byte(1) <= 126 then
+                    TUI.query = TUI.query .. key
+                    TUI.filter_and_rank()
+                end
+
             else
-                -- Normal mode key handling
+                -- Normal mode: Full Vim Keybindings
+                local is_g_key = (key == "g")
+                if not is_g_key then
+                    TUI.g_pending = false
+                end
+
                 if key == "q" or key == "ctrl_c" then
                     running = false
 
-                elseif key == "f" and #TUI.query == 0 then
+                elseif key == "/" then
+                    TUI.saved_query = TUI.query
+                    TUI.mode = "search"
+                    TUI.status_msg = "-- SEARCH -- Type query to filter. [Enter] Confirm, [Esc] Cancel."
+                    TUI.status_color = C.b_yellow
+
+                elseif key == "j" or key == "down" then
+                    if TUI.selection < #TUI.filtered_items then
+                        TUI.selection = TUI.selection + 1
+                        TUI.preview_scroll = 0
+                    end
+
+                elseif key == "k" or key == "up" then
+                    if TUI.selection > 1 then
+                        TUI.selection = TUI.selection - 1
+                        TUI.preview_scroll = 0
+                    end
+
+                elseif key == "h" or key == "left" then
+                    TUI.cycle_tab_backward()
+
+                elseif key == "l" or key == "right" or key == "tab" then
+                    TUI.cycle_tab_forward()
+
+                elseif key == "g" then
+                    if TUI.g_pending then
+                        TUI.selection = 1
+                        TUI.preview_scroll = 0
+                        TUI.g_pending = false
+                    else
+                        TUI.g_pending = true
+                    end
+
+                elseif key == "G" or key == "end" then
+                    TUI.selection = math.max(1, #TUI.filtered_items)
+                    TUI.preview_scroll = 0
+
+                elseif key == "home" then
+                    TUI.selection = 1
+                    TUI.preview_scroll = 0
+
+                elseif key == "ctrl_d" or key == "pagedown" then
+                    TUI.selection = math.min(#TUI.filtered_items, TUI.selection + 8)
+                    TUI.preview_scroll = 0
+
+                elseif key == "ctrl_u" or key == "pageup" then
+                    TUI.selection = math.max(1, TUI.selection - 8)
+                    TUI.preview_scroll = 0
+
+                elseif key == "ctrl_e" then
+                    TUI.preview_scroll = TUI.preview_scroll + 1
+
+                elseif key == "ctrl_y" then
+                    TUI.preview_scroll = math.max(0, TUI.preview_scroll - 1)
+
+                elseif key == "n" then
+                    TUI.next_match()
+
+                elseif key == "N" then
+                    TUI.prev_match()
+
+                elseif key == "esc" then
+                    if #TUI.query > 0 then
+                        TUI.query = ""
+                        TUI.filter_and_rank()
+                        TUI.status_msg = "Search filter cleared."
+                        TUI.status_color = C.gray
+                    else
+                        running = false
+                    end
+
+                elseif key == "f" then
                     TUI.force = not TUI.force
                     if TUI.force then
                         TUI.status_msg = "Force Mode ENABLED (will run 'git checkout -f')"
@@ -1146,7 +1356,7 @@ function TUI.run()
                         TUI.status_color = C.gray
                     end
 
-                elseif key == "s" and #TUI.query == 0 then
+                elseif key == "s" then
                     TUI.submodule = not TUI.submodule
                     if TUI.submodule then
                         TUI.status_msg = "Submodule Sync ENABLED (git submodule update --init --recursive -f)"
@@ -1156,58 +1366,15 @@ function TUI.run()
                         TUI.status_color = C.gray
                     end
 
-                elseif key == "?" and #TUI.query == 0 then
+                elseif key == "?" then
                     TUI.modal = "help"
 
-                elseif key == "w" and #TUI.query == 0 then
+                elseif key == "w" then
                     local item = TUI.filtered_items[TUI.selection]
                     if item then
                         local base = item.name:gsub("^[^/]+/", ""):gsub("[^%w%-_]", "-")
                         TUI.worktree_input = "../" .. base
                         TUI.modal = "worktree"
-                    end
-
-                elseif key == "tab" then
-                    if TUI.filter_tab == "all" then TUI.filter_tab = "branches"
-                    elseif TUI.filter_tab == "branches" then TUI.filter_tab = "tags"
-                    elseif TUI.filter_tab == "tags" then TUI.filter_tab = "remotes"
-                    else TUI.filter_tab = "all" end
-                    TUI.filter_and_rank()
-
-                elseif key == "up" then
-                    if TUI.selection > 1 then
-                        TUI.selection = TUI.selection - 1
-                    end
-
-                elseif key == "down" then
-                    if TUI.selection < #TUI.filtered_items then
-                        TUI.selection = TUI.selection + 1
-                    end
-
-                elseif key == "pageup" then
-                    TUI.selection = math.max(1, TUI.selection - 8)
-
-                elseif key == "pagedown" then
-                    TUI.selection = math.min(#TUI.filtered_items, TUI.selection + 8)
-
-                elseif key == "home" then
-                    TUI.selection = 1
-
-                elseif key == "end" then
-                    TUI.selection = #TUI.filtered_items
-
-                elseif key == "backspace" then
-                    if #TUI.query > 0 then
-                        TUI.query = TUI.query:sub(1, -2)
-                        TUI.filter_and_rank()
-                    end
-
-                elseif key == "esc" then
-                    if #TUI.query > 0 then
-                        TUI.query = ""
-                        TUI.filter_and_rank()
-                    else
-                        running = false
                     end
 
                 elseif key == "enter" then
@@ -1218,11 +1385,6 @@ function TUI.run()
                         checkout_submodule = TUI.submodule
                         running = false
                     end
-
-                elseif #key == 1 and key:byte(1) >= 32 and key:byte(1) <= 126 then
-                    -- Append typed character to query
-                    TUI.query = TUI.query .. key
-                    TUI.filter_and_rank()
                 end
             end
         end
@@ -1425,6 +1587,53 @@ local function run_test_suite()
     assert_eq(Git.build_submodule_cmd(true), "git submodule update --init --recursive -f", "Force submodule update command")
     assert_eq(Git.build_submodule_cmd(false), "git submodule update --init --recursive", "Non-force submodule update command")
 
+    -- Test 7: Vim Navigation & Tab Cycling Logic
+    print("\n[Test 7] Vim Navigation & Tab Cycling...")
+    local orig_items = TUI.items
+    local orig_tab = TUI.filter_tab
+    local orig_query = TUI.query
+    TUI.items = {
+        { name = "master", type = "local", subject = "" },
+        { name = "develop", type = "local", subject = "" },
+        { name = "v1.0", type = "tag", subject = "" },
+        { name = "origin/master", type = "remote", subject = "" },
+    }
+    TUI.filter_tab = "all"
+    TUI.query = ""
+    TUI.filter_and_rank()
+    assert_eq(#TUI.filtered_items, 4, "All tabs shows 4 items")
+
+    TUI.cycle_tab_forward()
+    assert_eq(TUI.filter_tab, "branches", "Tab cycle forward: branches")
+    assert_eq(#TUI.filtered_items, 2, "Branches tab shows 2 items")
+
+    TUI.cycle_tab_forward()
+    assert_eq(TUI.filter_tab, "tags", "Tab cycle forward: tags")
+    assert_eq(#TUI.filtered_items, 1, "Tags tab shows 1 item")
+
+    TUI.cycle_tab_backward()
+    assert_eq(TUI.filter_tab, "branches", "Tab cycle backward: branches")
+
+    -- Test 8: Search Mode & Match Cycling
+    print("\n[Test 8] Search Mode & Match Cycling...")
+    TUI.filter_tab = "all"
+    TUI.query = "master"
+    TUI.filter_and_rank()
+    assert_eq(#TUI.filtered_items, 2, "Search for 'master' filters to 2 items")
+    TUI.selection = 1
+    TUI.next_match()
+    assert_eq(TUI.selection, 2, "next_match advances selection")
+    TUI.next_match()
+    assert_eq(TUI.selection, 1, "next_match wraps around to 1")
+    TUI.prev_match()
+    assert_eq(TUI.selection, 2, "prev_match wraps around to end")
+
+    -- Restore state
+    TUI.items = orig_items
+    TUI.filter_tab = orig_tab
+    TUI.query = orig_query
+    if orig_items and #orig_items > 0 then TUI.filter_and_rank() end
+
     print(string.format("\nTest Results: %d Passed, %d Failed.", passed, failed))
     return failed == 0 and 0 or 1
 end
@@ -1487,16 +1696,20 @@ Options:
   --test               Run automated test suite and exit
   -h, --help           Show this help message
 
-TUI Controls:
-  Enter                Checkout selected branch or tag
+TUI Controls (Vim-Style Dual Mode):
+  j / Down, k / Up     Move selection cursor down / up
+  h / Left, l / Right  Cycle category tabs left / right
+  gg / G, Home / End   Jump to first / last ref
+  Ctrl+d / Ctrl+u      Half-page scroll down / up
+  Ctrl+e / Ctrl+y      Scroll commit preview & graph down / up
+  /                    Enter Search Mode (type query to filter)
+  Enter                Confirm search (in Search mode) or Checkout (in Normal mode)
+  n / N                Jump to next / previous match in filtered list
+  Esc                  Cancel search mode, or clear active search filter
   f                    Toggle Force Mode (git checkout -f) [Default: ON]
-  s                    Toggle Submodule Auto-Sync (git submodule update --init --recursive -f)
-  Tab                  Cycle tab: All -> Branches -> Tags -> Remotes
+  s                    Toggle Submodule Auto-Sync (--init --recursive -f)
   w                    Create Git Worktree for selected ref
-  Up / Down, j / k     Navigate list
-  Typing               Live fuzzy search
-  Backspace            Erase search character
-  Esc / q              Clear search or Quit
+  q / Ctrl+C           Quit
 ]])
             os.exit(0)
         elseif not a:find("^-") and not target then
