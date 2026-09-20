@@ -1022,7 +1022,7 @@ function TUI.render()
 
     local sub_badge
     if TUI.submodule then
-        sub_badge = C.bg_cyan .. C.b_white .. " [SUBMODULE: ON] " .. C.reset
+        sub_badge = C.bg_blue .. C.b_white .. " [SUBMODULE: ON] " .. C.reset
     else
         sub_badge = C.gray .. "[SUBMODULE: OFF]" .. C.reset
     end
@@ -1216,7 +1216,7 @@ function TUI.render()
 
     local sub_pill
     if TUI.submodule then
-        sub_pill = C.bg_cyan .. C.b_white .. " SUB: ON " .. C.reset
+        sub_pill = C.bg_blue .. C.b_white .. " SUB: ON " .. C.reset
     else
         sub_pill = C.bg_darkblue .. C.gray .. " SUB: OFF " .. C.reset
     end
