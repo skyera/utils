@@ -1004,10 +1004,10 @@ local TUI = {
     
     -- Pipeline Steps Status
     steps = {
-        crawl  = { status = "READY", elapsed = 0, msg = "Native FFI crawler" },
-        cscope = { status = "READY", elapsed = 0, msg = "cscope -b -q -k -i cscope.files" },
-        ctags  = { status = "READY", elapsed = 0, msg = "ctags -L cscope.files" },
-        tags_f = { status = "READY", elapsed = 0, msg = "In-memory foldcase sort" },
+        crawl  = { status = "READY", elapsed = 0, start_time = 0, msg = "Native FFI crawler" },
+        cscope = { status = "READY", elapsed = 0, start_time = 0, msg = "cscope -b -q -k -i cscope.files" },
+        ctags  = { status = "READY", elapsed = 0, start_time = 0, msg = "ctags -L cscope.files" },
+        tags_f = { status = "READY", elapsed = 0, start_time = 0, msg = "In-memory foldcase sort" },
     },
     
     -- Active background workers
@@ -1097,6 +1097,11 @@ function TUI.start_pipeline()
     TUI.status = "RUNNING"
     TUI.pipeline_start_time = get_time_sec()
 
+    TUI.steps.crawl.status = "READY"
+    TUI.steps.tags_f.status = "READY"
+    TUI.steps.cscope.status = "READY"
+    TUI.steps.ctags.status = "READY"
+
     -- Step 0: Clean old databases if requested
     if TUI.clean_before then
         TUI.log("[CLEAN] Cleaning existing indexing database files...")
@@ -1105,10 +1110,11 @@ function TUI.start_pipeline()
     end
 
     -- Step 1: File Discovery
+    local t_crawl_0 = get_time_sec()
+    TUI.steps.crawl.start_time = t_crawl_0
     TUI.steps.crawl.status = "RUNNING"
     TUI.log(string.format("[1/4] Crawling directory tree using [%s]...", TUI.method))
     local warnings = {}
-    local t_crawl_0 = get_time_sec()
     local files = crawl_directory(
         TUI.method,
         ".",
@@ -1139,8 +1145,9 @@ function TUI.start_pipeline()
     TUI.log(string.format("[INFO] Successfully wrote %d entries to %s.", count_w, CSCOPE_FILE_NAME))
 
     -- Step 2: filenametags (In-Memory Foldcase Sort)
-    TUI.steps.tags_f.status = "RUNNING"
     local t_fn_0 = get_time_sec()
+    TUI.steps.tags_f.start_time = t_fn_0
+    TUI.steps.tags_f.status = "RUNNING"
     local ok_fn, count_fn = generate_filenametags(CSCOPE_FILE_NAME, FILENAMETAG_FILE_NAME)
     local t_fn_elapsed = get_time_sec() - t_fn_0
     TUI.steps.tags_f.elapsed = t_fn_elapsed
@@ -1153,7 +1160,10 @@ function TUI.start_pipeline()
     end
 
     -- Step 3 & 4: Spawn cscope & ctags concurrently
+    local t_proc_0 = get_time_sec()
+    TUI.steps.cscope.start_time = t_proc_0
     TUI.steps.cscope.status = "RUNNING"
+    TUI.steps.ctags.start_time = t_proc_0
     TUI.steps.ctags.status = "RUNNING"
     TUI.log("[3/4] Spawning cscope engine: cscope -b -q -k -i cscope.files...")
     TUI.log("[4/4] Spawning ctags engine: ctags -L cscope.files...")
@@ -1220,15 +1230,51 @@ end
 --------------------------------------------------------------------------------
 -- Screen Drawing & Rendering
 --------------------------------------------------------------------------------
-local function make_bar(status, elapsed)
+local SPINNER_FRAMES = { "◐", "◓", "◑", "◒" }
+
+local function make_bar(status, elapsed, start_time)
     if status == "DONE" then
         return C.b_green .. "[ DONE ]" .. C.reset .. string.format(" in %6.3fs", elapsed or 0)
     elseif status == "RUNNING" then
-        return C.b_yellow .. "[ RUN  ]" .. C.reset .. C.yellow .. " in progress..." .. C.reset
+        local cur_elapsed = (start_time and start_time > 0) and (get_time_sec() - start_time) or (elapsed or 0)
+        local frame = SPINNER_FRAMES[math.floor(get_time_sec() * 10) % #SPINNER_FRAMES + 1]
+        return C.b_yellow .. "[ RUN  ]" .. C.reset .. " " .. C.b_cyan .. frame .. C.reset .. string.format(" %6.3fs", cur_elapsed)
     elseif status == "ERROR" then
         return C.b_red .. "[ FAIL ]" .. C.reset .. C.red .. " error occurred" .. C.reset
     else
         return C.dim .. "[ READY]" .. C.reset .. " waiting..."
+    end
+end
+
+local function make_progress_bar(done_count, total_count, bar_width)
+    bar_width = bar_width or 16
+    local pct = total_count > 0 and (done_count / total_count) or 0
+    local filled = math.floor(pct * bar_width)
+    local empty = bar_width - filled
+    local bar = C.b_green .. string.rep("█", filled) .. C.gray .. string.rep("░", empty) .. C.reset
+    return string.format("[%s] %3d%%", bar, math.floor(pct * 100))
+end
+
+local function colorize_log_entry(entry, max_w)
+    local truncated = truncate_string(entry, max_w)
+    local time_part, tag, rest = truncated:match("^(%[%d%d:%d%d:%d%d%])%s*(%[[%w%d/_]+%])(.*)$")
+    if time_part and tag then
+        local tag_c = C.cyan
+        if tag:find("ERROR") or tag:find("FAIL") then tag_c = C.b_red
+        elseif tag:find("WARN") then tag_c = C.b_yellow
+        elseif tag:find("DONE") or tag:find("PASS") then tag_c = C.b_green
+        elseif tag:find("CLEAN") then tag_c = C.magenta
+        elseif tag:find("%d/%d") then tag_c = C.b_white
+        elseif tag:find("CONFIG") then tag_c = C.b_blue
+        end
+        return " " .. C.gray .. time_part .. " " .. tag_c .. tag .. C.reset .. rest
+    else
+        local color = C.gray
+        if truncated:find("%[ERROR%]") then color = C.b_red
+        elseif truncated:find("%[WARN%]") then color = C.b_yellow
+        elseif truncated:find("%[DONE%]") then color = C.b_green
+        end
+        return " " .. color .. truncated .. C.reset
     end
 end
 
@@ -1259,7 +1305,7 @@ function TUI.render()
     -- 1. Header Box
     local os_label = IS_WINDOWS and "Windows / Win32 FFI" or "Linux / POSIX FFI"
     local raw_cwd = get_cwd()
-    local title_left = string.format(" DOTAG TUI v1.1 [%s] ", os_label)
+    local title_left = string.format(" DOTAG TUI v1.2 [%s] ", os_label)
     local max_cwd_len = math.max(12, cols - utf8_col_width(title_left) - 14)
     local cwd_str = truncate_string(raw_cwd, max_cwd_len)
     local title_right = string.format(" CWD: %s ", cwd_str)
@@ -1268,7 +1314,9 @@ function TUI.render()
 
     write_str(C.b_cyan .. BOX.tl .. C.b_white .. title_left .. C.b_cyan .. string.rep(BOX.h, fill_len) .. C.gray .. title_right .. C.b_cyan .. BOX.tr .. C.reset .. "\n")
 
-    -- 2. Crawl & Database Status Pane (Split View)
+    -- 2. Crawl & Database Status Pane (Split View with geometric connections)
+    write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, half_w) .. BOX.tt .. string.rep(BOX.h, right_w) .. BOX.vr .. C.reset .. "\n")
+
     local cscope_stat = get_file_stats("cscope.out")
     local tags_stat   = get_file_stats("tags")
     local fnames_stat = get_file_stats("filenametags")
@@ -1283,6 +1331,8 @@ function TUI.render()
     local l1 = string.format(" %sCrawl & Build Options%s", C.b_white, C.reset)
     local r1 = string.format(" %sDatabase Artifact Status%s", C.b_white, C.reset)
     write_str(make_split_row(l1, r1))
+
+    write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, half_w) .. BOX.x .. string.rep(BOX.h, right_w) .. BOX.vr .. C.reset .. "\n")
 
     local l2 = string.format("  • Discovery : %s(*) %s%s", C.cyan, TUI.method:upper(), C.reset)
     local r2 = string.format("  • tags         : %s", format_art_stat(tags_stat))
@@ -1301,25 +1351,54 @@ function TUI.render()
 
     -- 3. Extensions & Excludes
     local active_exts = TUI.get_active_extensions()
-    local exts_str = table.concat(active_exts, " ")
-    local ext_header = string.format(" File Extensions (%d enabled) - [e]: ", #active_exts)
-    local ext_line = ext_header .. exts_str
-    write_str(make_full_row(" " .. C.gray .. truncate_string(ext_line, inner_w - 2) .. C.reset))
+    local max_display_exts = 7
+    local ext_preview = {}
+    for idx = 1, math.min(#active_exts, max_display_exts) do
+        table.insert(ext_preview, C.cyan .. active_exts[idx] .. C.reset)
+    end
+    local more_exts = #active_exts > max_display_exts and (C.gray .. string.format(" (+%d more)", #active_exts - max_display_exts) .. C.reset) or ""
+    local ext_line = string.format(" %s[e]%s %sFile Extensions%s (%d active): %s%s",
+        C.b_yellow, C.reset, C.b_white, C.reset, #active_exts, table.concat(ext_preview, "  "), more_exts)
+    write_str(make_full_row(ext_line))
 
     local active_excls = TUI.get_active_excludes()
-    local excl_str = table.concat(active_excls, ", ")
-    local excl_header = string.format(" Excluded Dirs (%d rules) - [x]: ", #active_excls)
-    local excl_line = excl_header .. excl_str
-    write_str(make_full_row(" " .. C.gray .. truncate_string(excl_line, inner_w - 2) .. C.reset))
+    local max_display_excls = 5
+    local excl_preview = {}
+    for idx = 1, math.min(#active_excls, max_display_excls) do
+        table.insert(excl_preview, C.cyan .. active_excls[idx] .. C.reset)
+    end
+    local more_excls = #active_excls > max_display_excls and (C.gray .. string.format(" (+%d more)", #active_excls - max_display_excls) .. C.reset) or ""
+    local excl_line = string.format(" %s[x]%s %sExcluded Dirs%s   (%d rules) : %s%s",
+        C.b_yellow, C.reset, C.b_white, C.reset, #active_excls, table.concat(excl_preview, ", "), more_excls)
+    write_str(make_full_row(excl_line))
 
     -- 4. Tri-Engine Pipeline Status Box
     write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, inner_w) .. BOX.vr .. C.reset .. "\n")
-    local pipe_title = string.format(" Tri-Engine Concurrent Pipeline Status%sDiscovered: %d files ",
-        string.rep(" ", math.max(2, inner_w - 62)), TUI.total_files)
-    write_str(make_full_row(C.b_white .. pipe_title .. C.reset))
+    local done_count = 0
+    for _, s in pairs(TUI.steps) do
+        if s.status == "DONE" then done_count = done_count + 1 end
+    end
+    local gauge = make_progress_bar(done_count, 4, 16)
+    local pipe_status_tag
+    if TUI.pipeline_running then
+        local frame = SPINNER_FRAMES[math.floor(get_time_sec() * 10) % #SPINNER_FRAMES + 1]
+        pipe_status_tag = C.b_yellow .. frame .. " RUNNING" .. C.reset
+    elseif done_count == 4 then
+        pipe_status_tag = C.b_green .. "✓ COMPLETE (" .. string.format("%.3fs", TUI.total_build_time) .. ")" .. C.reset
+    elseif TUI.status == "ERROR" then
+        pipe_status_tag = C.b_red .. "✗ ERROR" .. C.reset
+    else
+        pipe_status_tag = C.gray .. "○ IDLE" .. C.reset
+    end
 
-    local function make_pipeline_row(num, icon, name, status, elapsed, msg)
-        local bar = make_bar(status, elapsed)
+    local pipe_left = string.format(" %sTri-Engine Pipeline%s %s  %s", C.b_white, C.reset, gauge, pipe_status_tag)
+    local pipe_right = string.format("%sFiles: %s%d ", C.gray, C.b_white, TUI.total_files)
+    local pipe_gap = inner_w - utf8_col_width(pipe_left) - utf8_col_width(pipe_right)
+    if pipe_gap < 1 then pipe_gap = 1 end
+    write_str(make_full_row(pipe_left .. string.rep(" ", pipe_gap) .. pipe_right))
+
+    local function make_pipeline_row(num, icon, name, status, elapsed, msg, start_time)
+        local bar = make_bar(status, elapsed, start_time)
         local left_part = string.format("  %d. %s %-15s %s", num, icon, name, bar)
         local left_w = utf8_col_width(left_part)
         local max_msg_w = inner_w - left_w - 4
@@ -1330,19 +1409,29 @@ function TUI.render()
         return make_full_row(left_part .. msg_part)
     end
 
-    write_str(make_pipeline_row(1, "🔍", "File Crawler", TUI.steps.crawl.status, TUI.steps.crawl.elapsed, TUI.steps.crawl.msg))
-    write_str(make_pipeline_row(2, "📁", "filenametags", TUI.steps.tags_f.status, TUI.steps.tags_f.elapsed, TUI.steps.tags_f.msg))
-    write_str(make_pipeline_row(3, "🔎", "cscope Engine", TUI.steps.cscope.status, TUI.steps.cscope.elapsed, TUI.steps.cscope.msg))
-    write_str(make_pipeline_row(4, "🏷️", "ctags Engine", TUI.steps.ctags.status, TUI.steps.ctags.elapsed, TUI.steps.ctags.msg))
+    write_str(make_pipeline_row(1, "🔍", "File Crawler", TUI.steps.crawl.status, TUI.steps.crawl.elapsed, TUI.steps.crawl.msg, TUI.steps.crawl.start_time))
+    write_str(make_pipeline_row(2, "📁", "filenametags", TUI.steps.tags_f.status, TUI.steps.tags_f.elapsed, TUI.steps.tags_f.msg, TUI.steps.tags_f.start_time))
+    write_str(make_pipeline_row(3, "🔎", "cscope Engine", TUI.steps.cscope.status, TUI.steps.cscope.elapsed, TUI.steps.cscope.msg, TUI.steps.cscope.start_time))
+    write_str(make_pipeline_row(4, "🏷️", "ctags Engine", TUI.steps.ctags.status, TUI.steps.ctags.elapsed, TUI.steps.ctags.msg, TUI.steps.ctags.start_time))
 
     -- 5. Activity Log Pane
     write_str(C.b_cyan .. BOX.vl .. string.rep(BOX.h, inner_w) .. BOX.vr .. C.reset .. "\n")
-    local log_lines_avail = rows - 19
+    local log_lines_avail = rows - 21
     if log_lines_avail < 3 then log_lines_avail = 3 end
 
-    local log_header = string.format(" Activity & Telemetry Log (%d entries)%s[Auto-Scroll: %s] ",
-        #TUI.logs, string.rep(" ", math.max(2, inner_w - 56)), TUI.log_auto_scroll and "ON" or "OFF")
-    write_str(make_full_row(C.dim .. log_header .. C.reset))
+    local scroll_status
+    if TUI.log_auto_scroll then
+        scroll_status = C.b_green .. "[● Live Auto-Scroll]" .. C.reset
+    else
+        local cur_pos = TUI.log_scroll + 1
+        local total_pos = #TUI.logs
+        scroll_status = C.b_yellow .. string.format("[▲ Line %d/%d (Paused - 'l' to resume) ▼]", cur_pos, total_pos) .. C.reset
+    end
+
+    local log_left = string.format(" %sActivity & Telemetry Log%s (%d entries)", C.b_white, C.reset, #TUI.logs)
+    local log_gap = inner_w - utf8_col_width(log_left) - utf8_col_width(scroll_status) - 1
+    if log_gap < 1 then log_gap = 1 end
+    write_str(make_full_row(log_left .. string.rep(" ", log_gap) .. scroll_status .. " "))
 
     local start_idx = math.max(1, #TUI.logs - log_lines_avail + 1)
     if not TUI.log_auto_scroll then
@@ -1352,29 +1441,48 @@ function TUI.render()
     for i = 1, log_lines_avail do
         local entry_idx = start_idx + i - 1
         local entry = TUI.logs[entry_idx] or ""
-        local color = C.gray
-        if entry:find("%[ERROR%]") then
-            color = C.b_red
-        elseif entry:find("%[WARN%]") then
-            color = C.b_yellow
-        elseif entry:find("%[DONE%]") then
-            color = C.b_green
-        end
-        local entry_disp = truncate_string(entry, inner_w - 2)
-        write_str(make_full_row(" " .. color .. entry_disp .. C.reset))
+        write_str(make_full_row(colorize_log_entry(entry, inner_w - 2)))
     end
 
     -- 6. Footer Box
     write_str(C.b_cyan .. BOX.bl .. string.rep(BOX.h, inner_w) .. BOX.br .. C.reset .. "\n")
-    local footer
-    if cols >= 120 then
-        footer = " [Space] Run Tri-Engine  [c] Clean  [m] Method  [e] Extensions  [x] Excludes  [v] Verify  [?] Help  [q] Quit "
-    elseif cols >= 92 then
-        footer = " [Space] Run  [c] Clean  [m] Method  [e] Exts  [x] Excl  [v] Verify  [?] Help  [q] Quit "
-    else
-        footer = " [Space] Run [c] Clean [m] Method [e] Ext [x] Excl [v] Ver [?] Help [q] Quit "
+
+    local function fmt_hotkey(k, label)
+        return C.b_yellow .. "[" .. k .. "]" .. C.reset .. " " .. C.white .. label .. "  "
     end
-    write_str(C.bg_darkblue .. C.b_white .. pad_string(footer, cols) .. C.reset)
+
+    local footer_keys
+    if cols >= 110 then
+        footer_keys = " " .. fmt_hotkey("Space", "Run") .. fmt_hotkey("c", "Clean") .. fmt_hotkey("m", "Method")
+                   .. fmt_hotkey("e", "Exts") .. fmt_hotkey("x", "Excl") .. fmt_hotkey("v", "Verify")
+                   .. fmt_hotkey("?", "Help") .. fmt_hotkey("q", "Quit")
+    elseif cols >= 85 then
+        footer_keys = " " .. fmt_hotkey("Space", "Run") .. fmt_hotkey("c", "Clean") .. fmt_hotkey("m", "Method")
+                   .. fmt_hotkey("e", "Ext") .. fmt_hotkey("x", "Excl") .. fmt_hotkey("v", "Ver")
+                   .. fmt_hotkey("?", "Help") .. fmt_hotkey("q", "Quit")
+    else
+        footer_keys = " " .. fmt_hotkey("Space", "Run") .. fmt_hotkey("c", "Cln") .. fmt_hotkey("m", "Mtd")
+                   .. fmt_hotkey("?", "Help") .. fmt_hotkey("q", "Quit")
+    end
+
+    local status_pill
+    if TUI.pipeline_running then
+        local frame = SPINNER_FRAMES[math.floor(get_time_sec() * 10) % #SPINNER_FRAMES + 1]
+        status_pill = C.bg_blue .. C.b_yellow .. " " .. frame .. " RUNNING " .. C.reset
+    elseif TUI.status == "DONE" then
+        status_pill = C.bg_darkblue .. C.b_green .. " ✓ READY " .. C.reset
+    elseif TUI.status == "ERROR" then
+        status_pill = C.bg_darkblue .. C.b_red .. " ✗ ERROR " .. C.reset
+    else
+        status_pill = C.bg_darkblue .. C.gray .. " ○ IDLE " .. C.reset
+    end
+
+    local keys_w = utf8_col_width(footer_keys)
+    local pill_w = utf8_col_width(status_pill)
+    local footer_gap = cols - keys_w - pill_w
+    if footer_gap < 0 then footer_gap = 0 end
+
+    write_str(C.bg_darkblue .. footer_keys .. string.rep(" ", footer_gap) .. status_pill .. C.reset)
 
     -- Render Modal if active
     if TUI.modal then
@@ -1404,18 +1512,32 @@ function TUI.render_modal(cols, rows, buf)
 
     if TUI.modal == "exts" then
         mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Manage File Extensions " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 28)) .. BOX.tr .. C.reset)
-        local visible_rows = mh - 4
-        for i = 1, visible_rows do
-            local idx = TUI.modal_scroll + i
-            local item = TUI.extensions[idx]
-            if item then
-                local check = item.enabled and C.b_green .. "[X]" .. C.reset or C.dim .. "[ ]" .. C.reset
-                local sel = (idx == TUI.modal_selection) and (C.reverse .. "> ") or "  "
-                local line = string.format("%s%s %-12s", sel, check, item.name)
-                mwrite(i, C.b_yellow .. BOX.v .. " " .. pad_right(line, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
+        local num_items = #TUI.extensions
+        local num_cols = 2
+        local num_rows = math.ceil(num_items / num_cols)
+        local visible_rows = math.min(mh - 4, num_rows)
+        local col_w = math.floor((mw - 5) / num_cols)
+
+        for r = 1, visible_rows do
+            local line_parts = {}
+            for c = 0, num_cols - 1 do
+                local idx = r + c * num_rows
+                local item = TUI.extensions[idx]
+                if item then
+                    local check = item.enabled and (C.b_green .. "[X]" .. C.reset) or (C.dim .. "[ ]" .. C.reset)
+                    local is_sel = (idx == TUI.modal_selection)
+                    local prefix = is_sel and (C.reverse .. "> ") or "  "
+                    local name_str = is_sel and (C.b_white .. item.name .. C.reset) or item.name
+                    local item_str = string.format("%s%s %s", prefix, check, name_str)
+                    table.insert(line_parts, pad_right(item_str, col_w))
+                else
+                    table.insert(line_parts, string.rep(" ", col_w))
+                end
             end
+            local row_str = table.concat(line_parts, " ")
+            mwrite(r, C.b_yellow .. BOX.v .. " " .. pad_right(row_str, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
         end
-        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" [Space] Toggle  [a] All  [n] None  [e/Enter/Esc] Close", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
+        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" [Space] Toggle  [a] All  [n] None  [Left/Right] Col  [e/Esc] Close", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
 
     elseif TUI.modal == "excludes" then
         mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Manage Excluded Directories " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 33)) .. BOX.tr .. C.reset)
@@ -1425,44 +1547,55 @@ function TUI.render_modal(cols, rows, buf)
             local item = TUI.excluded_dirs[idx]
             if item then
                 local check = item.enabled and C.b_green .. "[X]" .. C.reset or C.dim .. "[ ]" .. C.reset
-                local sel = (idx == TUI.modal_selection) and (C.reverse .. "> ") or "  "
-                local line = string.format("%s%s %-25s", sel, check, item.name)
+                local is_sel = (idx == TUI.modal_selection)
+                local prefix = is_sel and (C.reverse .. "> ") or "  "
+                local name_str = is_sel and (C.b_white .. item.name .. C.reset) or item.name
+                local line = string.format("%s%s %-25s", prefix, check, name_str)
                 mwrite(i, C.b_yellow .. BOX.v .. " " .. pad_right(line, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
             end
         end
-        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" [Space] Toggle  [x/Enter/Esc] Close", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
+        local info_hint = string.format(" [Space] Toggle  [a] All  [n] None  (%d/%d)  [x/Esc] Close", TUI.modal_selection, #TUI.excluded_dirs)
+        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(info_hint, mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
 
     elseif TUI.modal == "verify" then
         mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Quick Index Verification Browser " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 37)) .. BOX.tr .. C.reset)
-        local visible_rows = mh - 4
+        local hdr = string.format("   %-20s %s", "TAG NAME", "TARGET FILE PATH")
+        mwrite(1, C.b_yellow .. BOX.v .. C.dim .. pad_right(hdr, mw - 4) .. C.reset .. C.b_yellow .. BOX.v .. C.reset)
+        local visible_rows = mh - 5
         for i = 1, visible_rows do
             local idx = TUI.modal_scroll + i
             local item = TUI.verify_items[idx]
             if item then
-                local sel = (idx == TUI.verify_selection) and (C.reverse .. "> ") or "  "
-                local line = string.format("%s%-20s %s", sel, truncate_str(item.tag or "", 20), truncate_str(item.path or "", mw - 28))
-                mwrite(i, C.b_yellow .. BOX.v .. " " .. pad_right(line, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
+                local is_sel = (idx == TUI.verify_selection)
+                local sel = is_sel and (C.reverse .. "> ") or "  "
+                local tag_str = is_sel and (C.b_white .. truncate_str(item.tag or "", 20) .. C.reset) or truncate_str(item.tag or "", 20)
+                local line = string.format("%s%-20s %s", sel, tag_str, truncate_str(item.path or "", mw - 28))
+                mwrite(i + 1, C.b_yellow .. BOX.v .. " " .. pad_right(line, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
             end
         end
-        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(string.format(" Showing %d indexed files  [PgUp/PgDn]  [v/Enter/Esc] Close", #TUI.verify_items), mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
+        local status_msg = string.format(" Tag %d of %d indexed  [PgUp/PgDn/j/k]  [v/Esc] Close", TUI.verify_selection, #TUI.verify_items)
+        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(status_msg, mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
 
     elseif TUI.modal == "help" then
         mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Keyboard Shortcuts & Help " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 30)) .. BOX.tr .. C.reset)
         local help_lines = {
-            "Space       - Run Tri-Engine Pipeline (cscope + ctags + filenametags)",
-            "c           - Toggle 'Clean DB Before Starting'",
-            "m           - Cycle Discovery Method (FFI Native -> fd -> find)",
-            "i           - Toggle Respecting .gitignore / Hidden files",
-            "e           - Edit / Toggle File Extensions Filter",
-            "x           - Edit / Toggle Excluded Directories Filter",
-            "v           - Open Quick Index Verification Browser",
-            "l           - Toggle Auto-Scroll on Activity Log",
-            "j / k, PgDn - Scroll Log or List Items",
-            "q / Ctrl+C  - Quit DOTAG TUI",
+            C.b_yellow .. "Pipeline & Execution:" .. C.reset,
+            "  Space       Run Tri-Engine (cscope + ctags + filenametags)",
+            "  c           Toggle 'Clean DB Before Build'",
+            "  m           Cycle Discovery Method (FFI Native -> fd -> find)",
+            "  i           Toggle Respecting .gitignore / Hidden files",
+            C.b_yellow .. "Filters & Verification:" .. C.reset,
+            "  e           Manage / Toggle File Extensions (2-Column Grid)",
+            "  x           Manage / Toggle Excluded Directories",
+            "  v           Open Quick Index Verification Browser",
+            C.b_yellow .. "Log & Navigation:" .. C.reset,
+            "  l           Toggle Live Auto-Scroll on Activity Log",
+            "  j/k, PgDn   Scroll Log entries or Modal lists",
+            "  q / Ctrl+C  Quit DOTAG TUI",
         }
         for i, hl in ipairs(help_lines) do
             if i <= mh - 4 then
-                mwrite(i, C.b_yellow .. BOX.v .. " " .. C.white .. pad_right(hl, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
+                mwrite(i, C.b_yellow .. BOX.v .. " " .. pad_right(hl, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
             end
         end
         mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_right(" Press [Esc], [Enter], or [?] to close help", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
@@ -1555,10 +1688,22 @@ function TUI.run()
                         local item = TUI.excluded_dirs[TUI.modal_selection]
                         if item then item.enabled = not item.enabled end
                     end
-                elseif key == "a" and TUI.modal == "exts" then
-                    for _, item in ipairs(TUI.extensions) do item.enabled = true end
-                elseif key == "n" and TUI.modal == "exts" then
-                    for _, item in ipairs(TUI.extensions) do item.enabled = false end
+                elseif key == "left" and TUI.modal == "exts" then
+                    local num_rows = math.ceil(#TUI.extensions / 2)
+                    if TUI.modal_selection > num_rows then
+                        TUI.modal_selection = TUI.modal_selection - num_rows
+                    end
+                elseif key == "right" and TUI.modal == "exts" then
+                    local num_rows = math.ceil(#TUI.extensions / 2)
+                    if TUI.modal_selection <= num_rows and TUI.modal_selection + num_rows <= #TUI.extensions then
+                        TUI.modal_selection = TUI.modal_selection + num_rows
+                    end
+                elseif key == "a" and (TUI.modal == "exts" or TUI.modal == "excludes") then
+                    local list = (TUI.modal == "exts") and TUI.extensions or TUI.excluded_dirs
+                    for _, item in ipairs(list) do item.enabled = true end
+                elseif key == "n" and (TUI.modal == "exts" or TUI.modal == "excludes") then
+                    local list = (TUI.modal == "exts") and TUI.extensions or TUI.excluded_dirs
+                    for _, item in ipairs(list) do item.enabled = false end
                 end
             else
                 -- Normal mode keybindings
@@ -1807,6 +1952,34 @@ local function run_test_suite()
     local t1 = get_time_sec()
     assert_eq(type(t1), "number", "get_time_sec returned number")
     assert_eq(t1 > 0, true, "get_time_sec is positive")
+
+    -- Test 7: Progress Bar Math and Geometry
+    print("\n[Test 7] Progress Bar Math and Geometry...")
+    local p0 = make_progress_bar(0, 4, 16)
+    assert_eq(utf8_col_width(p0), 23, "0% progress bar visual width (16 + brackets + percent)")
+    local p100 = make_progress_bar(4, 4, 16)
+    assert_eq(p100:find("100%%") ~= nil, true, "100% progress gauge displays 100%")
+    local p50 = make_progress_bar(2, 4, 16)
+    assert_eq(p50:find("50%%") ~= nil, true, "50% progress gauge displays 50%")
+
+    -- Test 8: Telemetry Log Colorizer & Width Safety
+    print("\n[Test 8] Telemetry Log Colorizer & Width Safety...")
+    local test_log = "[12:34:56] [INFO] Crawling directory tree..."
+    local c_log = colorize_log_entry(test_log, 60)
+    assert_eq(c_log:find(C.cyan, 1, true) ~= nil, true, "Colorized [INFO] tag with cyan")
+    local test_err = "[12:34:56] [ERROR] File not found!"
+    local c_err = colorize_log_entry(test_err, 60)
+    assert_eq(c_err:find(C.b_red, 1, true) ~= nil, true, "Colorized [ERROR] tag with bright red")
+    local test_clean = "[12:34:56] [CLEAN] Removed old files"
+    local c_clean = colorize_log_entry(test_clean, 60)
+    assert_eq(c_clean:find(C.magenta, 1, true) ~= nil, true, "Colorized [CLEAN] tag with magenta")
+
+    -- Test 9: Spinner Frame Cycling & Layout Width
+    print("\n[Test 9] Spinner Frame Cycling & Layout Width...")
+    assert_eq(#SPINNER_FRAMES, 4, "Spinner has 4 rotation frames")
+    for _, frame in ipairs(SPINNER_FRAMES) do
+        assert_eq(utf8_col_width(frame), 1, string.format("Spinner frame '%s' width is 1", frame))
+    end
 
     print(string.format("\nTest Results: %d Passed, %d Failed.", passed, failed))
     return failed == 0 and 0 or 1
