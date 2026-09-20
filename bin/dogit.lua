@@ -154,6 +154,7 @@ local C = {
     white       = "\27[37m",
     gray        = "\27[90m",
 
+    b_black     = "\27[1;30m",
     b_red       = "\27[1;91m",
     b_green     = "\27[1;92m",
     b_yellow    = "\27[1;93m",
@@ -1164,7 +1165,7 @@ function TUI.render()
     local total_count = #TUI.filtered_items
     local pos_info = string.format(" Showing %d of %d items ", total_count, #TUI.items)
     local mode_badge = (TUI.mode == "search")
-        and (C.bg_yellow .. C.b_black .. " [SEARCH] " .. C.reset)
+        and (C.bg_yellow .. C.black .. " [SEARCH] " .. C.reset)
         or (C.bg_blue .. C.b_white .. " [NORMAL] " .. C.reset)
     local stat_left = " " .. mode_badge .. " " .. TUI.status_color .. TUI.status_msg .. C.reset
     local stat_gap = inner_w - utf8_col_width(stat_left) - utf8_col_width(pos_info) - 1
@@ -1882,10 +1883,49 @@ local function run_test_suite()
     assert_eq(#commits > 0, true, "Git.fetch_recent_commits retrieves commits")
     assert_eq(commits[1].type, "commit", "First fetched item has type 'commit'")
 
+    -- Test 10: Color Palette Completeness & Search Mode Badge
+    print("\n[Test 10] Color Palette & Search Mode Safety...")
+    assert_eq(type(C.b_black), "string", "C.b_black is defined as string")
+    assert_eq(type(C.black), "string", "C.black is defined as string")
+    assert_eq(type(C.bg_yellow), "string", "C.bg_yellow is defined as string")
+    local search_badge = C.bg_yellow .. C.black .. " [SEARCH] " .. C.reset
+    assert_eq(#search_badge > 0, true, "Search badge concatenates cleanly without nil error")
+    local normal_badge = C.bg_blue .. C.b_white .. " [NORMAL] " .. C.reset
+    assert_eq(#normal_badge > 0, true, "Normal badge concatenates cleanly without nil error")
+
+    -- Test 11: TUI Full Render Execution in Normal, Search & Modal Modes
+    print("\n[Test 11] TUI Full Render in Search & Normal Mode...")
+    local orig_io_write = io.write
+    local orig_io_flush = io.flush
+    local captured = {}
+    io.write = function(s) table.insert(captured, s) end
+    io.flush = function() end
+
+    TUI.items = orig_items or Git.fetch_all_refs()
+    TUI.filter_and_rank()
+    TUI.mode = "normal"
+    local ok_norm, err_norm = pcall(TUI.render)
+    assert_eq(ok_norm, true, "TUI.render() succeeds in Normal mode")
+
+    TUI.mode = "search"
+    TUI.query = "feat"
+    local ok_srch, err_srch = pcall(TUI.render)
+    assert_eq(ok_srch, true, "TUI.render() succeeds in Search mode ('/' keypress)")
+
+    TUI.modal = "commits"
+    TUI.branch_commits = Git.fetch_recent_commits(5)
+    local ok_modal, err_modal = pcall(TUI.render)
+    assert_eq(ok_modal, true, "TUI.render() succeeds in Commits Modal")
+    TUI.modal = nil
+
+    io.write = orig_io_write
+    io.flush = orig_io_flush
+
     -- Restore state
     TUI.items = orig_items
     TUI.filter_tab = orig_tab
     TUI.query = orig_query
+    TUI.mode = "normal"
     if orig_items and #orig_items > 0 then TUI.filter_and_rank() end
 
     print(string.format("\nTest Results: %d Passed, %d Failed.", passed, failed))
