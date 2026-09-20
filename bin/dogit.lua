@@ -1,17 +1,19 @@
 #!/usr/bin/env luajit
 --[[
-  dogit.lua - High-Performance Git Branch, Tag & Worktree Quick-Switcher TUI
+  dogit.lua - High-Performance Git Branch, Tag, Commit & Worktree Quick-Switcher TUI
   Powered by LuaJIT & FFI. Single-file, zero external Lua dependencies.
   Runs natively on Windows (Win32 Console/Process FFI) and Linux/POSIX.
 
   Features:
-    - Instant Ref Discovery: Fetches local branches, remote branches, and tags with commit telemetry.
-    - Real-Time Fuzzy Search: Sub-millisecond keystroke filtering across branches and tags.
-    - Dual-Pane Layout: Interactive ref list on the left; live commit card & graph on the right.
-    - Seamless Switching: Switch to local branches, remote tracking branches, or tags (detached HEAD).
+    - Instant Ref & Commit Discovery: Fetches local branches, remote branches, tags, and recent commits.
+    - Real-Time Fuzzy Search: Sub-millisecond keystroke filtering across refs, commit hashes, and subjects.
+    - Dual-Pane Layout: Interactive ref/commit list on left; live commit card & ASCII graph on right.
+    - Seamless Switching: Switch to local branches, remote tracking branches, tags, or commits (detached HEAD).
     - Force Checkout (--force / -f): Toggleable via 'f' in TUI or CLI flag to discard local changes.
-    - Git Worktree Creation: Press 'w' on any ref to instantly create a new git worktree.
-    - Category Tabs: Switch between [All], [Branches], [Tags], and [Remotes] with Tab.
+    - Recursive Submodule Sync (--submodule / -s): Toggleable via 's' in TUI to auto-sync submodules.
+    - Git Worktree Creation: Press 'w' on any ref or commit to instantly create a new git worktree.
+    - Category Tabs: Switch between [All], [Branches], [Tags], [Remotes], and [Commits] with h / l / Tab.
+    - Branch Commits Drill-Down: Press 'c' to view and checkout historical commits on highlighted branch.
     - Dual Mode: Full interactive TUI or non-interactive CLI (--list, --batch, <target>).
     - Automated Self-Test Suite: Run 'luajit bin/dogit.lua --test' for regression verification.
 
@@ -27,25 +29,27 @@
     -b, --branch         Start filtered to branches only
     -t, --tag            Start filtered to tags only
     -r, --remote         Start filtered to remote branches only
-    -l, --list           Print formatted list of branches and tags and exit
-    --batch <TARGET>     Directly checkout TARGET in batch mode
+    -c, --commit         Start filtered to commits only
+    -l, --list           Print formatted list of branches, tags, and commits and exit
+    --batch <TARGET>     Directly checkout TARGET (branch, tag, or commit SHA) in batch mode
     --test               Run automated test suite and exit
     -h, --help           Show this help message
 
   TUI Keybindings (Vim-Style Dual Mode):
     Normal Mode:
       j / Down, k / Up     Move selection cursor down / up
-      h / Left, l / Right  Cycle category tabs left / right
+      h / Left, l / Right  Cycle category tabs left / right (All/Branches/Tags/Remotes/Commits)
       gg / G               Jump to first / last ref
       Ctrl+d / Ctrl+u      Half-page scroll down / up
       Ctrl+e / Ctrl+y      Scroll commit details / graph down / up
       /                    Enter Search Mode (type query to filter)
       n / N                Jump to next / previous match in filtered list
-      Enter                Checkout selected branch or tag
+      Enter                Checkout selected branch, tag, or commit (detached HEAD)
+      c                    Open branch commit history modal (browse/checkout branch commits)
       f                    Toggle Force Mode (git checkout -f) [Default: ON]
       s                    Toggle Submodule Auto-Sync (git submodule update --init --recursive -f)
       w                    Create Git Worktree for selected ref
-      Tab                  Cycle category tab: All -> Branches -> Tags -> Remotes
+      Tab                  Cycle category tab
       Esc                  Clear search filter (or quit if filter empty)
       ?                    Show keyboard help modal
       q / Ctrl+C           Quit
@@ -523,9 +527,92 @@ function Git.get_current_head()
     if p then
         local line = p:read("*l")
         p:close()
-        if line and #line > 0 then return "(" .. line .. ")" end
+        if line and #line > 0 then return "(detached at " .. line .. ")" end
     end
     return "HEAD"
+end
+
+function Git.get_head_commit_sha()
+    local p = io.popen("git rev-parse HEAD 2>nul")
+    if not p then return "" end
+    local line = p:read("*l")
+    p:close()
+    return line or ""
+end
+
+function Git.is_valid_commit(target)
+    if not target or #target < 4 then return false end
+    local cmd = string.format('git rev-parse --verify --quiet "%s^{commit}" 2>nul', target:gsub('"', '\\"'))
+    local p = io.popen(cmd)
+    if not p then return false end
+    local out = p:read("*l")
+    local ok = p:close()
+    return (ok == true or ok == 0) and out ~= nil and #out >= 40, out
+end
+
+function Git.resolve_commit(target)
+    local ok, full_sha = Git.is_valid_commit(target)
+    if not ok then return nil end
+    local cmd = string.format('git log -1 --format="%%h\t%%cr\t%%an\t%%s" %s 2>nul', full_sha)
+    local p = io.popen(cmd)
+    if not p then return full_sha, full_sha:sub(1, 7), "commit", "", "" end
+    local line = p:read("*l")
+    p:close()
+    if line then
+        local short_sha, date, author, subj = line:match("^([^\t]+)\t([^\t]*)\t([^\t]*)\t(.*)$")
+        return full_sha, short_sha or full_sha:sub(1, 7), subj or "", author or "", date or ""
+    end
+    return full_sha, full_sha:sub(1, 7), "commit", "", ""
+end
+
+function Git.fetch_recent_commits(limit)
+    limit = limit or 50
+    local head_sha = Git.get_head_commit_sha()
+    local cmd = string.format('git log -%d --format="%%H\t%%h\t%%cr\t%%an\t%%s" 2>nul', limit)
+    local p = io.popen(cmd)
+    if not p then return {} end
+    local items = {}
+    for line in p:lines() do
+        local h, s, d, a, subj = line:match("^([^\t]+)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t(.*)$")
+        if h and s then
+            table.insert(items, {
+                type = "commit",
+                name = s,
+                sha = s,
+                full_ref = h,
+                date = d or "",
+                author = a or "",
+                subject = subj or "",
+                is_head = (h == head_sha),
+            })
+        end
+    end
+    p:close()
+    return items
+end
+
+function Git.fetch_branch_commits(ref_name, limit)
+    limit = limit or 30
+    local cmd = string.format('git log -%d --format="%%H\t%%h\t%%cr\t%%an\t%%s" %s 2>nul', limit, ref_name)
+    local p = io.popen(cmd)
+    if not p then return {} end
+    local items = {}
+    for line in p:lines() do
+        local h, s, d, a, subj = line:match("^([^\t]+)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t(.*)$")
+        if h and s then
+            table.insert(items, {
+                type = "commit",
+                name = s,
+                sha = s,
+                full_ref = h,
+                date = d or "",
+                author = a or "",
+                subject = subj or "",
+            })
+        end
+    end
+    p:close()
+    return items
 end
 
 function Git.get_dirty_status()
@@ -623,6 +710,12 @@ function Git.fetch_all_refs()
         p3:close()
     end
 
+    -- 4. Recent commits
+    local recent_commits = Git.fetch_recent_commits(50)
+    for _, c in ipairs(recent_commits) do
+        table.insert(items, c)
+    end
+
     return items
 end
 
@@ -670,6 +763,8 @@ function Git.build_checkout_cmd(item, force)
     local flag = force and "-f" or ""
     if item.type == "tag" then
         return string.format("git checkout %s tags/%s", flag, item.name):gsub("%s+", " ")
+    elseif item.type == "commit" then
+        return string.format("git checkout %s %s", flag, item.sha or item.name):gsub("%s+", " ")
     elseif item.type == "remote" then
         local local_branch = item.name:gsub("^[^/]+/", "")
         return string.format("git checkout %s %s", flag, local_branch):gsub("%s+", " ")
@@ -738,7 +833,10 @@ local TUI = {
     preview_cache = {},
     status_msg = "Ready. j/k: Nav, /: Search, Enter: Switch, f: Force, s: Submodule.",
     status_color = C.gray,
-    modal = nil, -- nil, "worktree", "help"
+    modal = nil, -- nil, "worktree", "help", "commits"
+    modal_selection = 1,
+    modal_scroll = 0,
+    branch_commits = {},
     worktree_input = "",
 }
 
@@ -777,6 +875,8 @@ function TUI.filter_and_rank()
         if TUI.filter_tab == "branches" and it.type ~= "local" then tab_match = false end
         if TUI.filter_tab == "tags" and it.type ~= "tag" then tab_match = false end
         if TUI.filter_tab == "remotes" and it.type ~= "remote" then tab_match = false end
+        if TUI.filter_tab == "commits" and it.type ~= "commit" then tab_match = false end
+        if TUI.filter_tab == "all" and it.type == "commit" and #q == 0 then tab_match = false end
 
         if tab_match then
             if #q == 0 then
@@ -818,6 +918,7 @@ function TUI.cycle_tab_forward()
     if TUI.filter_tab == "all" then TUI.filter_tab = "branches"
     elseif TUI.filter_tab == "branches" then TUI.filter_tab = "tags"
     elseif TUI.filter_tab == "tags" then TUI.filter_tab = "remotes"
+    elseif TUI.filter_tab == "remotes" then TUI.filter_tab = "commits"
     else TUI.filter_tab = "all" end
     TUI.selection = 1
     TUI.preview_scroll = 0
@@ -825,7 +926,8 @@ function TUI.cycle_tab_forward()
 end
 
 function TUI.cycle_tab_backward()
-    if TUI.filter_tab == "all" then TUI.filter_tab = "remotes"
+    if TUI.filter_tab == "all" then TUI.filter_tab = "commits"
+    elseif TUI.filter_tab == "commits" then TUI.filter_tab = "remotes"
     elseif TUI.filter_tab == "remotes" then TUI.filter_tab = "tags"
     elseif TUI.filter_tab == "tags" then TUI.filter_tab = "branches"
     else TUI.filter_tab = "all" end
@@ -920,7 +1022,8 @@ function TUI.render()
         sub_badge = C.gray .. "[SUBMODULE: OFF]" .. C.reset
     end
 
-    local head_disp = string.format(" HEAD: %s%s%s  %s", C.b_green, TUI.current_head, C.reset, dirty_badge)
+    local head_color = TUI.current_head:find("^%(detached") and C.b_magenta or C.b_green
+    local head_disp = string.format(" HEAD: %s%s%s  %s", head_color, TUI.current_head, C.reset, dirty_badge)
     local badges = force_badge .. " " .. sub_badge
     local head_gap = inner_w - utf8_col_width(head_disp) - utf8_col_width(badges) - 1
     if head_gap < 1 then head_gap = 1 end
@@ -951,17 +1054,20 @@ function TUI.render()
         end
     end
 
-    local tabs_disp = string.format(" %s %s %s %s",
+    local tabs_disp = string.format(" %s %s %s %s %s",
         make_tab("All", "all", TUI.filter_tab == "all"),
         make_tab("Branches", "branches", TUI.filter_tab == "branches"),
         make_tab("Tags", "tags", TUI.filter_tab == "tags"),
-        make_tab("Remotes", "remotes", TUI.filter_tab == "remotes")
+        make_tab("Remotes", "remotes", TUI.filter_tab == "remotes"),
+        make_tab("Commits", "commits", TUI.filter_tab == "commits")
     )
     local cur_item, cur_preview = TUI.get_active_preview()
     local r_hash_disp = ""
     if cur_item and cur_preview then
         local head_tag = cur_item.is_head and (C.b_green .. " (HEAD)" .. C.reset) or ""
-        r_hash_disp = string.format(" Ref: %s%s%s  Commit: %s%s%s%s",
+        local ref_label = (cur_item.type == "commit") and "Commit:" or "Ref:"
+        r_hash_disp = string.format(" %s %s%s%s  Commit: %s%s%s%s",
+            ref_label,
             C.b_cyan, truncate_string(cur_item.name, 18), C.reset,
             C.b_yellow, cur_item.sha, C.reset, head_tag)
     else
@@ -995,6 +1101,8 @@ function TUI.render()
                 badge = C.b_magenta .. "[TAG   ]" .. C.reset
             elseif it.type == "remote" then
                 badge = C.b_blue .. "[REMOTE]" .. C.reset
+            elseif it.type == "commit" then
+                badge = C.b_yellow .. "[COMMIT]" .. C.reset
             end
 
             local head_marker = it.is_head and (C.b_green .. "* " .. C.reset) or "  "
@@ -1003,7 +1111,12 @@ function TUI.render()
 
             local max_name_len = left_w - 24
             if max_name_len < 8 then max_name_len = 8 end
-            local name_disp = truncate_string(it.name, max_name_len)
+            local name_disp
+            if it.type == "commit" then
+                name_disp = truncate_string(it.sha .. " " .. it.subject, max_name_len)
+            else
+                name_disp = truncate_string(it.name, max_name_len)
+            end
             if is_sel then
                 name_disp = C.b_white .. name_disp .. C.reset
             end
@@ -1049,7 +1162,7 @@ function TUI.render()
 
     -- 5. Status / Warning Line
     local total_count = #TUI.filtered_items
-    local pos_info = string.format(" Showing %d of %d refs ", total_count, #TUI.items)
+    local pos_info = string.format(" Showing %d of %d items ", total_count, #TUI.items)
     local mode_badge = (TUI.mode == "search")
         and (C.bg_yellow .. C.b_black .. " [SEARCH] " .. C.reset)
         or (C.bg_blue .. C.b_white .. " [NORMAL] " .. C.reset)
@@ -1073,18 +1186,19 @@ function TUI.render()
         if cols >= 120 then
             footer_keys = " " .. fmt_hotkey("Enter", "Checkout") .. fmt_hotkey("j/k", "Nav")
                        .. fmt_hotkey("/", "Search") .. fmt_hotkey("n/N", "Match")
+                       .. fmt_hotkey("c", "Commits")
                        .. fmt_hotkey("f", "Force") .. fmt_hotkey("s", "Sub")
                        .. fmt_hotkey("h/l", "Tabs") .. fmt_hotkey("w", "Worktree")
                        .. fmt_hotkey("?", "Help") .. fmt_hotkey("q", "Quit")
         elseif cols >= 95 then
             footer_keys = " " .. fmt_hotkey("Enter", "Checkout") .. fmt_hotkey("j/k", "Nav")
-                       .. fmt_hotkey("/", "Search") .. fmt_hotkey("f", "Force")
-                       .. fmt_hotkey("s", "Sub") .. fmt_hotkey("w", "Worktree")
-                       .. fmt_hotkey("q", "Quit")
+                       .. fmt_hotkey("/", "Search") .. fmt_hotkey("c", "Commits")
+                       .. fmt_hotkey("f", "Force") .. fmt_hotkey("s", "Sub")
+                       .. fmt_hotkey("w", "Worktree") .. fmt_hotkey("q", "Quit")
         else
             footer_keys = " " .. fmt_hotkey("Enter", "Switch") .. fmt_hotkey("j/k", "Nav")
-                       .. fmt_hotkey("/", "Search") .. fmt_hotkey("f", "Force")
-                       .. fmt_hotkey("q", "Quit")
+                       .. fmt_hotkey("/", "Search") .. fmt_hotkey("c", "Commits")
+                       .. fmt_hotkey("f", "Force") .. fmt_hotkey("q", "Quit")
         end
     end
 
@@ -1144,13 +1258,62 @@ function TUI.render_modal(cols, rows, buf)
         mwrite(5, C.b_yellow .. BOX.v .. " " .. C.b_yellow .. "> " .. C.b_white .. TUI.worktree_input .. "_" .. C.reset)
         mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_string(" [Enter] Create  [Esc] Cancel", mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
 
+    elseif TUI.modal == "commits" then
+        local ref_label = truncate_string(TUI.branch_commits_ref or "Branch", 24)
+        local modal_title = string.format(" Recent Commits on %s ", ref_label)
+        local title_pad = mw - 2 - utf8_col_width(modal_title)
+        if title_pad < 0 then title_pad = 0 end
+        mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. modal_title .. C.b_yellow .. string.rep(BOX.h, title_pad) .. BOX.tr .. C.reset)
+
+        local avail = mh - 4
+        if avail < 2 then avail = 2 end
+
+        if #TUI.branch_commits == 0 then
+            mwrite(2, C.b_yellow .. BOX.v .. " " .. C.gray .. pad_string("No commits found for this ref.", mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
+        else
+            -- Scroll calculation
+            if TUI.modal_selection <= TUI.modal_scroll then
+                TUI.modal_scroll = TUI.modal_selection - 1
+            elseif TUI.modal_selection > TUI.modal_scroll + avail then
+                TUI.modal_scroll = TUI.modal_selection - avail
+            end
+
+            for row = 1, avail do
+                local idx = TUI.modal_scroll + row
+                local c = TUI.branch_commits[idx]
+                if c then
+                    local is_sel = (idx == TUI.modal_selection)
+                    local cursor = is_sel and (C.reverse .. "> ") or "  "
+                    local head_marker = c.is_head and (C.b_green .. "* " .. C.reset) or "  "
+                    local sha_disp = C.b_yellow .. c.sha .. C.reset
+                    local date_disp = C.gray .. truncate_string(c.date, 10) .. C.reset
+                    local author_disp = C.cyan .. truncate_string(c.author, 10) .. C.reset
+
+                    local fixed_w = 2 + 2 + 7 + 1 + 10 + 1 + 10 + 1
+                    local max_subj_w = (mw - 4) - fixed_w
+                    if max_subj_w < 10 then max_subj_w = 10 end
+                    local subj_disp = truncate_string(c.subject, max_subj_w)
+                    if is_sel then subj_disp = C.b_white .. subj_disp .. C.reset end
+
+                    local line_content = string.format("%s%s%s %-10s %-10s %s", cursor, head_marker, sha_disp, date_disp, author_disp, subj_disp)
+                    mwrite(row, C.b_yellow .. BOX.v .. " " .. pad_string(line_content, mw - 4) .. " " .. C.b_yellow .. BOX.v .. C.reset)
+                else
+                    mwrite(row, C.b_yellow .. BOX.v .. string.rep(" ", mw - 2) .. BOX.v .. C.reset)
+                end
+            end
+        end
+
+        local count_info = string.format("(%d/%d)", TUI.modal_selection, #TUI.branch_commits)
+        local hint_text = string.format(" [Enter] Checkout  [j/k] Nav  [Esc] Close %s", count_info)
+        mwrite(mh - 2, C.b_yellow .. BOX.v .. C.gray .. pad_string(hint_text, mw - 4) .. C.b_yellow .. BOX.v .. C.reset)
+
     elseif TUI.modal == "help" then
         mwrite(0, C.b_yellow .. BOX.tl .. C.b_white .. " Keyboard Shortcuts & Help " .. C.b_yellow .. string.rep(BOX.h, math.max(0, mw - 30)) .. BOX.tr .. C.reset)
         local lines = {
             C.b_yellow .. "Vim Navigation (Normal Mode):" .. C.reset,
             "  j / Down, k / Up   Move selection cursor down / up",
-            "  h / Left, l / Right  Cycle tabs (All -> Branches -> Tags -> Remotes)",
-            "  gg / G, Home / End Jump to first / last ref",
+            "  h / Left, l / Right  Cycle tabs (All -> Branches -> Tags -> Remotes -> Commits)",
+            "  gg / G, Home / End Jump to first / last ref or commit",
             "  Ctrl+d / Ctrl+u    Half-page scroll down / up",
             "  Ctrl+e / Ctrl+y    Scroll commit preview & graph down / up",
             C.b_yellow .. "Search & Filtering:" .. C.reset,
@@ -1159,7 +1322,8 @@ function TUI.render_modal(cols, rows, buf)
             "  Enter (in Search)  Lock search and return to Normal Mode",
             "  Esc                Cancel search mode, or clear active filter",
             C.b_yellow .. "Actions & Checkout:" .. C.reset,
-            "  Enter              Checkout selected branch or tag",
+            "  Enter              Checkout selected branch, tag, or commit",
+            "  c                  Browse & checkout commits of selected branch",
             "  f                  Toggle Force Mode (git checkout -f) [Default: ON]",
             "  s                  Toggle Submodule Auto-Sync (--init --recursive -f)",
             "  w                  Create Git Worktree for selected ref",
@@ -1222,6 +1386,35 @@ function TUI.run()
                     end
                 elseif #key == 1 and key:byte(1) >= 32 and key:byte(1) <= 126 then
                     TUI.worktree_input = TUI.worktree_input .. key
+                end
+
+            elseif TUI.modal == "commits" then
+                if key == "esc" or key == "q" then
+                    TUI.modal = nil
+                elseif key == "j" or key == "down" then
+                    if TUI.modal_selection < #TUI.branch_commits then
+                        TUI.modal_selection = TUI.modal_selection + 1
+                    end
+                elseif key == "k" or key == "up" then
+                    if TUI.modal_selection > 1 then
+                        TUI.modal_selection = TUI.modal_selection - 1
+                    end
+                elseif key == "home" or key == "g" then
+                    TUI.modal_selection = 1
+                elseif key == "end" or key == "G" then
+                    TUI.modal_selection = math.max(1, #TUI.branch_commits)
+                elseif key == "pagedown" or key == "ctrl_d" then
+                    TUI.modal_selection = math.min(#TUI.branch_commits, TUI.modal_selection + 6)
+                elseif key == "pageup" or key == "ctrl_u" then
+                    TUI.modal_selection = math.max(1, TUI.modal_selection - 6)
+                elseif key == "enter" then
+                    local c_item = TUI.branch_commits[TUI.modal_selection]
+                    if c_item then
+                        checkout_target = c_item
+                        checkout_force = TUI.force
+                        checkout_submodule = TUI.submodule
+                        running = false
+                    end
                 end
 
             elseif TUI.modal == "help" then
@@ -1369,6 +1562,17 @@ function TUI.run()
                 elseif key == "?" then
                     TUI.modal = "help"
 
+                elseif key == "c" then
+                    local item = TUI.filtered_items[TUI.selection]
+                    if item then
+                        local target_ref = (item.type == "commit") and item.sha or item.full_ref
+                        TUI.branch_commits = Git.fetch_branch_commits(target_ref, 50)
+                        TUI.branch_commits_ref = item.name
+                        TUI.modal_selection = 1
+                        TUI.modal_scroll = 0
+                        TUI.modal = "commits"
+                    end
+
                 elseif key == "w" then
                     local item = TUI.filtered_items[TUI.selection]
                     if item then
@@ -1403,7 +1607,11 @@ function TUI.run()
         print(C.b_cyan .. "[DOGIT] Running: " .. Git.build_checkout_cmd(checkout_target, checkout_force) .. C.reset)
         local ok, cmd, out = Git.execute_checkout(checkout_target, checkout_force)
         if ok then
-            print(C.b_green .. "[SUCCESS] Checked out: " .. checkout_target.name .. C.reset)
+            local desc = checkout_target.name
+            if checkout_target.type == "commit" then
+                desc = checkout_target.sha .. " (" .. truncate_string(checkout_target.subject, 40) .. ") [detached HEAD]"
+            end
+            print(C.b_green .. "[SUCCESS] Checked out: " .. desc .. C.reset)
             if #out > 0 then
                 io.write(out)
             end
@@ -1452,12 +1660,14 @@ local function run_cli_list(force, filter_type, submodule)
         if filter_type == "branches" and it.type ~= "local" then match = false end
         if filter_type == "tags" and it.type ~= "tag" then match = false end
         if filter_type == "remotes" and it.type ~= "remote" then match = false end
+        if filter_type == "commits" and it.type ~= "commit" then match = false end
 
         if match then
             local head_tag = it.is_head and "*" or " "
-            local type_color = (it.type == "local" and C.b_green) or (it.type == "tag" and C.b_magenta) or C.b_blue
+            local type_color = (it.type == "local" and C.b_green) or (it.type == "tag" and C.b_magenta) or (it.type == "commit" and C.b_yellow) or C.b_blue
             local type_label = string.format("%s[%s]%s", type_color, it.type:upper(), C.reset)
-            local name_disp = truncate_string(head_tag .. " " .. it.name, 30)
+            local raw_name = (it.type == "commit") and (it.sha .. " " .. it.subject) or it.name
+            local name_disp = truncate_string(head_tag .. " " .. raw_name, 30)
             local subj_disp = truncate_string(it.subject, 32)
             print(string.format("%-18s %-32s %-10s %-16s %s",
                 type_label, name_disp, it.sha, truncate_string(it.date, 14), subj_disp))
@@ -1471,7 +1681,7 @@ local function run_cli_checkout(target_name, force, submodule)
 
     -- 1. Exact match
     for _, it in ipairs(items) do
-        if it.name == target_name or it.name:lower() == target_name:lower() then
+        if it.name == target_name or it.name:lower() == target_name:lower() or (it.sha and it.sha:lower() == target_name:lower()) then
             matched = it
             break
         end
@@ -1487,15 +1697,36 @@ local function run_cli_checkout(target_name, force, submodule)
         end
     end
 
+    -- 3. Direct commit SHA check fallback
     if not matched then
-        io.stderr:write(string.format("Error: Branch or tag '%s' not found.\n", target_name))
+        local is_commit, full_sha = Git.is_valid_commit(target_name)
+        if is_commit then
+            local full_sha_res, short_sha, subj, auth, dt = Git.resolve_commit(full_sha)
+            matched = {
+                type = "commit",
+                name = short_sha,
+                sha = short_sha,
+                full_ref = full_sha_res,
+                subject = subj or "",
+                author = auth or "",
+                date = dt or "",
+            }
+        end
+    end
+
+    if not matched then
+        io.stderr:write(string.format("Error: Branch, tag, or commit '%s' not found.\n", target_name))
         os.exit(1)
     end
 
     print(string.format("[DOGIT] Switching to %s '%s' (force=%s, submodule=%s)...", matched.type, matched.name, tostring(force), tostring(submodule)))
     local ok, cmd, out = Git.execute_checkout(matched, force)
     if ok then
-        print(C.b_green .. "[SUCCESS] Checked out: " .. matched.name .. C.reset)
+        local desc = matched.name
+        if matched.type == "commit" then
+            desc = matched.sha .. " (" .. truncate_string(matched.subject, 40) .. ") [detached HEAD]"
+        end
+        print(C.b_green .. "[SUCCESS] Checked out: " .. desc .. C.reset)
         if #out > 0 then io.write(out) end
         if submodule then
             print(C.b_cyan .. "[DOGIT] Synchronizing submodules: " .. Git.build_submodule_cmd(force) .. C.reset)
@@ -1556,9 +1787,10 @@ local function run_test_suite()
 
     -- Test 3: Checkout Command Construction
     print("\n[Test 3] Checkout Command Construction...")
-    local local_item = { type = "local", name = "master" }
-    local tag_item   = { type = "tag", name = "v0.0.1" }
-    local rem_item   = { type = "remote", name = "origin/track/master" }
+    local local_item  = { type = "local", name = "master" }
+    local tag_item    = { type = "tag", name = "v0.0.1" }
+    local rem_item    = { type = "remote", name = "origin/track/master" }
+    local commit_item = { type = "commit", name = "a1b2c3d", sha = "a1b2c3d" }
 
     assert_eq(Git.build_checkout_cmd(local_item, false), "git checkout master", "Normal local checkout")
     assert_eq(Git.build_checkout_cmd(local_item, true), "git checkout -f master", "Force local checkout")
@@ -1566,6 +1798,8 @@ local function run_test_suite()
     assert_eq(Git.build_checkout_cmd(tag_item, true), "git checkout -f tags/v0.0.1", "Force tag checkout")
     assert_eq(Git.build_checkout_cmd(rem_item, false), "git checkout track/master", "Remote branch stripped to local name")
     assert_eq(Git.build_checkout_cmd(rem_item, true), "git checkout -f track/master", "Force remote branch stripped to local name")
+    assert_eq(Git.build_checkout_cmd(commit_item, false), "git checkout a1b2c3d", "Normal commit checkout")
+    assert_eq(Git.build_checkout_cmd(commit_item, true), "git checkout -f a1b2c3d", "Force commit checkout")
 
     -- Test 4: Unicode Layout & Column Geometry
     print("\n[Test 4] Unicode Layout & Column Geometry...")
@@ -1597,11 +1831,12 @@ local function run_test_suite()
         { name = "develop", type = "local", subject = "" },
         { name = "v1.0", type = "tag", subject = "" },
         { name = "origin/master", type = "remote", subject = "" },
+        { name = "abc1234", type = "commit", sha = "abc1234", subject = "test commit" },
     }
     TUI.filter_tab = "all"
     TUI.query = ""
     TUI.filter_and_rank()
-    assert_eq(#TUI.filtered_items, 4, "All tabs shows 4 items")
+    assert_eq(#TUI.filtered_items, 4, "All tabs shows 4 ref items (excluding raw commits until queried)")
 
     TUI.cycle_tab_forward()
     assert_eq(TUI.filter_tab, "branches", "Tab cycle forward: branches")
@@ -1611,8 +1846,16 @@ local function run_test_suite()
     assert_eq(TUI.filter_tab, "tags", "Tab cycle forward: tags")
     assert_eq(#TUI.filtered_items, 1, "Tags tab shows 1 item")
 
+    TUI.cycle_tab_forward()
+    assert_eq(TUI.filter_tab, "remotes", "Tab cycle forward: remotes")
+    assert_eq(#TUI.filtered_items, 1, "Remotes tab shows 1 item")
+
+    TUI.cycle_tab_forward()
+    assert_eq(TUI.filter_tab, "commits", "Tab cycle forward: commits")
+    assert_eq(#TUI.filtered_items, 1, "Commits tab shows 1 item")
+
     TUI.cycle_tab_backward()
-    assert_eq(TUI.filter_tab, "branches", "Tab cycle backward: branches")
+    assert_eq(TUI.filter_tab, "remotes", "Tab cycle backward: remotes")
 
     -- Test 8: Search Mode & Match Cycling
     print("\n[Test 8] Search Mode & Match Cycling...")
@@ -1627,6 +1870,17 @@ local function run_test_suite()
     assert_eq(TUI.selection, 1, "next_match wraps around to 1")
     TUI.prev_match()
     assert_eq(TUI.selection, 2, "prev_match wraps around to end")
+
+    -- Test 9: Git Commit Resolution & Verification
+    print("\n[Test 9] Git Commit Resolution & Verification...")
+    local ok_c, head_sha = Git.is_valid_commit("HEAD")
+    assert_eq(ok_c, true, "Git.is_valid_commit('HEAD') resolves true")
+    assert_eq(head_sha ~= nil and #head_sha >= 40, true, "HEAD resolves to full SHA")
+    local invalid_c = Git.is_valid_commit("invalid_nonexistent_sha_012345")
+    assert_eq(invalid_c, false, "Invalid commit SHA returns false")
+    local commits = Git.fetch_recent_commits(5)
+    assert_eq(#commits > 0, true, "Git.fetch_recent_commits retrieves commits")
+    assert_eq(commits[1].type, "commit", "First fetched item has type 'commit'")
 
     -- Restore state
     TUI.items = orig_items
@@ -1672,16 +1926,20 @@ local function main(args)
             initial_filter = "tags"
         elseif a == "-r" or a == "--remote" then
             initial_filter = "remotes"
+        elseif a == "-c" or a == "--commit" then
+            initial_filter = "commits"
         elseif a == "--batch" then
             is_batch = true
             i = i + 1
             target = args[i]
         elseif a == "-h" or a == "--help" then
             print([[
-dogit.lua - High-Performance Git Branch, Tag & Worktree Switcher (LuaJIT + FFI)
+dogit.lua - High-Performance Git Branch, Tag, Commit & Worktree Switcher (LuaJIT + FFI)
 
 Usage:
   luajit dogit.lua [OPTIONS] [TARGET]
+
+TARGET can be a branch name, tag name, or commit SHA (e.g. 7-40 hex chars).
 
 Options:
   -f, --force          Force checkout (git checkout -f) [DEFAULT: ON]
@@ -1691,21 +1949,23 @@ Options:
   -b, --branch         Start filtered to branches only
   -t, --tag            Start filtered to tags only
   -r, --remote         Start filtered to remote branches only
-  -l, --list           Print formatted list of branches and tags and exit
+  -c, --commit         Start filtered to recent commits only
+  -l, --list           Print formatted list of branches, tags, and commits and exit
   --batch <TARGET>     Directly checkout TARGET in batch mode
   --test               Run automated test suite and exit
   -h, --help           Show this help message
 
 TUI Controls (Vim-Style Dual Mode):
   j / Down, k / Up     Move selection cursor down / up
-  h / Left, l / Right  Cycle category tabs left / right
-  gg / G, Home / End   Jump to first / last ref
+  h / Left, l / Right  Cycle category tabs left / right (All -> Branches -> Tags -> Remotes -> Commits)
+  gg / G, Home / End   Jump to first / last ref or commit
   Ctrl+d / Ctrl+u      Half-page scroll down / up
   Ctrl+e / Ctrl+y      Scroll commit preview & graph down / up
   /                    Enter Search Mode (type query to filter)
   Enter                Confirm search (in Search mode) or Checkout (in Normal mode)
   n / N                Jump to next / previous match in filtered list
   Esc                  Cancel search mode, or clear active search filter
+  c                    Browse & checkout commits of selected branch
   f                    Toggle Force Mode (git checkout -f) [Default: ON]
   s                    Toggle Submodule Auto-Sync (--init --recursive -f)
   w                    Create Git Worktree for selected ref
@@ -1725,7 +1985,7 @@ TUI Controls (Vim-Style Dual Mode):
 
     if target or is_batch then
         if not target then
-            io.stderr:write("Error: --batch requires a target branch or tag.\n")
+            io.stderr:write("Error: --batch requires a target branch, tag, or commit.\n")
             os.exit(1)
         end
         run_cli_checkout(target, force, submodule)
