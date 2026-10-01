@@ -1,11 +1,10 @@
 #!/usr/bin/env luajit
 --[[
   fcd.lua - Ultra-fast Interactive Fuzzy Directory Jumper & Tree Previewer
-  Powered by LuaJIT & FFI. Works on Windows (Win32 FindFirstFileExW/FindFirstFileW) & Linux/POSIX.
+  Powered by LuaJIT & FFI. Works on Windows (Win32 FindFirstFileW) & Linux/POSIX (/proc/opendir).
 
   Features:
-    - Automatically leverages 'fd' (multi-threaded Rust) when present for maximum traversal speed
-    - High-performance streaming fallback via native Win32/POSIX FFI when 'fd' is not installed
+    - Recursively scans directory trees at C-speed without requiring 'fd' or 'eza'
     - Built-in instant sub-millisecond directory tree previewer for FZF (< 1 ms)
     - Automatically ignores heavy directories (.git, node_modules, .cache, target, build)
     - Returns the selected path on stdout for easy integration into bash/zsh/cmd/PowerShell
@@ -84,14 +83,12 @@ if IS_WINDOWS then
         } WIN32_FIND_DATAW;
 
         HANDLE FindFirstFileW(LPCWSTR lpFileName, WIN32_FIND_DATAW* lpFindFileData);
-        HANDLE FindFirstFileExW(LPCWSTR lpFileName, int fInfoLevelId, void* lpFindFileData, int fSearchOp, void* lpSearchFilter, DWORD dwAdditionalFlags);
         BOOL FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW* lpFindFileData);
         BOOL FindClose(HANDLE hFindFile);
 
         int MultiByteToWideChar(unsigned int CodePage, DWORD dwFlags, const char* lpMultiByteStr, int cbMultiByte, wchar_t* lpWideCharStr, int cchWideChar);
         int WideCharToMultiByte(unsigned int CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar, char* lpMultiByteStr, int cbMultiByte, const char* lpDefaultChar, BOOL* lpUsedDefaultChar);
 
-        DWORD GetCurrentDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer);
         HANDLE GetStdHandle(DWORD nStdHandle);
         BOOL GetConsoleMode(HANDLE hConsoleHandle, DWORD* lpMode);
         BOOL SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode);
@@ -125,37 +122,27 @@ else
         DIR *opendir(const char *name);
         struct dirent *readdir(DIR *dirp);
         int closedir(DIR *dirp);
-        char *getcwd(char *buf, size_t size);
     ]]
 end
 
 --------------------------------------------------------------------------------
 -- Helper Utilities
 --------------------------------------------------------------------------------
-local wide_buf = IS_WINDOWS and ffi.new("wchar_t[4096]") or nil
-local mb_buf   = IS_WINDOWS and ffi.new("char[1024]") or nil
-
 local function to_wide(str)
     if not IS_WINDOWS then return str end
-    local slen = #str
-    local buf = (slen < 4095) and wide_buf or ffi.new("wchar_t[?]", slen + 1)
-    local n = ffi.C.MultiByteToWideChar(65001, 0, str, slen, buf, (slen < 4095) and 4096 or (slen + 1))
-    buf[n] = 0
+    local len = ffi.C.MultiByteToWideChar(65001, 0, str, #str, nil, 0)
+    local buf = ffi.new("wchar_t[?]", len + 1)
+    ffi.C.MultiByteToWideChar(65001, 0, str, #str, buf, len)
+    buf[len] = 0
     return buf
 end
 
 local function from_wide(wstr)
     if not IS_WINDOWS then return wstr end
-    local len = ffi.C.WideCharToMultiByte(65001, 0, wstr, -1, mb_buf, 1024, nil, nil)
-    if len > 1 then
-        return ffi.string(mb_buf, len - 1)
-    elseif len == 1 then
-        return ""
-    end
-    local req = ffi.C.WideCharToMultiByte(65001, 0, wstr, -1, nil, 0, nil, nil)
-    local buf = ffi.new("char[?]", req)
-    ffi.C.WideCharToMultiByte(65001, 0, wstr, -1, buf, req, nil, nil)
-    return ffi.string(buf, req - 1)
+    local len = ffi.C.WideCharToMultiByte(65001, 0, wstr, -1, nil, 0, nil, nil)
+    local buf = ffi.new("char[?]", len)
+    ffi.C.WideCharToMultiByte(65001, 0, wstr, -1, buf, len, nil, nil)
+    return ffi.string(buf, len - 1)
 end
 
 local function format_size(bytes)
@@ -187,32 +174,11 @@ local IGNORE_DIRS = {
     ["system volume information"] = true,
 }
 
--- Fast zero-spawn executable lookup in PATH (< 0.1 ms)
-local function find_executable(name)
-    local sep = IS_WINDOWS and ";" or ":"
-    local path_env = os.getenv("PATH") or ""
-    local exts = IS_WINDOWS and {".exe", ".cmd", ".bat", ""} or {""}
-    for dir in path_env:gmatch("[^" .. sep .. "]+") do
-        for _, ext in ipairs(exts) do
-            local full = dir .. (IS_WINDOWS and "\\" or "/") .. name .. ext
-            local f = io.open(full, "rb")
-            if f then
-                f:close()
-                return full
-            end
-        end
-    end
-    return nil
-end
-
-local FD_BIN = find_executable("fd") or find_executable("fdfind")
-
 --------------------------------------------------------------------------------
 -- Directory Scanner (Windows Win32 FFI & Linux POSIX FFI)
 --------------------------------------------------------------------------------
-local FILE_ATTRIBUTE_DIRECTORY     = 0x10
-local FILE_ATTRIBUTE_REPARSE_POINT = 0x0400
-local INVALID_FILE_ATTRIBUTES      = 0xFFFFFFFF
+local FILE_ATTRIBUTE_DIRECTORY = 0x10
+local INVALID_FILE_ATTRIBUTES  = 0xFFFFFFFF
 
 local function is_directory(path)
     if not path or path == "" then return false end
@@ -240,8 +206,8 @@ local function join_path_win(dir, file)
     end
 end
 
-local function scan_dirs_win32(base_dir, max_depth, include_all, on_dir_cb)
-    local results = (not on_dir_cb) and {} or nil
+local function scan_dirs_win32(base_dir, max_depth, include_all)
+    local results = {}
     if base_dir:match("^%a:[/\\]*$") then
         base_dir = base_dir:sub(1, 2):upper() .. "\\"
     elseif base_dir ~= "/" and base_dir ~= "\\" then
@@ -252,21 +218,14 @@ local function scan_dirs_win32(base_dir, max_depth, include_all, on_dir_cb)
         if current_depth > max_depth then return end
         local pattern = join_path_win(current_path, "*")
         local find_data = ffi.new("WIN32_FIND_DATAW")
-        -- FindExInfoBasic (1), FindExSearchNameMatch (0), FIND_FIRST_EX_LARGE_FETCH (2)
-        local hFind = ffi.C.FindFirstFileExW(to_wide(pattern), 1, find_data, 0, nil, 2)
-        if hFind == nil or hFind == ffi.cast("HANDLE", -1) then
-            hFind = ffi.C.FindFirstFileW(to_wide(pattern), find_data)
-        end
+        local hFind = ffi.C.FindFirstFileW(to_wide(pattern), find_data)
         if hFind == nil or hFind == ffi.cast("HANDLE", -1) then return end
 
         repeat
-            local attr = find_data.dwFileAttributes
-            -- Fast filter: must be directory and NOT a reparse point (avoids junction recursion loops)
-            if bit.band(attr, FILE_ATTRIBUTE_DIRECTORY) ~= 0 and bit.band(attr, FILE_ATTRIBUTE_REPARSE_POINT) == 0 then
-                local c0 = find_data.cFileName[0]
-                -- Skip "." and ".." in wchar array without string conversion
-                if not (c0 == 46 and (find_data.cFileName[1] == 0 or (find_data.cFileName[1] == 46 and find_data.cFileName[2] == 0))) then
-                    local name = from_wide(find_data.cFileName)
+            local name = from_wide(find_data.cFileName)
+            if name ~= "." and name ~= ".." then
+                local is_dir = (bit.band(find_data.dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY) ~= 0)
+                if is_dir then
                     local lower = name:lower()
                     local skip = false
                     if not include_all then
@@ -276,11 +235,7 @@ local function scan_dirs_win32(base_dir, max_depth, include_all, on_dir_cb)
                     end
                     if not skip then
                         local child_path = join_path_win(current_path, name)
-                        if on_dir_cb then
-                            on_dir_cb(child_path)
-                        else
-                            table.insert(results, child_path)
-                        end
+                        table.insert(results, child_path)
                         recurse(child_path, current_depth + 1)
                     end
                 end
@@ -294,8 +249,8 @@ local function scan_dirs_win32(base_dir, max_depth, include_all, on_dir_cb)
     return results
 end
 
-local function scan_dirs_posix(base_dir, max_depth, include_all, on_dir_cb)
-    local results = (not on_dir_cb) and {} or nil
+local function scan_dirs_posix(base_dir, max_depth, include_all)
+    local results = {}
     base_dir = base_dir:gsub("/+$", "")
 
     local function recurse(current_path, current_depth)
@@ -319,11 +274,7 @@ local function scan_dirs_posix(base_dir, max_depth, include_all, on_dir_cb)
                     end
                     if not skip then
                         local child_path = current_path .. "/" .. name
-                        if on_dir_cb then
-                            on_dir_cb(child_path)
-                        else
-                            table.insert(results, child_path)
-                        end
+                        table.insert(results, child_path)
                         recurse(child_path, current_depth + 1)
                     end
                 end
@@ -348,16 +299,12 @@ local function get_dir_contents_win32(dir_path)
 
     local pattern = join_path_win(dir_path, "*")
     local find_data = ffi.new("WIN32_FIND_DATAW")
-    local hFind = ffi.C.FindFirstFileExW(to_wide(pattern), 1, find_data, 0, nil, 2)
-    if hFind == nil or hFind == ffi.cast("HANDLE", -1) then
-        hFind = ffi.C.FindFirstFileW(to_wide(pattern), find_data)
-    end
+    local hFind = ffi.C.FindFirstFileW(to_wide(pattern), find_data)
     if hFind ~= nil and hFind ~= ffi.cast("HANDLE", -1) then
         repeat
-            local c0 = find_data.cFileName[0]
-            if not (c0 == 46 and (find_data.cFileName[1] == 0 or (find_data.cFileName[1] == 46 and find_data.cFileName[2] == 0))) then
+            local name = from_wide(find_data.cFileName)
+            if name ~= "." and name ~= ".." then
                 local is_dir = (bit.band(find_data.dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY) ~= 0)
-                local name = from_wide(find_data.cFileName)
                 if is_dir then
                     table.insert(dirs, name)
                 else
@@ -470,68 +417,31 @@ local function render_preview(dir_path)
     io.write(string.format("%s└%s┘%s\n", C.b_cyan, border, C.reset))
 end
 
-local function get_cwd()
-    if IS_WINDOWS then
-        local buf = ffi.new("wchar_t[4096]")
-        local len = ffi.C.GetCurrentDirectoryW(4096, buf)
-        if len > 0 then
-            return from_wide(buf)
-        end
-    else
-        local buf = ffi.new("char[4096]")
-        if ffi.C.getcwd(buf, 4096) ~= nil then
-            return ffi.string(buf)
-        end
-    end
-    return "."
-end
-
-local function build_fd_flags(include_all)
-    if include_all then
-        return "--hidden --no-ignore-vcs"
-    else
-        return "--hidden --exclude .git --exclude node_modules --exclude .cache --exclude target --exclude build --exclude dist --exclude __pycache__ --exclude .idea --exclude .vscode"
-    end
-end
-
 --------------------------------------------------------------------------------
 -- Interactive FZF Mode
 --------------------------------------------------------------------------------
 local function interactive_fzf(base_dir, max_depth, include_all, query)
     local script_path = debug.getinfo(1, "S").source:sub(2)
     if not script_path:match("^/") and not script_path:match("^%a:[/\\]") then
-        local pwd = get_cwd()
+        local pwd = io.popen(IS_WINDOWS and "cd" or "pwd 2>/dev/null || pwd"):read("*line") or "."
         script_path = pwd .. "/" .. script_path
     end
 
     local norm_script = IS_WINDOWS and script_path:gsub("\\", "/") or script_path
     local norm_base   = IS_WINDOWS and base_dir:gsub("\\", "/") or base_dir
 
-    local preview_cmd = string.format("luajit \"%s\" --preview \"{}\"", norm_script)
-    local list_cmd
-    local engine_tag
-
-    if FD_BIN then
-        engine_tag = "fd"
-        local norm_fd = IS_WINDOWS and FD_BIN:gsub("\\", "/") or FD_BIN
-        local flags = build_fd_flags(include_all)
-        list_cmd = string.format("\"%s\" --type d --max-depth %d %s . \"%s\"",
-            norm_fd, max_depth, flags, norm_base)
-    else
-        engine_tag = "LuaJIT"
-        local all_flag = include_all and "-a " or ""
-        list_cmd = string.format("luajit \"%s\" --list -d %d %s\"%s\"",
-            norm_script, max_depth, all_flag, norm_base)
-    end
+    local preview_cmd = string.format("luajit \"%s\" --preview {}", norm_script)
+    local all_flag    = include_all and "-a " or ""
+    local list_cmd    = string.format("luajit \"%s\" --list -d %d %s\"%s\"",
+        norm_script, max_depth, all_flag, norm_base)
 
     local query_flag = (query and query ~= "") and string.format("--query=%q ", query) or ""
 
     local fzf_cmd = string.format(
-        '%s | fzf %s--prompt="[%s] Jump Dir > " ' ..
+        '%s | fzf %s--prompt="[LuaJIT] Jump Dir > " ' ..
         '--layout=reverse --height=60%% --border --preview=%q --preview-window=right:50%%:wrap ' ..
-        '--header="%s | ENTER: Select Directory | ESC: Cancel"',
-        list_cmd, query_flag, engine_tag, preview_cmd,
-        FD_BIN and "Engine: fd (Rust multi-threaded)" or "Engine: LuaJIT FFI (Native C-speed)"
+        '--header="LuaJIT FFI | ENTER: Select Directory | ESC: Cancel"',
+        list_cmd, query_flag, preview_cmd
     )
 
     local pipe = io.popen(fzf_cmd, "r")
@@ -544,8 +454,10 @@ local function interactive_fzf(base_dir, max_depth, include_all, query)
     pipe:close()
 
     if selected and selected ~= "" then
-        -- Clean trailing slashes if present
-        selected = selected:gsub("[/\\]+$", "")
+        -- Clean trailing slashes if present (except root drives like C:\ or /)
+        if not selected:match("^%a:[/\\]?$") and selected ~= "/" then
+            selected = selected:gsub("[/\\]+$", "")
+        end
         -- Print selected directory to standard output
         io.write(selected .. "\n")
     end
@@ -600,26 +512,11 @@ Options:
     end
 
     if list_only then
-        if FD_BIN then
-            local norm_fd = IS_WINDOWS and FD_BIN:gsub("\\", "/") or FD_BIN
-            local flags = build_fd_flags(include_all)
-            local norm_base = IS_WINDOWS and base_dir:gsub("\\", "/") or base_dir
-            local cmd = string.format("\"%s\" --type d --max-depth %d %s . \"%s\"",
-                norm_fd, max_depth, flags, norm_base)
-            local pipe = io.popen(cmd, "r")
-            if pipe then
-                for line in pipe:lines() do
-                    line = line:gsub("[/\\]+$", "")
-                    io.write(line, "\n")
-                end
-                pipe:close()
-                return
-            end
+        local dirs = scan_dirs(base_dir, max_depth, include_all)
+        table.sort(dirs)
+        for _, d in ipairs(dirs) do
+            print(d)
         end
-
-        scan_dirs(base_dir, max_depth, include_all, function(d)
-            io.write(d, "\n")
-        end)
         return
     end
 
