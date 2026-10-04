@@ -327,6 +327,9 @@ if command -v git >/dev/null 2>&1; then
         echo "Cloning mpv-cut for mpv..."
         git clone -b release --single-branch --depth 1 https://github.com/familyfriendlymikey/mpv-cut.git "$MPV_CUT_DIR" 2>/dev/null || git clone --depth 1 https://github.com/familyfriendlymikey/mpv-cut.git "$MPV_CUT_DIR"
     fi
+    if [ -f "$REPO_DIR/.config/mpv-cut/config.lua" ]; then
+        deploy_file "$REPO_DIR/.config/mpv-cut/config.lua" "$MPV_CUT_DIR/config.lua"
+    fi
 
     # 3. thumbfast
     if [ ! -d "$THUMBFAST_REPO_DIR" ]; then

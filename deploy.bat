@@ -158,6 +158,9 @@ if %ERRORLEVEL% equ 0 (
         echo Cloning mpv-cut for mpv...
         git clone -b release --single-branch --depth 1 https://github.com/familyfriendlymikey/mpv-cut.git "%MPV_CUT_DIR%" 2>nul || git clone --depth 1 https://github.com/familyfriendlymikey/mpv-cut.git "%MPV_CUT_DIR%"
     )
+    if exist "%REPO_DIR%\.config\mpv-cut\config.lua" (
+        call :deploy_file "%REPO_DIR%\.config\mpv-cut\config.lua" "%MPV_CUT_DIR%\config.lua"
+    )
 
     :: 3. thumbfast plugin
     if not exist "%THUMBFAST_REPO%" (
