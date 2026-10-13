@@ -36,6 +36,8 @@
 	gsu = submodule update --init --recursive -f
 	sms = submodule status
 	smsr = submodule status --recursive
+	smr = submodule foreach --recursive git reset --hard
+	smrf = !git submodule foreach --recursive 'git reset --hard && git clean -fd'
 	rho = !git reset --hard origin/$(git branch --show-current)
 	mt = mergetool
 	lo = log --pretty=format:'%C(yellow)%h %C(cyan)%ad %Creset%s' --date=short
