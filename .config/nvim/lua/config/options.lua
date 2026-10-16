@@ -129,6 +129,13 @@ vim.api.nvim_create_autocmd("BufReadPost", {
 -- FileType specific settings
 -- Filename detection also handles new or empty memory-tool logs.
 vim.filetype.add({
+  -- Built-in generic log syntax; specific patterns below take priority.
+  extension = {
+    log = function(_, bufnr)
+      local filetype = vim.bo[bufnr].filetype
+      return filetype ~= "" and filetype or "log"
+    end,
+  },
   pattern = {
     ["valgrind_.*%.log"] = "valgrind",
     ["compute%-sanitizer.*%.log"] = "computesanitizer",

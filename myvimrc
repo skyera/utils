@@ -365,6 +365,9 @@ function! s:DetectMemoryToolLog() abort
             return
         endif
     endfor
+    if &l:filetype ==# '' && expand('%:e') ==# 'log'
+        setlocal filetype=log
+    endif
 endfunction
 
 " Filename detection also handles new or empty logs.
@@ -373,6 +376,8 @@ augroup valgrind_logs
     autocmd BufRead,BufNewFile valgrind_*.log setfiletype valgrind
     autocmd BufRead,BufNewFile compute-sanitizer*.log,compute_sanitizer*.log,cuda-memcheck*.log setfiletype computesanitizer
     autocmd BufReadPost * call <SID>DetectMemoryToolLog()
+    " Use built-in generic log syntax after trying the specific formats.
+    autocmd BufNewFile *.log setfiletype log
 augroup END
 
 autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
