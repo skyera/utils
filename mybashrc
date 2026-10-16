@@ -1433,6 +1433,7 @@ _apply_overrides() {
     alias gsu='git submodule update --init --recursive -f'
     command -v shell.sh >/dev/null 2>&1 && alias shell='shell.sh'
     command -v theme.sh >/dev/null 2>&1 && alias theme='theme.sh'
+    command -v opacity.sh >/dev/null 2>&1 && alias opacity='opacity.sh'
     command -v fssh.sh >/dev/null 2>&1 && alias fssh='fssh.sh'
     command -v rsshfs.sh >/dev/null 2>&1 && alias rsshfs='rsshfs.sh'
     command -v fscp.sh >/dev/null 2>&1 && alias fscp='fscp.sh'
