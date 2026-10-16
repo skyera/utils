@@ -65,6 +65,7 @@
 	sort = -committerdate
 
 [diff]
+	tool = nvimdiff
 	algorithm = histogram
 	colorMoved = default
 
@@ -94,7 +95,6 @@
 
 [difftool]
 	prompt = false
-	tool = nvimdiff
 
 [difftool "nvimdiff"]
 	cmd = nvim -d --noplugin \"$LOCAL\" \"$REMOTE\"
