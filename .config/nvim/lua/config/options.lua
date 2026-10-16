@@ -127,6 +127,32 @@ vim.api.nvim_create_autocmd("BufReadPost", {
 })
 
 -- FileType specific settings
+-- Highlight logs matching valgrind_*.log.
+vim.filetype.add({
+  pattern = { ["valgrind_.*%.log"] = "valgrind" },
+})
+
+-- Detect renamed logs once on opening; preserve source-code filetypes.
+local valgrind_signature = vim.regex(
+  [[^==\d\+==\s\+\%(Memcheck,\|Using [Vv]algrind\|Invalid \%(read\|write\|free\)\>\|HEAP SUMMARY:\|LEAK SUMMARY:\|ERROR SUMMARY:\)]]
+)
+vim.api.nvim_create_autocmd("BufReadPost", {
+  group = vim.api.nvim_create_augroup("valgrind_logs", { clear = true }),
+  callback = function(event)
+    local filetype = vim.bo[event.buf].filetype
+    if filetype ~= "" and filetype ~= "log" then
+      return
+    end
+    local line_count = math.min(50, vim.api.nvim_buf_line_count(event.buf))
+    for _, line in ipairs(vim.api.nvim_buf_get_lines(event.buf, 0, line_count, false)) do
+      if valgrind_signature:match_str(line) then
+        vim.bo[event.buf].filetype = "valgrind"
+        return
+      end
+    end
+  end,
+})
+
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "javascript", "html", "sh", "bash" },
   callback = function()

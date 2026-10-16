@@ -350,6 +350,26 @@ endif
 " =============================================================================
 
 " --- Indentation Overrides ---
+" Detect renamed Valgrind logs without scanning whole files or overriding code types.
+function! s:DetectValgrindLog() abort
+    if index(['', 'log'], &l:filetype) < 0
+        return
+    endif
+    for l:line in getline(1, min([50, line('$')]))
+        if l:line =~# '^==\d\+==\s\+\%(Memcheck,\|Using [Vv]algrind\|Invalid \%(read\|write\|free\)\>\|HEAP SUMMARY:\|LEAK SUMMARY:\|ERROR SUMMARY:\)'
+            setlocal filetype=valgrind
+            return
+        endif
+    endfor
+endfunction
+
+" Filename detection also handles new or empty logs.
+augroup valgrind_logs
+    autocmd!
+    autocmd BufRead,BufNewFile valgrind_*.log setfiletype valgrind
+    autocmd BufReadPost * call <SID>DetectValgrindLog()
+augroup END
+
 autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
 autocmd FileType html setlocal shiftwidth=2 tabstop=2
 
