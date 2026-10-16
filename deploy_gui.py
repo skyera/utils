@@ -56,8 +56,10 @@ class DotfilesDeployGUI:
                 "category": "Editor Configs",
                 "items": [
                     {"src": "myvimrc", "dest": {"Unix": "~/.vimrc", "Windows": "%USERPROFILE%/_vimrc"}},
+                    {"src": ".config/nvim/syntax/computesanitizer.vim", "dest": {"Unix": "~/.vim/syntax/computesanitizer.vim", "Windows": "%USERPROFILE%/vimfiles/syntax/computesanitizer.vim"}},
                     {"src": ".config/nvim", "dest": {"Unix": "~/.config/nvim", "Windows": "%LOCALAPPDATA%/nvim"}, "is_dir": True, "condition": "lua"},
                     {"src": "myvimrc", "dest": {"Unix": "~/.config/nvim/init.vim", "Windows": "%LOCALAPPDATA%/nvim/init.vim"}, "condition": "vim"},
+                    {"src": ".config/nvim/syntax/computesanitizer.vim", "dest": {"Unix": "~/.config/nvim/syntax/computesanitizer.vim", "Windows": "%LOCALAPPDATA%/nvim/syntax/computesanitizer.vim"}, "condition": "vim"},
                 ]
             },
             {

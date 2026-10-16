@@ -127,17 +127,26 @@ vim.api.nvim_create_autocmd("BufReadPost", {
 })
 
 -- FileType specific settings
--- Highlight logs matching valgrind_*.log.
+-- Filename detection also handles new or empty memory-tool logs.
 vim.filetype.add({
-  pattern = { ["valgrind_.*%.log"] = "valgrind" },
+  pattern = {
+    ["valgrind_.*%.log"] = "valgrind",
+    ["compute%-sanitizer.*%.log"] = "computesanitizer",
+    ["compute_sanitizer.*%.log"] = "computesanitizer",
+    ["cuda%-memcheck.*%.log"] = "computesanitizer",
+  },
 })
 
 -- Detect renamed logs once on opening; preserve source-code filetypes.
 local valgrind_signature = vim.regex(
   [[^==\d\+==\s\+\%(Memcheck,\|Using [Vv]algrind\|Invalid \%(read\|write\|free\)\>\|HEAP SUMMARY:\|LEAK SUMMARY:\|ERROR SUMMARY:\)]]
 )
+local compute_sanitizer_signature = vim.regex(
+  [[^=\{8,}\s\+\%(COMPUTE-SANITIZER\|Invalid __\|Uninitialized __\|Misaligned __\|Malloc/Free error\|Leaked \d\+ bytes\|Program hit .*\%(cudaError\|CUDA_ERROR\|CUDA API\)\|Barrier error detected\|Warpgroup MMA sequence error detected\|\%(Error\|ERROR\|WARNING\|Warning\|INFO\): \%(Race reported\|Potential \%(WAW\|WAR\|RAW\) hazard\)\|\%(ERROR\|RACECHECK\) SUMMARY:\)]]
+)
+local memory_tool_group = vim.api.nvim_create_augroup("valgrind_logs", { clear = true })
 vim.api.nvim_create_autocmd("BufReadPost", {
-  group = vim.api.nvim_create_augroup("valgrind_logs", { clear = true }),
+  group = memory_tool_group,
   callback = function(event)
     local filetype = vim.bo[event.buf].filetype
     if filetype ~= "" and filetype ~= "log" then
@@ -145,6 +154,10 @@ vim.api.nvim_create_autocmd("BufReadPost", {
     end
     local line_count = math.min(50, vim.api.nvim_buf_line_count(event.buf))
     for _, line in ipairs(vim.api.nvim_buf_get_lines(event.buf, 0, line_count, false)) do
+      if compute_sanitizer_signature:match_str(line) then
+        vim.bo[event.buf].filetype = "computesanitizer"
+        return
+      end
       if valgrind_signature:match_str(line) then
         vim.bo[event.buf].filetype = "valgrind"
         return

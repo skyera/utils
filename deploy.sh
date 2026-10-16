@@ -81,6 +81,11 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 deploy_file "$REPO_DIR/myvimrc"    "$HOME/.vimrc"
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+    deploy_file "$REPO_DIR/.config/nvim/syntax/computesanitizer.vim" "$HOME/vimfiles/syntax/computesanitizer.vim"
+else
+    deploy_file "$REPO_DIR/.config/nvim/syntax/computesanitizer.vim" "$HOME/.vim/syntax/computesanitizer.vim"
+fi
 
 # Neovim configuration
 if [ "$NVIM_CHOICE" == "lua" ]; then
@@ -97,6 +102,7 @@ else
     [ -d "$HOME/.config/nvim/lua" ] && rm -rf "$HOME/.config/nvim/lua"
     [ -f "$HOME/.config/nvim/init.lua" ] && rm "$HOME/.config/nvim/init.lua"
     deploy_file "$REPO_DIR/myvimrc" "$HOME/.config/nvim/init.vim"
+    deploy_file "$REPO_DIR/.config/nvim/syntax/computesanitizer.vim" "$HOME/.config/nvim/syntax/computesanitizer.vim"
 fi
 
 deploy_file "$REPO_DIR/.tigrc"      "$HOME/.tigrc"

@@ -350,12 +350,16 @@ endif
 " =============================================================================
 
 " --- Indentation Overrides ---
-" Detect renamed Valgrind logs without scanning whole files or overriding code types.
-function! s:DetectValgrindLog() abort
+" Detect renamed memory-tool logs without scanning whole files or overriding code types.
+function! s:DetectMemoryToolLog() abort
     if index(['', 'log'], &l:filetype) < 0
         return
     endif
     for l:line in getline(1, min([50, line('$')]))
+        if l:line =~# '^=\{8,}\s\+\%(COMPUTE-SANITIZER\|Invalid __\|Uninitialized __\|Misaligned __\|Malloc/Free error\|Leaked \d\+ bytes\|Program hit .*\%(cudaError\|CUDA_ERROR\|CUDA API\)\|Barrier error detected\|Warpgroup MMA sequence error detected\|\%(Error\|ERROR\|WARNING\|Warning\|INFO\): \%(Race reported\|Potential \%(WAW\|WAR\|RAW\) hazard\)\|\%(ERROR\|RACECHECK\) SUMMARY:\)'
+            setlocal filetype=computesanitizer
+            return
+        endif
         if l:line =~# '^==\d\+==\s\+\%(Memcheck,\|Using [Vv]algrind\|Invalid \%(read\|write\|free\)\>\|HEAP SUMMARY:\|LEAK SUMMARY:\|ERROR SUMMARY:\)'
             setlocal filetype=valgrind
             return
@@ -367,7 +371,8 @@ endfunction
 augroup valgrind_logs
     autocmd!
     autocmd BufRead,BufNewFile valgrind_*.log setfiletype valgrind
-    autocmd BufReadPost * call <SID>DetectValgrindLog()
+    autocmd BufRead,BufNewFile compute-sanitizer*.log,compute_sanitizer*.log,cuda-memcheck*.log setfiletype computesanitizer
+    autocmd BufReadPost * call <SID>DetectMemoryToolLog()
 augroup END
 
 autocmd FileType javascript setlocal shiftwidth=2 tabstop=2
