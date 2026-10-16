@@ -574,6 +574,66 @@ git clean -fd
 git checkout -f <branch>
 ```
 
+#### Line Endings (`core.autocrlf`)
+
+LF (`\n`) is the usual Linux line ending; CRLF (`\r\n`) is the traditional Windows line ending.
+
+For text files eligible for normalization, unless `.gitattributes` specifies otherwise:
+
+| Value | When staging (`git add`) | When checking out |
+|-------|-------------------------|-------------------|
+| `input` | Normalize CRLF to LF | No line-ending conversion |
+| `true` | Normalize CRLF to LF | Convert normalized text to CRLF |
+| `false` | No automatic conversion | No automatic conversion |
+
+**Recommended for my Linux/Windows workflow:** keep `core.autocrlf=input` on both systems.
+
+```gitconfig
+[core]
+    autocrlf = input
+```
+
+With `input`, a new CRLF text file is staged and committed as LF, while the working file stays CRLF. If the repository already has LF and only the working file's line endings differ, staging normally produces no change to commit. Files already tracked with CRLF are normally preserved by ordinary `git add`; setting `input` does not retroactively normalize them.
+
+To explicitly normalize an existing file, stage it again and inspect the result:
+
+```bash
+git add --renormalize path/to/file
+git diff --cached -- path/to/file
+```
+
+This normalizes the staged content according to the active attributes and configuration without rewriting the working file. Binary files and files marked `-text` are excluded.
+
+For a shared repository policy, commit these rules in `.gitattributes`:
+
+```gitattributes
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+```
+
+These rules store normalized text as LF in Git, check general text files out as LF, and check Windows batch files out as CRLF. Simple LF-only batch files can run in `cmd.exe`, but CRLF is the compatibility choice. Configure the editor to save general code as LF and batch files as CRLF.
+
+`core.eol` chooses checkout line endings for normalized text when attributes do not specify them, but `core.autocrlf=input` or `true` overrides it. Thus `core.eol=lf` is redundant alongside `autocrlf=input`; explicit `.gitattributes` rules take precedence.
+
+Inspect the effective settings and a file's line endings:
+
+```bash
+git config --show-origin --get core.autocrlf
+git ls-files --eol -- path/to/file
+git check-attr text eol -- path/to/file
+```
+
+Example output from `git ls-files --eol` for a normalized file with CRLF in the working tree:
+
+```text
+i/lf    w/crlf  attr/                  path/to/file
+```
+
+`i/lf` describes the index (staged content); `w/crlf` describes the working file.
+
+References: [Git configuration](https://git-scm.com/docs/git-config#Documentation/git-config.txt-coreautoCRLF), [Git attributes](https://git-scm.com/docs/gitattributes#_checking_out_and_checking_in).
+
 #### Add, Commit, Push Workflow
 ```bash
 # Stage all changes in the current directory
