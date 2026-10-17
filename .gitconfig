@@ -47,7 +47,7 @@
 	undo = reset --soft HEAD~1
 	files = ls-files
 	bd = branch -d
-	dm = "!f() { current=$(git symbolic-ref --quiet --short HEAD) || return; git for-each-ref --merged=HEAD --format='%(refname:short)' refs/heads/ | while IFS= read -r branch; do case \"$branch\" in main|master|\"$current\") continue ;; esac; git branch -d -- \"$branch\" || return; done; }; f"
+	dm = "!f() { current=$(git symbolic-ref --quiet --short HEAD) || { echo \"error: not on any branch (detached HEAD)\" >&2; return 1; }; git for-each-ref --merged=HEAD --format='%(refname:short)' refs/heads/ | while IFS= read -r branch; do case \"$branch\" in main|master|\"$current\") continue ;; esac; git branch -d -- \"$branch\" || return; done; }; f"
 	tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit
 	recent = for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'
 	cleanf = clean -fd
