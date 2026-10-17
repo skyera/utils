@@ -20,38 +20,49 @@
 	prune = true
 
 [alias]
+	# Status & Working Tree
 	st = status
+	files = ls-files
+	cleanf = clean -fd
+
+	# Branches & Switching
 	co = checkout
 	cof = checkout -f
 	swf = switch -f
 	br = branch
+	ba = branch -a
+	bd = branch -d
+	dm = "!f() { current=$(git symbolic-ref --quiet --short HEAD) || { echo \"error: not on any branch (detached HEAD)\" >&2; return 1; }; git for-each-ref --merged=HEAD --format='%(refname:short)' refs/heads/ | while IFS= read -r branch; do case \"$branch\" in main|master|\"$current\") continue ;; esac; git branch -d -- \"$branch\" || return; done; }; f"
+	recent = for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'
+
+	# Commits & Resetting
 	ci = commit
-	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %C(cyan)%cd %Cgreen(%cr)%Creset %C(bold blue)<%an>%Creset' --abbrev-commit --date=format:'%Y-%m-%d %H:%M'
-	unstage = reset HEAD --
-	last = log -1 HEAD
 	amend = commit --amend --no-edit
+	unstage = reset HEAD --
+	undo = reset --soft HEAD~1
+	rho = "!f() { b=$(git branch --show-current); if [ -z \"$b\" ]; then echo \"error: not on any branch (detached HEAD)\" >&2; return 1; fi; git reset --hard \"origin/$b\" --; }; f"
+
+	# Logs & Inspection
+	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(auto)%d%Creset %s %C(cyan)%cd %Cgreen(%cr)%Creset %C(bold blue)<%an>%Creset' --abbrev-commit --date=format:'%Y-%m-%d %H:%M'
+	lo = log --pretty=format:'%C(yellow)%h %C(cyan)%ad %Creset%s' --date=short
+	tree = log --graph --pretty=format:'%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit
+	last = log -1 HEAD
+	stat = show --stat --oneline
+
+	# Diff & Merge
 	d = diff
+	du = diff @{u}
 	dt = difftool
 	dtd = difftool --dir-diff
+	mt = mergetool
+
+	# Fetch & Submodules
+	fap = fetch --all --prune
 	gsu = submodule update --init --recursive -f
 	sms = submodule status
 	smsr = submodule status --recursive
 	smr = submodule foreach --recursive git reset --hard
 	smrf = submodule foreach --recursive "git reset --hard && git clean -fd"
-	rho = "!f() { b=$(git branch --show-current); if [ -z \"$b\" ]; then echo \"error: not on any branch (detached HEAD)\" >&2; return 1; fi; git reset --hard \"origin/$b\" --; }; f"
-	mt = mergetool
-	lo = log --pretty=format:'%C(yellow)%h %C(cyan)%ad %Creset%s' --date=short
-	du = diff @{u}
-	stat = show --stat --oneline
-	ba = branch -a
-	undo = reset --soft HEAD~1
-	files = ls-files
-	bd = branch -d
-	dm = "!f() { current=$(git symbolic-ref --quiet --short HEAD) || { echo \"error: not on any branch (detached HEAD)\" >&2; return 1; }; git for-each-ref --merged=HEAD --format='%(refname:short)' refs/heads/ | while IFS= read -r branch; do case \"$branch\" in main|master|\"$current\") continue ;; esac; git branch -d -- \"$branch\" || return; done; }; f"
-	tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit
-	recent = for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'
-	cleanf = clean -fd
-	fap = fetch --all --prune
 
 [grep]
 	lineNumber = true
