@@ -108,7 +108,7 @@
 	layout = "(LOCAL,BASE,REMOTE)/MERGED"
 
 [help]
-	autocorrect = 1
+	autocorrect = prompt
 
 [include]
 	path = ~/.gitconfig.local
