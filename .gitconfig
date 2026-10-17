@@ -62,7 +62,7 @@
 	sms = submodule status
 	smsr = submodule status --recursive
 	smr = submodule foreach --recursive git reset --hard
-	smrf = submodule foreach --recursive "git reset --hard && git clean -fd"
+	smrf = submodule foreach --recursive 'git reset --hard && git clean -fd'
 
 [grep]
 	lineNumber = true
