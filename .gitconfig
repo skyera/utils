@@ -38,7 +38,7 @@
 	smsr = submodule status --recursive
 	smr = submodule foreach --recursive git reset --hard
 	smrf = submodule foreach --recursive "git reset --hard && git clean -fd"
-	rho = "!f() { b=$(git branch --show-current); if [ -z \"$b\" ]; then echo \"error: not on any branch (detached HEAD)\" >&2; return 1; fi; git reset --hard \"origin/$b\"; }; f"
+	rho = "!f() { b=$(git branch --show-current); if [ -z \"$b\" ]; then echo \"error: not on any branch (detached HEAD)\" >&2; return 1; fi; git reset --hard \"origin/$b\" --; }; f"
 	mt = mergetool
 	lo = log --pretty=format:'%C(yellow)%h %C(cyan)%ad %Creset%s' --date=short
 	du = diff @{u}
