@@ -42,3 +42,4 @@ When the user asks about an issue, problem, feature, or modification, the agent 
 *   **One commit per issue**: Each fix should be its own atomic commit with a descriptive message.
 *   **"commit"**: When the user says "commit", create the commit(s) locally. Do NOT push.
 *   **"push"**: When the user says "push", push all local commits to the remote repository.
+*   **"ship"**: When the user says "ship", apply/stage the change(s), create atomic commit(s) locally, and push to the remote repository.
