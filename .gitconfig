@@ -46,13 +46,15 @@
 	ba = branch -a
 	undo = reset --soft HEAD~1
 	files = ls-files
-	grep = grep --line-number
 	bd = branch -d
 	dm = "!f() { current=$(git symbolic-ref --quiet --short HEAD) || return; git for-each-ref --merged=HEAD --format='%(refname:short)' refs/heads/ | while IFS= read -r branch; do case \"$branch\" in main|master|\"$current\") continue ;; esac; git branch -d -- \"$branch\" || return; done; }; f"
 	tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit
 	recent = for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'
 	cleanf = clean -fd
 	fap = fetch --all --prune
+
+[grep]
+	lineNumber = true
 
 [rerere]
 	enabled = true
